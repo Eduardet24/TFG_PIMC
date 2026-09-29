@@ -44,7 +44,7 @@
 //#define OBDM_FERMIONS
 //#define OBDM_ANYONS
 
-//#define INTERACTION_ABSENT
+#define INTERACTION_ABSENT
 //#define INTERACTION_Aziz // uses energy_unit inside InteractionEnergy call, to have [K] as local energy unit
 //#define INTERACTION_HYDROGEN // uses energy_unit inside InteractionEnergy call, to have [K] as local energy unit
 //#define INTERACTION_YUKAWA
@@ -68,7 +68,7 @@
 //#define INTERACTION_DOUBLE_GAUSSIAN // -gaussian_alpha*exp(-0.5*r*r) - gaussian_beta*exp(-0.25*r*r)
 //#define INTERACTION_LOGARITHMIC
 //#define INTERACTION_POWER // D/r^Apar, Apar>2
-#define INTERACTION_COULOMB // 1/r
+//#define INTERACTION_COULOMB // 1/r
 //#define INTERACTION_R2 // 1/r^2
 //#define INTERACTION_DIPOLE // D/r^3
 //#define INTERACTION_QUADRUPOLE  // 1/r^5
