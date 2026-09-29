@@ -1,0 +1,10 @@
+# Binarios y objetos compilados
+MC
+*.o
+
+# Salidas de datos y registros
+*.dat
+*.log
+
+# Archivos del sistema
+.DS_Store

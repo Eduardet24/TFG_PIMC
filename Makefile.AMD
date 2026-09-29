@@ -1,0 +1,59 @@
+CCOMPILER = clang
+#CCOMPILER = gcc 
+FCOMPILER = flang
+#FLAGS = -g
+#FLAGS = -O2 -static-intel
+#FLAGS = -O3 
+#FLAGS = -O3 -fopenmp
+FLAGS = -O3 -fopenmp -march=native -mtune=native -ffast-math -flto
+#use -std=c99 for gcc
+# -Wall -ffast-math
+#FLAGS = -g
+# for intel debugger use idb and compile with flag:
+#FLAGS = -debug -O0
+#MPI_LIBS=/usr/local/Cellar/open-mpi/5.0.7/lib -lmpi
+#MPI_INCLUDE_DIR=/usr/include/lam/
+#
+# @ inca log to epyc node
+# srun -p epyc --nodes=1 --ntasks=1 --cpus-per-task=4 --pty bash
+# source /opt/AMD/aocc.sh
+# source /opt/AMD/aocl/aocl-linux-aocc-5.3.0/aocc/MT/amd-libs.cfg
+
+
+LIBRARIES = -L$(MPI_LIBS) -L$(AOCL_ROOT)/lib -lalm -lm 
+
+#LIBRARIES = -L$(MPI_LIBS) -lmpich -lm
+#ifdef __linux__
+  GRX20 = c:/djgpp/lib/libgrx20.a
+  BCC = c:/djgpp/lib/libbcc.a
+  BCC2 = c:/djgpp/lib/dj/libbcc2.a
+#endif
+  GRX20 = /usr/lib/libgrx20.a
+  BCC = libbcc.a
+  BCC2 = /usr/lib/libbcc2.a
+#else
+
+SRC = $(*.c)
+OBJ = dmc.o display.o gencoord.o memory.o vmc.o randnorm.o \
+      rw.o trial.o utils.o quantities.o parallel.o crystal.o \
+      fermions.o trialf.o spline.o optimiz.o mymath.o fewbody.o ewald.o md.o pigs.o move.o main.o 
+
+all: MC
+
+  OUT = MC
+
+
+MC : $(OBJ)
+	$(CCOMPILER) $(OBJ) $(FLAGS) $(LIBRARIES) -o MC 
+
+.o:
+	$(CCOMPILER) -I$(MPI_INCLUDE_DIR) $(FLAGS) $*.c -o $*.o -Wall -c
+
+$(OBJ): main.c
+	$(CCOMPILER) -I$(MPI_INCLUDE_DIR) $(FLAGS) $*.c -o $*.o -Wall -c
+
+#ran2.o: ran2.f
+#	$(FCOMPILER) ran2.f -c
+        
+clean :
+	rm *.o	
