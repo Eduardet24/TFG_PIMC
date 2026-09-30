@@ -21,11 +21,102 @@
 #include MATHINCLUDE
 
 /********************************* Energy ************************************/
+static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
+                         DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
+  DOUBLE spring = 0.;
+  DOUBLE virial = 0.;
+  DOUBLE centroid_z = 0.;
+  DOUBLE potential = 0.;
+  DOUBLE external = 0.;
+  DOUBLE interaction = 0.;
+  DOUBLE tau = 1. / (T * (DOUBLE) Nwalkers);
+  int bead;
+  int next_bead;
+  int particle;
+  int other_particle;
+  int terms = 0;
+  DOUBLE dr[3];
+  DOUBLE r2;
+
+  for(bead=0; bead<Nwalkers; bead++) {
+    if(W[bead].status != ALIVE) continue;
+    next_bead = bead + 1;
+    if(next_bead == Nwalkers) next_bead = 0;
+    terms++;
+    centroid_z += W[bead].z[0];
+
+    for(particle=0; particle<N; particle++) {
+#ifdef TRIAL_1D
+      spring += (W[bead].z[particle] - W[next_bead].z[particle]) *
+                (W[bead].z[particle] - W[next_bead].z[particle]);
+#elif defined(TRIAL_2D)
+      spring += (W[bead].x[particle] - W[next_bead].x[particle]) *
+                (W[bead].x[particle] - W[next_bead].x[particle]);
+      spring += (W[bead].y[particle] - W[next_bead].y[particle]) *
+                (W[bead].y[particle] - W[next_bead].y[particle]);
+#else
+      spring += (W[bead].x[particle] - W[next_bead].x[particle]) *
+                (W[bead].x[particle] - W[next_bead].x[particle]);
+      spring += (W[bead].y[particle] - W[next_bead].y[particle]) *
+                (W[bead].y[particle] - W[next_bead].y[particle]);
+      spring += (W[bead].z[particle] - W[next_bead].z[particle]) *
+                (W[bead].z[particle] - W[next_bead].z[particle]);
+#endif
+
+#ifdef EXTERNAL_POTENTIAL
+      external += Vext(W[bead].x[particle], W[bead].y[particle], W[bead].z[particle]);
+#endif
+    }
+
+    for(particle=0; particle<N; particle++) {
+      for(other_particle=particle+1; other_particle<N; other_particle++) {
+        dr[0] = W[bead].x[particle] - W[bead].x[other_particle];
+        dr[1] = W[bead].y[particle] - W[bead].y[other_particle];
+        dr[2] = W[bead].z[particle] - W[bead].z[other_particle];
+        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+        interaction += InteractionEnergy(Sqrt(r2));
+      }
+    }
+  }
+
+  if(terms == 0) {
+    *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.;
+    return 0.;
+  }
+
+  *Eext = external / ((DOUBLE) terms * N);
+  *Eint = interaction / ((DOUBLE) terms * N);
+  *Epot = *Eext + *Eint;
+  centroid_z /= (DOUBLE) terms;
+#ifdef TRIAL_1D
+  if(N == 1) {
+    for(bead=0; bead<Nwalkers; bead++) {
+      if(W[bead].status == ALIVE) {
+        virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0];
+      }
+    }
+    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
+  }
+  else {
+    *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
+  }
+#else
+  *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
+#endif
+  *Eff = *Edamping = 0.;
+  potential = *Epot + *Ekin;
+  return potential;
+}
+
 // returns energy of the system averaged over all walkers
 DOUBLE Energy(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
   DOUBLE dEpot, dEkin, dEff, dEdamping, dEint, dEext;
   int w;
   int terms = 0;
+
+  if(MC == PIMC) {
+    return EnergyPIMC(Epot, Ekin, Eff, Edamping, Eint, Eext);
+  }
 
   *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.;
   terms = 0;

@@ -1497,11 +1497,7 @@ void Measure(int block, int iter) {
     Eo = E = Energy(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
 
     if(measure_energy && iter % Nmeasure == 0) {
-      for(w=0; w<Nwalkers; w++) {
-        WalkerEnergy(&W[w], &Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
-        Epot /= (DOUBLE) N;
-        SaveEnergyCls(Epot);
-      }
+      SaveEnergyCls(E);
     }
   }
 

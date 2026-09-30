@@ -26,8 +26,9 @@
 #  @f]
 #
 #  En este problema se cumple Ekin = Epot = <x^2>/2. La salida `oute.dat`
-#  no se utiliza para separar estas contribuciones, ya que el estimador
-#  empleado por esta configuración de PIMC no guarda una cinética independiente.
+#  contiene ahora la energía total estimada directamente por PIMC; sus
+#  contribuciones cinética y potencial se siguen comparando por separado
+#  mediante la densidad y el teorema del virial.
 #
 #  @pre `outrd.dat` debe estar en el directorio de ejecución.
 #  @post Se imprime la comparación entre simulación y teoría, se muestra una
@@ -97,10 +98,18 @@ e_kin_sim = r2_sim / 2.0
 ## Energía total estimada, suma de cinética y potencial.
 e_sim = e_kin_sim + e_pot_sim
 
+## Energía total medida directamente por el estimador de PIMC en `oute.dat`.
+energy_data = np.loadtxt('oute.dat', ndmin=1)
+## Se descarta la primera mitad para reducir el efecto del equilibrio inicial.
+equilibrio_inicio = energy_data.size // 2
+e_pimc = np.mean(energy_data[equilibrio_inicio:])
+e_pimc_std = np.std(energy_data[equilibrio_inicio:], ddof=1)
+
 ## Mostrar resultados numéricos de la simulación y de la teoría.
 print(f'Ekin simulacion = {e_kin_sim:.6f}')
 print(f'Epot simulacion = {e_pot_sim:.6f}')
 print(f'E total simulacion = {e_sim:.6f}')
+print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}')
 print(f'Ekin teoria = {e_kin_teo:.6f}')
 print(f'Epot teoria = {e_pot_teo:.6f}')
 print(f'E total teoria = {e_teo:.6f}')
