@@ -30,8 +30,9 @@
 #  empleado por esta configuración de PIMC no guarda una cinética independiente.
 #
 #  @pre `outrd.dat` debe estar en el directorio de ejecución.
-#  @post Se imprime la comparación entre simulación y teoría y se muestra
-#        una gráfica de la densidad.
+#  @post Se imprime la comparación entre simulación y teoría, se muestra una
+#        gráfica de la densidad y se muestra una gráfica de residuos con barras
+#        de error estándar.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,9 +45,9 @@ T = 1.0
 beta = 1.0 / T
 
 ## Leer la distribución radial 1D generada por PIMC.
-#
-# Cada bloque de Monte Carlo contiene dos columnas: posición y densidad.
-# El programa concatena los bloques en el mismo archivo.
+##
+## Cada bloque de Monte Carlo contiene dos columnas: posición y densidad.
+## El programa concatena los bloques en el mismo archivo.
 data = np.loadtxt('outrd.dat')
 ## Índices donde empieza un bloque nuevo; la posición vuelve a disminuir.
 saltos = np.where(np.diff(data[:, 0]) < 0)[0] + 1
@@ -63,8 +64,12 @@ x_sim = bloques[0][:, 0]
 if not all(np.allclose(bloque[:, 0], x_sim) for bloque in bloques[1:]):
     raise ValueError('Los centros de bin cambian entre bloques')
 
+## Densidades de cada bloque, usadas para calcular el promedio y su error.
+n_bloques = np.array([bloque[:, 1] for bloque in bloques])
 ## Densidad simulada promedio sobre todos los bloques.
-n_sim = np.mean([bloque[:, 1] for bloque in bloques], axis=0)
+n_sim = np.mean(n_bloques, axis=0)
+## Error estándar del promedio en cada centro de bin.
+n_error = np.std(n_bloques, axis=0, ddof=1) / np.sqrt(len(bloques))
 
 ## Coordenadas empleadas para dibujar la solución analítica.
 x_teo = np.linspace(x_sim.min(), x_sim.max(), 500)
@@ -102,6 +107,15 @@ print(f'E total teoria = {e_teo:.6f}')
 print(f'<x^2> simulacion = {r2_sim:.6f}')
 print(f'<x^2> teoria = {r2_teo:.6f}')
 
+## Residuo entre la densidad simulada y la solución teórica en los mismos bins.
+n_teo_sim = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(
+    -(x_sim**2) * np.tanh(beta / 2.0)
+)
+residuo = n_sim - n_teo_sim
+## RMS del residuo como medida global de la discrepancia simulación-teoría.
+residuo_rms = np.sqrt(np.mean(residuo**2))
+print(f'Residuo RMS = {residuo_rms:.6f}')
+
 ## Dibujar la distribución analítica y la simulada.
 plt.plot(x_teo, n_teo, 'r-', linewidth=2, label='Teoría (Fórmula original)')
 ## Cada punto azul representa un centro de bin de la densidad promediada.
@@ -112,4 +126,17 @@ plt.xlabel('Posición (z)')
 plt.ylabel('Densidad n(z)')
 plt.legend()
 plt.grid(True)
+
+## Dibujar el error de la simulación respecto a la teoría.
+## Las barras representan el error estándar del promedio de los bloques.
+plt.figure()
+plt.axhline(0.0, color='black', linewidth=1)
+plt.errorbar(x_sim, residuo, yerr=n_error, fmt='g.', markersize=5,
+             capsize=2, label='Residuo +/- error estándar')
+plt.title('Residuo de la densidad PIMC respecto a la teoría')
+plt.xlabel('Posición (z)')
+plt.ylabel(r'$n_{PIMC}(z) - n_{teoria}(z)$')
+plt.legend()
+plt.grid(True)
+
 plt.show()
