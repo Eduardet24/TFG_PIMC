@@ -53,7 +53,6 @@ T = 1.0
 beta = 1.0 / T
 
 ## Leer la distribución radial 1D generada por PIMC.
-##
 ## Cada bloque de Monte Carlo contiene dos columnas: posición y densidad.
 ## El programa concatena los bloques en el mismo archivo.
 data = np.loadtxt('outrd.dat')
@@ -120,6 +119,12 @@ residuo = n_sim - n_teo_sim
 ## RMS del residuo como medida global de la discrepancia simulación-teoría.
 residuo_rms = np.sqrt(np.mean(residuo**2))
 
+
+
+
+
+
+######################### RESULTADOS #########################
 ## Guardar los resultados numéricos sobrescribiendo la ejecución anterior.
 with open(resultados_txt, 'w', encoding='utf-8') as resultados:
     print(f'Ekin simulacion = {e_kin_sim:.6f}', file=resultados)
@@ -133,6 +138,11 @@ with open(resultados_txt, 'w', encoding='utf-8') as resultados:
     print(f'<x^2> teoria = {r2_teo:.6f}', file=resultados)
     print(f'Residuo RMS = {residuo_rms:.6f}', file=resultados)
 
+
+
+
+
+######################### TABLAS #########################
 ## Dibujar la distribución analítica y la simulada.
 plt.plot(x_teo, n_teo, 'r-', linewidth=2, label='Teoría (Fórmula original)')
 ## Cada punto azul representa un centro de bin de la densidad promediada.
