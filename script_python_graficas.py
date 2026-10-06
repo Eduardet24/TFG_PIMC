@@ -35,8 +35,15 @@
 #        gráfica de la densidad y se muestra una gráfica de residuos con barras
 #        de error estándar.
 
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
+
+## Carpeta donde se guardan los resultados de esta simulación.
+resultados_dir = os.path.join('Resultados', '1DArmonico')
+os.makedirs(resultados_dir, exist_ok=True)
+resultados_txt = os.path.join(resultados_dir, 'resultados_graficas_armonico_1D.txt')
 
 ## Número de dimensiones del sistema.
 D = 1.0
@@ -105,17 +112,6 @@ equilibrio_inicio = energy_data.size // 2
 e_pimc = np.mean(energy_data[equilibrio_inicio:])
 e_pimc_std = np.std(energy_data[equilibrio_inicio:], ddof=1)
 
-## Mostrar resultados numéricos de la simulación y de la teoría.
-print(f'Ekin simulacion = {e_kin_sim:.6f}')
-print(f'Epot simulacion = {e_pot_sim:.6f}')
-print(f'E total simulacion = {e_sim:.6f}')
-print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}')
-print(f'Ekin teoria = {e_kin_teo:.6f}')
-print(f'Epot teoria = {e_pot_teo:.6f}')
-print(f'E total teoria = {e_teo:.6f}')
-print(f'<x^2> simulacion = {r2_sim:.6f}')
-print(f'<x^2> teoria = {r2_teo:.6f}')
-
 ## Residuo entre la densidad simulada y la solución teórica en los mismos bins.
 n_teo_sim = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(
     -(x_sim**2) * np.tanh(beta / 2.0)
@@ -123,7 +119,19 @@ n_teo_sim = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(
 residuo = n_sim - n_teo_sim
 ## RMS del residuo como medida global de la discrepancia simulación-teoría.
 residuo_rms = np.sqrt(np.mean(residuo**2))
-print(f'Residuo RMS = {residuo_rms:.6f}')
+
+## Guardar los resultados numéricos sobrescribiendo la ejecución anterior.
+with open(resultados_txt, 'w', encoding='utf-8') as resultados:
+    print(f'Ekin simulacion = {e_kin_sim:.6f}', file=resultados)
+    print(f'Epot simulacion = {e_pot_sim:.6f}', file=resultados)
+    print(f'E total simulacion = {e_sim:.6f}', file=resultados)
+    print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}', file=resultados)
+    print(f'Ekin teoria = {e_kin_teo:.6f}', file=resultados)
+    print(f'Epot teoria = {e_pot_teo:.6f}', file=resultados)
+    print(f'E total teoria = {e_teo:.6f}', file=resultados)
+    print(f'<x^2> simulacion = {r2_sim:.6f}', file=resultados)
+    print(f'<x^2> teoria = {r2_teo:.6f}', file=resultados)
+    print(f'Residuo RMS = {residuo_rms:.6f}', file=resultados)
 
 ## Dibujar la distribución analítica y la simulada.
 plt.plot(x_teo, n_teo, 'r-', linewidth=2, label='Teoría (Fórmula original)')
@@ -135,6 +143,8 @@ plt.xlabel('Posición (z)')
 plt.ylabel('Densidad n(z)')
 plt.legend()
 plt.grid(True)
+plt.savefig(os.path.join(resultados_dir, 'densidad_armonico_1D.png'),
+            dpi=300, bbox_inches='tight')
 
 ## Dibujar el error de la simulación respecto a la teoría.
 ## Las barras representan el error estándar del promedio de los bloques.
@@ -147,5 +157,7 @@ plt.xlabel('Posición (z)')
 plt.ylabel(r'$n_{PIMC}(z) - n_{teoria}(z)$')
 plt.legend()
 plt.grid(True)
+plt.savefig(os.path.join(resultados_dir, 'residuo_armonico_1D.png'),
+            dpi=300, bbox_inches='tight')
 
 plt.show()
