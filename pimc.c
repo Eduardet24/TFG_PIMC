@@ -1,3 +1,6 @@
+/** @file pimc.c
+ *  @brief Implementation of the PIMC algorithm.
+*/
 /*pimc.c*/
 #include <stdio.h>
 #include <limits.h>
@@ -14,6 +17,9 @@
 #include MATHINCLUDE
 
 /************************** PIMC Move One By One ****************************/
+/** @brief Perform a single PIMC move for one bead.
+ *  @param w Index of the bead to be moved.
+*/
 void PIMCMoveOneByOne(int w) {
   int i,j;
   int w1,w2; // index of the walker with [w-1] and [w+1]
@@ -50,6 +56,13 @@ void PIMCMoveOneByOne(int w) {
     // Wp is the trial position
     RandomNormal3(&dx, &dy, &dz, 0., Sqrt(dt_vmc)); // generate a random number distributed according to Normal distribution
 
+/** @brief Generate a random number distributed according to a Normal distribution.
+ *  @param dx Pointer to the x-component of the random vector.
+ *  @param dy Pointer to the y-component of the random vector.
+ *  @param dz Pointer to the z-component of the random vector.
+ *  @param mean The mean of the Normal distribution.
+ *  @param sigma The standard deviation of the Normal distribution.
+ */
 #ifdef TRIAL_3D
     xp = x + dx;
     yp = y + dy;
@@ -159,6 +172,9 @@ void PIMCMoveOneByOne(int w) {
 
 
 /*************************** PIGS pseudopotential *************************************/
+/** @brief Perform a single PIMC move for the pseudopotential.
+ *  @param w Index of the walker to be moved.
+ */
 void PIMCPseudopotentialMoveOneByOne(int w) {
   int i,j;
   int w1,w2; // index of the walker with [w-1] and [w+1]
