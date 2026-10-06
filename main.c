@@ -1497,7 +1497,7 @@ void Measure(int block, int iter) {
     Eo = E = Energy(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
 
     if(measure_energy && iter % Nmeasure == 0) {
-      SaveEnergyCls(E);
+      SaveEnergyCls(E); //cambio
     }
   }
 

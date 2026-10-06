@@ -80,7 +80,11 @@ void PIMCMoveOneByOne(int w) {
     yp = 0.;
     zp = z + dz;
 #endif
-
+/** @brief Reduce the position to the simulation box.
+ *  @param xp Pointer to the x-coordinate of the position.
+ *  @param yp Pointer to the y-coordinate of the position.
+ *  @param zp Pointer to the z-coordinate of the position.
+ */
     ReduceToTheBoxXYZ(&xp, &yp, &zp); // in case of a box, put the new position to the box
 
     // external potential

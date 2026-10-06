@@ -1,0 +1,78 @@
+\doxysection{pimc.\+c File Reference}
+\hypertarget{pimc_8c}{}\label{pimc_8c}\index{pimc.c@{pimc.c}}
+
+
+Implementation of the PIMC algorithm.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$limits.\+h$>$}\newline
+{\ttfamily \#include $<$memory.\+h$>$}\newline
+{\ttfamily \#include "{}main.\+h"{}}\newline
+{\ttfamily \#include "{}randnorm.\+h"{}}\newline
+{\ttfamily \#include "{}rw.\+h"{}}\newline
+{\ttfamily \#include "{}compatab.\+h"{}}\newline
+{\ttfamily \#include "{}vmc.\+h"{}}\newline
+{\ttfamily \#include "{}mymath.\+h"{}}\newline
+{\ttfamily \#include "{}pimc.\+h"{}}\newline
+{\ttfamily \#include "{}pigs.\+h"{}}\newline
+Include dependency graph for pimc.\+c\+:
+% FIG 0
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{pimc_8c_a0063856d01eb2aa05c3f6a14b9baccc4}{PIMCMove\+One\+By\+One}} (int w)
+\begin{DoxyCompactList}\small\item\em Perform a single PIMC move for one bead. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{pimc_8c_af569e3b31f66fe66b872747280cbbc00}{PIMCPseudopotential\+Move\+One\+By\+One}} (int w)
+\begin{DoxyCompactList}\small\item\em Perform a single PIMC move for the pseudopotential. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Implementation of the PIMC algorithm. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{pimc_8c_a0063856d01eb2aa05c3f6a14b9baccc4}\label{pimc_8c_a0063856d01eb2aa05c3f6a14b9baccc4} 
+\index{pimc.c@{pimc.c}!PIMCMoveOneByOne@{PIMCMoveOneByOne}}
+\index{PIMCMoveOneByOne@{PIMCMoveOneByOne}!pimc.c@{pimc.c}}
+\doxysubsubsection{\texorpdfstring{PIMCMoveOneByOne()}{PIMCMoveOneByOne()}}
+{\footnotesize\ttfamily void PIMCMove\+One\+By\+One (\begin{DoxyParamCaption}\item[{int}]{w }\end{DoxyParamCaption})}
+
+
+
+Perform a single PIMC move for one bead. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em w} & Index of the bead to be moved. \\
+\hline
+\end{DoxyParams}
+Generate a random number distributed according to a Normal distribution. 
+\begin{DoxyParams}{Parameters}
+{\em dx} & Pointer to the x-\/component of the random vector. \\
+\hline
+{\em dy} & Pointer to the y-\/component of the random vector. \\
+\hline
+{\em dz} & Pointer to the z-\/component of the random vector. \\
+\hline
+{\em mean} & The mean of the Normal distribution. \\
+\hline
+{\em sigma} & The standard deviation of the Normal distribution.\\
+\hline
+\end{DoxyParams}
+\Hypertarget{pimc_8c_af569e3b31f66fe66b872747280cbbc00}\label{pimc_8c_af569e3b31f66fe66b872747280cbbc00} 
+\index{pimc.c@{pimc.c}!PIMCPseudopotentialMoveOneByOne@{PIMCPseudopotentialMoveOneByOne}}
+\index{PIMCPseudopotentialMoveOneByOne@{PIMCPseudopotentialMoveOneByOne}!pimc.c@{pimc.c}}
+\doxysubsubsection{\texorpdfstring{PIMCPseudopotentialMoveOneByOne()}{PIMCPseudopotentialMoveOneByOne()}}
+{\footnotesize\ttfamily void PIMCPseudopotential\+Move\+One\+By\+One (\begin{DoxyParamCaption}\item[{int}]{w }\end{DoxyParamCaption})}
+
+
+
+Perform a single PIMC move for the pseudopotential. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em w} & Index of the walker to be moved. \\
+\hline
+\end{DoxyParams}

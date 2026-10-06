@@ -21,6 +21,15 @@
 #include MATHINCLUDE
 
 /********************************* Energy ************************************/
+/** @brief Calculate the energy of the system.
+ *  @param Epot Pointer to the potential energy.
+ *  @param Ekin Pointer to the kinetic energy.
+ *  @param Eff Pointer to the effective energy.
+ *  @param Edamping Pointer to the damping energy.
+ *  @param Eint Pointer to the interaction energy.
+ *  @param Eext Pointer to the external energy.
+ *  @return The total energy of the system.
+ */
 static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
                          DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
   DOUBLE spring = 0.;
@@ -38,15 +47,15 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   DOUBLE dr[3];
   DOUBLE r2;
 
-  for(bead=0; bead<Nwalkers; bead++) {
-    if(W[bead].status != ALIVE) continue;
+  for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
+    if(W[bead].status != ALIVE) continue; // skip dead walkers
     next_bead = bead + 1;
-    if(next_bead == Nwalkers) next_bead = 0;
+    if(next_bead == Nwalkers) next_bead = 0; // cyclic condition
     terms++;
     centroid_z += W[bead].z[0];
 
-    for(particle=0; particle<N; particle++) {
-#ifdef TRIAL_1D
+    for(particle=0; particle<N; particle++) { // loop over all particles
+#ifdef TRIAL_1D 
       spring += (W[bead].z[particle] - W[next_bead].z[particle]) *
                 (W[bead].z[particle] - W[next_bead].z[particle]);
 #elif defined(TRIAL_2D)
@@ -64,44 +73,44 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
 #endif
 
 #ifdef EXTERNAL_POTENTIAL
-      external += Vext(W[bead].x[particle], W[bead].y[particle], W[bead].z[particle]);
+      external += Vext(W[bead].x[particle], W[bead].y[particle], W[bead].z[particle]); // external potential energy
 #endif
     }
 
-    for(particle=0; particle<N; particle++) {
-      for(other_particle=particle+1; other_particle<N; other_particle++) {
+    for(particle=0; particle<N; particle++) { // loop over all particles
+      for(other_particle=particle+1; other_particle<N; other_particle++) { // loop over all other particles
         dr[0] = W[bead].x[particle] - W[bead].x[other_particle];
         dr[1] = W[bead].y[particle] - W[bead].y[other_particle];
         dr[2] = W[bead].z[particle] - W[bead].z[other_particle];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-        interaction += InteractionEnergy(Sqrt(r2));
+        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]); // find the nearest image distance
+        interaction += InteractionEnergy(Sqrt(r2)); // interaction energy
       }
     }
   }
 
   if(terms == 0) {
-    *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.;
+    *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.; // if no alive walkers, return 0
     return 0.;
   }
 
-  *Eext = external / ((DOUBLE) terms * N);
-  *Eint = interaction / ((DOUBLE) terms * N);
-  *Epot = *Eext + *Eint;
-  centroid_z /= (DOUBLE) terms;
+  *Eext = external / ((DOUBLE) terms * N); // average external energy per particle
+  *Eint = interaction / ((DOUBLE) terms * N); // average interaction energy per particle
+  *Epot = *Eext + *Eint; // total potential energy per particle
+  centroid_z /= (DOUBLE) terms; // average z-coordinate of the centroid
 #ifdef TRIAL_1D
-  if(N == 1) {
-    for(bead=0; bead<Nwalkers; bead++) {
+  if(N == 1) { // if there is only one particle, calculate the kinetic energy using the virial estimator
+    for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
       if(W[bead].status == ALIVE) {
-        virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0];
+        virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0]; // virial term for harmonic potential
       }
     }
-    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
+    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle
   }
   else {
-    *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
+    *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N); // kinetic energy per particle using the spring term
   }
 #else
-  *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
+  *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N); // kinetic energy per particle using the spring term
 #endif
   *Eff = *Edamping = 0.;
   potential = *Epot + *Ekin;
