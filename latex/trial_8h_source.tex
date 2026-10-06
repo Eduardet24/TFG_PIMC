@@ -1,0 +1,187 @@
+\doxysection{trial.\+h}
+\hypertarget{trial_8h_source}{}\label{trial_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*trial.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_\_TRIAL\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_\_TRIAL\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{keyword}{extern}\ DOUBLE\ trial\_Vo,\ trial\_Kappa,\ trial\_Kappa2,\ trial\_k,\ trial\_k2;}
+\DoxyCodeLine{00009\ \textcolor{keyword}{extern}\ DOUBLE\ A1SW,\ A2SW,\ A3SW,\ A4SW;}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structGrid}{Grid}}\ \{}
+\DoxyCodeLine{00012\ \ \ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ size;\ \textcolor{comment}{//number\ of\ elements\ in\ the\ grid}}
+\DoxyCodeLine{00013\ \ \ DOUBLE\ step;}
+\DoxyCodeLine{00014\ \ \ DOUBLE\ I\_step;}
+\DoxyCodeLine{00015\ \ \ DOUBLE\ min;}
+\DoxyCodeLine{00016\ \ \ DOUBLE\ max;}
+\DoxyCodeLine{00017\ \ \ DOUBLE\ max2;}
+\DoxyCodeLine{00018\ \ \ DOUBLE\ *x;\ }
+\DoxyCodeLine{00019\ \ \ DOUBLE\ *fp;\ \ \textcolor{comment}{//\ f'/f}}
+\DoxyCodeLine{00020\ \ \ DOUBLE\ *lnf;\ \textcolor{comment}{//\ ln(f)}}
+\DoxyCodeLine{00021\ \ \ DOUBLE\ *E;\ \ \ \textcolor{comment}{//\ (f"{}+(D-\/1)f'/r)/f\ -\/\ (f'/f)\string^2}}
+\DoxyCodeLine{00022\ \ \ DOUBLE\ *f;\ \ \ \textcolor{comment}{//\ f}}
+\DoxyCodeLine{00023\ \ \ DOUBLE\ *fpp;\ \textcolor{comment}{//\ f''}}
+\DoxyCodeLine{00024\ \textcolor{comment}{//\#ifdef\ INTERACTION\_WITH\_DAMPING}}
+\DoxyCodeLine{00025\ \ \ DOUBLE\ *ReV,\ *ImV;\ \textcolor{comment}{//\ Real\ and\ imaginary\ part\ of\ interaction\ potential}}
+\DoxyCodeLine{00026\ \ \ DOUBLE\ k;\ \textcolor{comment}{//\ sqrt(|E|)}}
+\DoxyCodeLine{00027\ \textcolor{comment}{//\#endif}}
+\DoxyCodeLine{00028\ \};}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \textcolor{keywordtype}{void}\ LoadTrialWaveFunction(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keywordtype}{char}\ *file\_wf,\ \textcolor{keywordtype}{int}\ normalize\_to\_one);}
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{void}\ LoadInteractionPotential(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keywordtype}{char}\ *file\_wf);}
+\DoxyCodeLine{00032\ \textcolor{keywordtype}{void}\ SampleTrialWaveFunction(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \ DOUBLE\ min,\ DOUBLE\ max,\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ size,\ DOUBLE\ (*U)(DOUBLE\ x),\ DOUBLE\ (*Fp)(DOUBLE\ x),\ DOUBLE\ (*E)(DOUBLE\ x));}
+\DoxyCodeLine{00033\ \textcolor{keywordtype}{void}\ CheckTrialWaveFunctionInterpolation(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ DOUBLE\ (*U)(DOUBLE\ x),\ DOUBLE\ (*Fp)(DOUBLE\ x),\ DOUBLE\ (*E)(DOUBLE\ x));}
+\DoxyCodeLine{00034\ \textcolor{keywordtype}{void}\ CheckTrialWaveFunction(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ DOUBLE\ ConstructSoftSphereHeight(DOUBLE\ Ro,\ DOUBLE\ a);}
+\DoxyCodeLine{00037\ DOUBLE\ ConstructHardSphereSquareWellDepth(DOUBLE\ a,\ DOUBLE\ Ro,\ DOUBLE\ Apar);}
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{void}\ ConstructGridLim(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ xmin,\ \textcolor{keyword}{const}\ DOUBLE\ xmax,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ size);}
+\DoxyCodeLine{00039\ \textcolor{keywordtype}{void}\ ConstructGridPower(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ xmin,\ \textcolor{keyword}{const}\ DOUBLE\ xmax,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ size);}
+\DoxyCodeLine{00040\ \textcolor{keywordtype}{void}\ ConstructGridHS(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00041\ \textcolor{keywordtype}{void}\ ConstructGridHSSimple(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00042\ \textcolor{keywordtype}{void}\ ConstructGridPseudopotentialSimple(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00043\ \textcolor{keywordtype}{void}\ ConstructGridHS1D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ R,\ \textcolor{keyword}{const}\ DOUBLE\ xi,\ \textcolor{keyword}{const}\ DOUBLE\ D,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ size,\ \textcolor{keyword}{const}\ DOUBLE\ Rmin,\ \textcolor{keyword}{const}\ DOUBLE\ Rmax);}
+\DoxyCodeLine{00044\ \textcolor{keywordtype}{void}\ ConstructGridFree(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ R,\ \textcolor{keyword}{const}\ DOUBLE\ Bpar,\ \textcolor{keyword}{const}\ DOUBLE\ a,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ size,\ \textcolor{keyword}{const}\ DOUBLE\ Rmin,\ \textcolor{keyword}{const}\ DOUBLE\ Rmax);}
+\DoxyCodeLine{00045\ \textcolor{keywordtype}{void}\ ConstructGridLieb(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ size);}
+\DoxyCodeLine{00046\ \textcolor{keywordtype}{void}\ ConstructGridSS(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ a,\ \textcolor{keyword}{const}\ DOUBLE\ R,\textcolor{keyword}{const}\ DOUBLE\ Rpar,\ \textcolor{keyword}{const}\ DOUBLE\ Bpar,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ size,\ \textcolor{keyword}{const}\ DOUBLE\ Rmin,\ \textcolor{keyword}{const}\ DOUBLE\ Rmax);}
+\DoxyCodeLine{00047\ \textcolor{keywordtype}{void}\ ConstructGridSchiffVerlet(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ Apar,\ \textcolor{keyword}{const}\ DOUBLE\ Bpar,\textcolor{keyword}{const}\ DOUBLE\ n);}
+\DoxyCodeLine{00048\ \textcolor{keywordtype}{void}\ ConstructGridShortRange3D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ a,\ \textcolor{keyword}{const}\ DOUBLE\ Rpar);}
+\DoxyCodeLine{00049\ \textcolor{keywordtype}{void}\ ConstructGridSutherland(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00050\ \textcolor{keywordtype}{void}\ ConstructGridCalogero(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00051\ \textcolor{keywordtype}{void}\ ConstructGridYukawa2D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ Apar,\ \textcolor{keyword}{const}\ DOUBLE\ Bpar,\ \textcolor{keyword}{const}\ DOUBLE\ n);}
+\DoxyCodeLine{00052\ \textcolor{keywordtype}{void}\ ConstructGridYukawa3D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ Apar,\ \textcolor{keyword}{const}\ DOUBLE\ Bpar,\ \textcolor{keyword}{const}\ DOUBLE\ Cpar);}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ \textcolor{keywordtype}{void}\ ConstructGridPowerKo(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00055\ \textcolor{keywordtype}{void}\ ConstructGridDipoleKo(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00056\ \textcolor{keywordtype}{void}\ ConstructGridQuadrupoleKo(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00057\ \textcolor{keywordtype}{void}\ ConstructGridPhonons(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00058\ \textcolor{keywordtype}{void}\ ConstructGridDipolePhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00059\ \textcolor{keywordtype}{void}\ ConstructGridDecayPhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ Apar,\ \textcolor{keyword}{const}\ DOUBLE\ Bpar);}
+\DoxyCodeLine{00060\ \textcolor{keywordtype}{void}\ ConstructGridCalogero2D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keyword}{const}\ DOUBLE\ Apar);}
+\DoxyCodeLine{00061\ \textcolor{keywordtype}{void}\ ConstructGridCoulomb1DPhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00062\ \textcolor{keywordtype}{void}\ ConstructGridDipole1DPhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00063\ \textcolor{keywordtype}{void}\ ConstructGridCoulomb1DTrap(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00064\ \textcolor{keywordtype}{void}\ ConstructGridCoulomb2DTrap(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00065\ \textcolor{keywordtype}{void}\ ConstructGridExpPhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00066\ \textcolor{keywordtype}{void}\ ConstructGridHS2DFiniteEnergy(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00067\ \textcolor{keywordtype}{void}\ ConstructGridDipolePhononFiniteD(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00068\ \textcolor{keywordtype}{void}\ ConstructGridHardRods3D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00069\ \textcolor{keywordtype}{void}\ ConstructSqWellDepth(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00070\ \textcolor{keywordtype}{void}\ ConstructGridSquareWellZeroConst(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00071\ \textcolor{keywordtype}{void}\ ConstructGridBCSSquareWellZeroEnergy(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00072\ \textcolor{keywordtype}{void}\ ConstructGridSSlarge(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00073\ \textcolor{keywordtype}{void}\ ConstructGridSSExp(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00074\ \textcolor{keywordtype}{void}\ ConstructGridSquareWellBoundStatePhonons(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00075\ \textcolor{keywordtype}{void}\ ConstructGridSquareWellFreeStatePhonons(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00076\ \textcolor{keywordtype}{void}\ ConstructGridSquareWellBoundStateTrap(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00077\ \textcolor{keywordtype}{void}\ ConstructGridDipoleKo11(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00078\ \textcolor{keywordtype}{void}\ ConstructGridLiebLuttingerPhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ DOUBLE\ K);}
+\DoxyCodeLine{00079\ \textcolor{keywordtype}{void}\ ConstructGridPhononLuttingerAuto(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00080\ \textcolor{keywordtype}{void}\ ConstructGridPhononLuttingerAuto11(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00081\ \textcolor{keywordtype}{void}\ ConstructGridPhononLuttingerAuto12(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00082\ \textcolor{keywordtype}{void}\ ConstructGridLiebExponentialDecay(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00083\ \textcolor{keywordtype}{void}\ ConstructGridPhononLuttinger(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00084\ \textcolor{keywordtype}{void}\ ConstructGridZeroRangeUnitaryPhonons(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00085\ \textcolor{keywordtype}{void}\ ConstructGridCSM3DPlasmon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ DOUBLE\ Apar);}
+\DoxyCodeLine{00086\ \textcolor{keywordtype}{void}\ ConstructVextSqWellDepth(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00087\ \textcolor{keywordtype}{void}\ ConstructGridSquareWellTrap(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00088\ \textcolor{keywordtype}{void}\ ConstructGridSquareWellTrapMcGuire1D(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00089\ \textcolor{keywordtype}{void}\ ConstructGridCoulombPhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00090\ \textcolor{keywordtype}{void}\ ConstructGrid3BodyZeroEnergyPhonons(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00091\ \textcolor{keywordtype}{void}\ ConstructGridMcGuirePhonon(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00092\ \textcolor{keywordtype}{void}\ ConstructGridSoftSpherePhonon(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00093\ \textcolor{keywordtype}{void}\ ConstructGridSoftSpherePhononAuto(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00094\ \textcolor{keywordtype}{void}\ ConstructGridZeroRange3D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00095\ }
+\DoxyCodeLine{00096\ DOUBLE\ InterpolateU(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ j);}
+\DoxyCodeLine{00097\ DOUBLE\ InterpolateFp(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ j);}
+\DoxyCodeLine{00098\ DOUBLE\ InterpolateE(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ j);}
+\DoxyCodeLine{00099\ DOUBLE\ InterpolateF(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00101\ DOUBLE\ InterpolateExactU(DOUBLE\ r);}
+\DoxyCodeLine{00102\ DOUBLE\ InterpolateExactFp(DOUBLE\ r);}
+\DoxyCodeLine{00103\ DOUBLE\ InterpolateExactE(DOUBLE\ r);}
+\DoxyCodeLine{00104\ }
+\DoxyCodeLine{00105\ DOUBLE\ InterpolateExactU11(DOUBLE\ r);}
+\DoxyCodeLine{00106\ DOUBLE\ InterpolateExactFp11(DOUBLE\ r);}
+\DoxyCodeLine{00107\ DOUBLE\ InterpolateExactE11(DOUBLE\ r);}
+\DoxyCodeLine{00108\ }
+\DoxyCodeLine{00109\ DOUBLE\ InterpolateGridU(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00110\ DOUBLE\ InterpolateGridFp(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00111\ DOUBLE\ InterpolateGridE(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00112\ }
+\DoxyCodeLine{00113\ DOUBLE\ InterpolateGridMatchedToScatteringSolutionU(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00114\ DOUBLE\ InterpolateGridMatchedToScatteringSolutionFp(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00115\ DOUBLE\ InterpolateGridMatchedToScatteringSolutionE(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *\mbox{\hyperlink{structGrid}{Grid}},\ DOUBLE\ r);}
+\DoxyCodeLine{00116\ }
+\DoxyCodeLine{00117\ DOUBLE\ InterpolateEG(DOUBLE\ r);}
+\DoxyCodeLine{00118\ DOUBLE\ IntegrateSimpson(DOUBLE\ xmin,\ DOUBLE\ xmax,\ DOUBLE\ (*f)(DOUBLE\ x),\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ Npoints);}
+\DoxyCodeLine{00119\ }
+\DoxyCodeLine{00120\ \textcolor{comment}{/*DOUBLE\ InterpolateDerivU(struct\ Grid\ *Grid,\ DOUBLE\ r);}}
+\DoxyCodeLine{00121\ \textcolor{comment}{void\ InterpolateDerivUError(struct\ Grid\ *Grid,\ DOUBLE\ *Erel,\ DOUBLE\ *Eabs,\ DOUBLE\ *rrel,\ DOUBLE\ *rabs);}}
+\DoxyCodeLine{00122\ \textcolor{comment}{DOUBLE\ InterpolateDerivFp(struct\ Grid\ *Grid,\ DOUBLE\ r);}}
+\DoxyCodeLine{00123\ \textcolor{comment}{void\ InterpolateDerivFpError(struct\ Grid\ *Grid,\ DOUBLE\ *Erel,\ DOUBLE\ *Eabs,\ DOUBLE\ *rrel,\ DOUBLE\ *rabs);*/}}
+\DoxyCodeLine{00124\ }
+\DoxyCodeLine{00125\ \textcolor{keyword}{extern}\ DOUBLE\ sqE,\ sqE2,\ expBpar,\ alpha\_1,\ Xi,\ Atrial,\ Btrial,\ alpha2E,\ sqEkappa2;}
+\DoxyCodeLine{00126\ }
+\DoxyCodeLine{00127\ \textcolor{keywordtype}{void}\ ConstructGridSpline2Body(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ DOUBLE\ (*InteractionEnergy)(DOUBLE\ x));}
+\DoxyCodeLine{00128\ \textcolor{keywordtype}{void}\ ConstructGridSpline2Body\_ij(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keywordtype}{int}\ spin1,\ \textcolor{keywordtype}{int}\ spin2);}
+\DoxyCodeLine{00129\ \textcolor{keywordtype}{void}\ ConstructGridSpline2BodyPhonons(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00130\ DOUBLE\ SolveScatteringProblem(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ DOUBLE\ (*InteractionEnergy)(DOUBLE\ x),\ DOUBLE\ E,\ \textcolor{keywordtype}{int}\ flag\_boundary\_condition\_right,\ \textcolor{keywordtype}{int}\ flag\_boundary\_condition\_left,\ \textcolor{keywordtype}{int}\ *function\_was\_negative,\ \textcolor{keywordtype}{int}\ flag\_lnf\_instead\_of\_f);}
+\DoxyCodeLine{00131\ DOUBLE\ SolveScatteringProblem\_ij(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keywordtype}{int}\ spin1,\ \textcolor{keywordtype}{int}\ spin2,\ DOUBLE\ E,\ \textcolor{keywordtype}{int}\ flag\_boundary\_condition\_right,\ \textcolor{keywordtype}{int}\ flag\_boundary\_condition\_left,\ \textcolor{keywordtype}{int}\ *function\_was\_negative,\ \textcolor{keywordtype}{int}\ flag\_lnf\_instead\_of\_f);}
+\DoxyCodeLine{00132\ \textcolor{keywordtype}{void}\ FindSWBindingEnergy(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00133\ }
+\DoxyCodeLine{00134\ DOUBLE\ u3(DOUBLE\ R);\ \textcolor{comment}{//\ three-\/body\ terms}}
+\DoxyCodeLine{00135\ DOUBLE\ Fp3(DOUBLE\ R);}
+\DoxyCodeLine{00136\ DOUBLE\ E3(DOUBLE\ R);}
+\DoxyCodeLine{00137\ }
+\DoxyCodeLine{00138\ \textcolor{preprocessor}{\#ifdef\ SPINFULL}}
+\DoxyCodeLine{00139\ \textcolor{comment}{//\ functions\ are\ defined\ in\ "{}trial.c"{}}}
+\DoxyCodeLine{00140\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ spinless}}
+\DoxyCodeLine{00141\ \textcolor{preprocessor}{\#ifdef\ INTERPOLATE\_LINEAR\_JASTROW\_WF}}
+\DoxyCodeLine{00142\ \textcolor{preprocessor}{\#ifdef\ JASTROW\_RIGHT\_BOUNDARY\_BOUND\_STATE}}
+\DoxyCodeLine{00143\ \textcolor{preprocessor}{\#\ \ define\ InterpolateU(G,r,i,j)\ InterpolateGridMatchedToScatteringSolutionU(G,r)}}
+\DoxyCodeLine{00144\ \textcolor{preprocessor}{\#\ \ define\ InterpolateFp(G,r,i,j)\ InterpolateGridMatchedToScatteringSolutionFp(G,r)}}
+\DoxyCodeLine{00145\ \textcolor{preprocessor}{\#\ \ define\ InterpolateE(G,r,i,j)\ InterpolateGridMatchedToScatteringSolutionE(G,r)}}
+\DoxyCodeLine{00146\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00147\ \textcolor{preprocessor}{\#\ \ define\ InterpolateU(G,r,i,j)\ InterpolateGridU(G,r)}}
+\DoxyCodeLine{00148\ \textcolor{preprocessor}{\#\ \ define\ InterpolateFp(G,r,i,j)\ InterpolateGridFp(G,r)}}
+\DoxyCodeLine{00149\ \textcolor{preprocessor}{\#\ \ define\ InterpolateE(G,r,i,j)\ InterpolateGridE(G,r)}}
+\DoxyCodeLine{00150\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00151\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ no\ linear\ interp.}}
+\DoxyCodeLine{00152\ \textcolor{preprocessor}{\#ifdef\ INTERPOLATE\_SPLINE\_JASTROW\_WF}}
+\DoxyCodeLine{00153\ \textcolor{preprocessor}{\#ifdef\ JASTROW\_RIGHT\_BOUNDARY\_PHONONS\ }}
+\DoxyCodeLine{00154\ \textcolor{comment}{//\ defined\ in\ trial.c}}
+\DoxyCodeLine{00155\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00156\ \textcolor{preprocessor}{\#\ \ \ \ define\ InterpolateU(G,r,i,j)\ \ InterpolateSplineU(G,r)}}
+\DoxyCodeLine{00157\ \textcolor{preprocessor}{\#\ \ \ \ define\ InterpolateFp(G,r,i,j)\ InterpolateSplineFp(G,r)}}
+\DoxyCodeLine{00158\ \textcolor{preprocessor}{\#\ \ \ \ define\ InterpolateE(G,r,i,j)\ \ InterpolateSplineE(G,r)}}
+\DoxyCodeLine{00159\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00160\ \textcolor{preprocessor}{\#\ \ \ \ define\ orbitalF\ orbitalExactF}}
+\DoxyCodeLine{00161\ \textcolor{preprocessor}{\#\ \ \ \ define\ orbitalFp\ orbitalExactFp}}
+\DoxyCodeLine{00162\ \textcolor{preprocessor}{\#\ \ \ \ define\ orbitalEloc\ orbitalExactEloc}}
+\DoxyCodeLine{00163\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//no\ linear,\ no\ spline\ interp.}}
+\DoxyCodeLine{00164\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_KURBAKOV\_NUMERIC}}
+\DoxyCodeLine{00165\ \textcolor{preprocessor}{\#\ \ \ \ \ \ define\ InterpolateU(G,r,i,j)\ \ InterpolateKurbakovU(r)}}
+\DoxyCodeLine{00166\ \textcolor{preprocessor}{\#\ \ \ \ \ \ define\ InterpolateFp(G,r,i,j)\ InterpolateKurbakovFp(r)}}
+\DoxyCodeLine{00167\ \textcolor{preprocessor}{\#\ \ \ \ \ \ define\ InterpolateE(G,r,i,j)\ \ InterpolateKurbakovE(r)}}
+\DoxyCodeLine{00168\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00169\ \textcolor{preprocessor}{\#ifndef\ SYMMETRIZE\_TRIAL\_WF}}
+\DoxyCodeLine{00170\ \textcolor{preprocessor}{\#ifndef\ POWER\_TRIAL\_WF}}
+\DoxyCodeLine{00171\ \textcolor{preprocessor}{\#\ \ \ \ \ \ \ \ define\ InterpolateU(G,r,i,j)\ \ InterpolateExactU(r)}}
+\DoxyCodeLine{00172\ \textcolor{preprocessor}{\#\ \ \ \ \ \ \ \ define\ InterpolateFp(G,r,i,j)\ InterpolateExactFp(r)}}
+\DoxyCodeLine{00173\ \textcolor{preprocessor}{\#\ \ \ \ \ \ \ \ define\ InterpolateE(G,r,i,j)\ \ InterpolateExactE(r)}}
+\DoxyCodeLine{00174\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ POWER\_TRIAL\_WF}}
+\DoxyCodeLine{00175\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ SYMMETRIZE\_TRIAL\_WF}}
+\DoxyCodeLine{00176\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ TRIAL\_KURBAKOV\_NUMERIC}}
+\DoxyCodeLine{00177\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ INTERPOLATE\_SPLINE\_JASTROW\_WF}}
+\DoxyCodeLine{00178\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ INTERPOLATE\_LINEAR\_JASTROW\_WF}}
+\DoxyCodeLine{00179\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ SPINFULL}}
+\DoxyCodeLine{00180\ }
+\DoxyCodeLine{00181\ }
+\DoxyCodeLine{00182\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

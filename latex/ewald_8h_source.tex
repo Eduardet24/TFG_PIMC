@@ -1,0 +1,39 @@
+\doxysection{ewald.\+h}
+\hypertarget{ewald_8h_source}{}\label{ewald_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*ewald.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_EWALD\_H}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_EWALD\_H}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}compatab.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ DOUBLE\ EwaldSumWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *\mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00009\ \textcolor{keywordtype}{int}\ EwaldCheck(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00010\ \textcolor{keywordtype}{void}\ EwaldInit(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00011\ DOUBLE\ EwaldXi(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00012\ DOUBLE\ EwaldXi2(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00013\ DOUBLE\ EwaldSumAllWalkers(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00014\ DOUBLE\ InteractionSelfEnergy(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00015\ DOUBLE\ EwaldPsi(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);}
+\DoxyCodeLine{00016\ DOUBLE\ EwaldOptimize(\textcolor{keywordtype}{int}\ Nx,\ \textcolor{keywordtype}{int}\ Nk);}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{void}\ EwaldOptimizeInitExact(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{void}\ EwaldOptimizeSigma(DOUBLE\ *E,\ DOUBLE\ *sigma);}
+\DoxyCodeLine{00019\ \textcolor{keywordtype}{void}\ EwaldInitCoef(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Ewald\_Nx;}
+\DoxyCodeLine{00022\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Ewald\_Nk;}
+\DoxyCodeLine{00023\ \textcolor{keyword}{extern}\ DOUBLE\ Ewald\_Xi;}
+\DoxyCodeLine{00024\ \textcolor{keyword}{extern}\ DOUBLE\ Ewald\_L,Ewald\_Lk;}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{comment}{//DOUBLE\ EwaldSumPair(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#define\ EwaldSumPair(x,y,z)\ (EwaldPsi(x*Ewald\_L,\ y*Ewald\_L,\ z*Ewald\_L)\ +\ Ewald\_Xi/(double)\ (N-\/1))*Ewald\_Lk}}
+\DoxyCodeLine{00028\ \textcolor{comment}{//INLINE\ DOUBLE\ EwaldSumPair(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z)\ \{\ return\ (EwaldPsi(x*Ewald\_L,\ y*Ewald\_L,\ z*Ewald\_L)\ +\ Ewald\_Xi/(double)(N-\/1))*Ewald\_L3;\}}}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \textcolor{keywordtype}{int}\ SmoothCutoffInit(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{double}\ SmoothCutoffSum(\textcolor{keywordtype}{double}\ x,\ \textcolor{keywordtype}{double}\ y,\ \textcolor{keywordtype}{double}\ z);}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00034\ \ \ }
+
+\end{DoxyCode}

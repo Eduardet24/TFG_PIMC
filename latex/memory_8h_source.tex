@@ -1,0 +1,98 @@
+\doxysection{memory.\+h}
+\hypertarget{memory_8h_source}{}\label{memory_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*memory.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_MEMORY\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_MEMORY\_H\_}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <malloc.h>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}trial.h"{}}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}utils.h"{}}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keywordtype}{void}\ AllocateWFGrid(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ size);}
+\DoxyCodeLine{00011\ \textcolor{keywordtype}{void}\ AllocateSingleWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}*\ W);}
+\DoxyCodeLine{00012\ \textcolor{keywordtype}{void}\ AllocateWalkers(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00013\ \textcolor{keywordtype}{void}\ AllocateGrids(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00014\ \textcolor{keywordtype}{void}\ CopyWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *out,\ \textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *in);}
+\DoxyCodeLine{00015\ \textcolor{keywordtype}{void}\ CopyWalkerCoord(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *out,\ \textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *in);}
+\DoxyCodeLine{00016\ \textcolor{keywordtype}{void}\ CopyRawVectorToWalkerDisplace\_i\_j(DOUBLE\ *r,\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W,\ \textcolor{keywordtype}{int}\ index1,\ DOUBLE\ dx1,\ \textcolor{keywordtype}{int}\ index2,\ DOUBLE\ dx2);}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{int}\ WalkerCompare(\textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ x,\ \textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ y);}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{int}\ VectorToWalkerCompare(\textcolor{keyword}{const}\ DOUBLE\ **x,\ \textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ y);}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{void}*\ Calloc(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ name,\ \textcolor{keywordtype}{unsigned}\ length,\ \textcolor{keywordtype}{size\_t}\ size);}
+\DoxyCodeLine{00021\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{void}*\ CallocContiguous2D(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ name,\ \textcolor{keywordtype}{unsigned}\ dim1,\ \textcolor{keywordtype}{unsigned}\ dim2,\ \textcolor{keywordtype}{char}\ *type);}
+\DoxyCodeLine{00022\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{void}*\ CallocContiguous3D(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ name,\ \textcolor{keywordtype}{unsigned}\ dim1,\ \textcolor{keywordtype}{unsigned}\ dim2,\ \textcolor{keywordtype}{unsigned}\ dim3,\ \textcolor{keywordtype}{char}\ *type);}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#ifdef\ MEMORY\_CONTIGUOUS}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#define\ ArrayCalloc2D(p2D,\ name,\ i,\ dim1,\ dim2,\ type\_static,\ type\_dynamic)\ \(\backslash\)}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\ \ \ p2D\ =\ (type\_static**)\ CallocContiguous2D(name,\ dim1,\ dim2,\ type\_dynamic)}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#else\ }}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\#define\ ArrayCalloc2D(p2D,\ name,\ i,\ dim1,\ dim2,\ type\_static,\ type\_dynamic)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\ \ p2D\ =\ (type\_static**)\ Calloc(name,\ dim1,\ sizeof(type\_static*));\ \(\backslash\)}}
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim1;\ i++)\ p2D[i]\ \ =\ (type\_static*)\ Calloc(name,\ dim2,\ sizeof(type\_static));\ \(\backslash\)}}
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\}}}
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#define\ ArrayCalloc3D(p3D,\ name,\ i,\ dim1,\ j,\ dim2,\ dim3,\ type\_static,\ type\_dynamic)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\ \ p3D\ =\ (type\_static***)\ Calloc(name,\ dim1,\ sizeof(type\_static**));\ \(\backslash\)}}
+\DoxyCodeLine{00034\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim1;\ i++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00035\ \textcolor{preprocessor}{\ \ \ \ p3D[i]\ =\ (type\_static**)\ Calloc(name,\ dim2,\ sizeof(type\_static*));\ \(\backslash\)}}
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\ \ \ \ for(j=0;\ j<dim2;\ j++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00037\ \textcolor{preprocessor}{\ \ \ \ \ \ p3D[i][j]\ =\ (type\_static*)\ Calloc(name,\ dim3,\ sizeof(type\_static));\ \(\backslash\)}}
+\DoxyCodeLine{00038\ \textcolor{preprocessor}{\ \ \ \ \}\ \(\backslash\)}}
+\DoxyCodeLine{00039\ \textcolor{preprocessor}{\ \ \}\ \(\backslash\)}}
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\}}}
+\DoxyCodeLine{00041\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{preprocessor}{\#ifdef\ MEMORY\_CONTIGUOUS}}
+\DoxyCodeLine{00044\ \textcolor{preprocessor}{\#define\ ArrayCopy1D(pointer\_out,\ pointer\_in,\ i,\ dim)\ \(\backslash\)}}
+\DoxyCodeLine{00045\ \textcolor{preprocessor}{\ \ memcpy(pointer\_out,\ pointer\_in,\ sizeof(*pointer\_in)*dim);}}
+\DoxyCodeLine{00046\ \textcolor{preprocessor}{\#else\ }}
+\DoxyCodeLine{00047\ \textcolor{preprocessor}{\#define\ ArrayCopy1D(pointer\_out,\ pointer\_in,\ i,\ dim)\ \(\backslash\)}}
+\DoxyCodeLine{00048\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim;\ i++)\ pointer\_out[i]\ =\ pointer\_in[i];}}
+\DoxyCodeLine{00049\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00050\ }
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\#ifdef\ MEMORY\_CONTIGUOUS}}
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#define\ ArrayCopy2D(pointer\_out,\ pointer\_in,\ i,\ dim1,\ j,\ dim2)\ \(\backslash\)}}
+\DoxyCodeLine{00053\ \textcolor{preprocessor}{\ \ memcpy(pointer\_out[0],\ pointer\_in[0],\ sizeof(**pointer\_in)*dim1*dim2);}}
+\DoxyCodeLine{00054\ \textcolor{preprocessor}{\#else\ }}
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#define\ ArrayCopy2D(pointer\_out,\ pointer\_in,\ i,\ dim1,\ j,\ dim2)\ \(\backslash\)}}
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim1\ ;\ i++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\ \ \ \ for(j=0;\ j<dim2;\ j++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00058\ \textcolor{preprocessor}{\ \ \ \ \ \ pointer\_out[i][j]\ =\ pointer\_in[i][j];\ \(\backslash\)}}
+\DoxyCodeLine{00059\ \textcolor{preprocessor}{\ \ \ \ \}\ \(\backslash\)}}
+\DoxyCodeLine{00060\ \textcolor{preprocessor}{\ \ \}}}
+\DoxyCodeLine{00061\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\#define\ ArrayCopy3D(pointer\_out,\ pointer\_in,\ i,\ dim1,\ j,\ dim2,\ k,\ dim3)\ \(\backslash\)}}
+\DoxyCodeLine{00063\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim1\ ;\ i++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\ \ \ \ for(j=0;\ j<dim2;\ j++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00065\ \textcolor{preprocessor}{\ \ \ \ \ \ for(k=0;\ k<dim3;\ k++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\ \ \ \ \ \ pointer\_out[i][j][k]\ =\ pointer\_in[i][j][k];\ \(\backslash\)}}
+\DoxyCodeLine{00067\ \textcolor{preprocessor}{\ \ \ \ \}\ \(\backslash\)}}
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\ \ \ \}\ \(\backslash\)}}
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\ \ \}}}
+\DoxyCodeLine{00070\ }
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#ifdef\ MEMORY\_CONTIGUOUS}}
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#define\ ArrayEmpty1D(pointer\_array,\ i,\ dim)\ \(\backslash\)}}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\ \ memset(pointer\_array,\ 0,\ dim*sizeof(*pointer\_array));}}
+\DoxyCodeLine{00074\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00075\ \textcolor{preprocessor}{\#define\ ArrayEmpty1D(pointer\_array,\ i,\ dim)\ \(\backslash\)}}
+\DoxyCodeLine{00076\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim;\ i++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00077\ \textcolor{preprocessor}{\ \ \ \ pointer\_array[i]\ =\ 0;\ \(\backslash\)}}
+\DoxyCodeLine{00078\ \textcolor{preprocessor}{\ \ \}}}
+\DoxyCodeLine{00079\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00080\ }
+\DoxyCodeLine{00081\ \textcolor{comment}{//\#ifdef\ MEMORY\_CONTIGUOUS}}
+\DoxyCodeLine{00082\ \textcolor{comment}{//\#define\ ArrayEmpty2D(pointer\_array,\ i,\ dim1,\ j,\ dim2,\ type\_static)\ \(\backslash\)}}
+\DoxyCodeLine{00083\ \textcolor{comment}{//\ \ memset(pointer\_array[0],\ 0,\ dim1*dim2*sizeof(type\_static));\ //\ does\ not\ work!}}
+\DoxyCodeLine{00084\ \textcolor{comment}{//\#else}}
+\DoxyCodeLine{00085\ \textcolor{preprocessor}{\#define\ ArrayEmpty2D(pointer\_array,\ i,\ dim1,\ j,\ dim2,\ type\_static)\ \(\backslash\)}}
+\DoxyCodeLine{00086\ \textcolor{preprocessor}{\ \ for(i=0;\ i<dim1;\ i++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00087\ \textcolor{preprocessor}{\ \ \ \ for(j=0;\ j<dim2;\ j++)\ \{\ \(\backslash\)}}
+\DoxyCodeLine{00088\ \textcolor{preprocessor}{\ \ \ \ \ \ pointer\_array[i][j]\ =\ 0;\ \(\backslash\)}}
+\DoxyCodeLine{00089\ \textcolor{preprocessor}{\ \ \ \ \}\ \(\backslash\)}}
+\DoxyCodeLine{00090\ \textcolor{preprocessor}{\ \ \}}}
+\DoxyCodeLine{00091\ \textcolor{comment}{//\#endif}}
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00093\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

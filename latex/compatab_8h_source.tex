@@ -1,0 +1,624 @@
+\doxysection{compatab.\+h}
+\hypertarget{compatab_8h_source}{}\label{compatab_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*compatab.h\ :\ borland's\ type\ of\ graphic\ for\ WATCOM,\ GNU\ compilers\ */}}
+\DoxyCodeLine{00002\ \textcolor{comment}{/*Astrakharchik\ Gregory\ '98\ gregory@imp.inm.ras.ru\ */}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#ifndef\ \_\_COMPATAB\_H\_}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#define\ \_\_COMPATAB\_H\_}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{comment}{/*\ undefine\ to\ disable\ graphics\ in\ linux\ */}}
+\DoxyCodeLine{00008\ \textcolor{comment}{//\#define\ LINUX\_GRAPHICS\ }}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{comment}{//operating\ systems:\ \_WIN32,\ \_WIN64,\ \_\_unix\_\_,\ \_\_APPLE\_\_}}
+\DoxyCodeLine{00011\ \textcolor{comment}{//compilers:\ \_\_INTEL\_COMPILER,\ \_\_GNUC\_\_,\ \_MSC\_VER}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#define\ \_\_DUMB\_\_}}
+\DoxyCodeLine{00014\ \textcolor{comment}{//\#define\ \_\_MVC\_\_\ //\ Windows\ graphics}}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#ifdef\ \_\_WATCOMC\_\_}}
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#\ undef\ \_\_DUMB\_\_}}
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#\ define\ \_found}}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#ifdef\ \_\_linux\_\_}}
+\DoxyCodeLine{00022\ \textcolor{preprocessor}{\#\ define\ INLINE\ static\ inline}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#\ define\ \_found}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#}}
+\DoxyCodeLine{00025\ \textcolor{preprocessor}{\#\ ifdef\ LINUX\_GRAPHICS}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#\ \ \ undef\ \_\_DUMB\_\_}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#\ endif}}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\#\ define\ \_found}}
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#ifdef\ \_\_TURBOC\_\_}}
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#\ define\ \_found}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00034\ }
+\DoxyCodeLine{00035\ \textcolor{comment}{/*\#ifdef\ \_\_GNUC\_\_}}
+\DoxyCodeLine{00036\ \textcolor{comment}{\#\ define\ \_found}}
+\DoxyCodeLine{00037\ \textcolor{comment}{\#\ define\ INLINE\ inline}}
+\DoxyCodeLine{00038\ \textcolor{comment}{\#endif*/}}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\#ifdef\ \_\_SUN\_\_}}
+\DoxyCodeLine{00041\ \textcolor{preprocessor}{\#\ define\ \_found}}
+\DoxyCodeLine{00042\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00044\ \textcolor{comment}{/*\#ifndef\ \_found}}
+\DoxyCodeLine{00045\ \textcolor{comment}{//\#\ \ error\ "{}don't\ know\ such\ a\ compiler"{}}}
+\DoxyCodeLine{00046\ \textcolor{comment}{\#\ define\ \_found}}
+\DoxyCodeLine{00047\ \textcolor{comment}{//\ Borland\ C\ Builder\ assumed}}
+\DoxyCodeLine{00048\ \textcolor{comment}{//\#define\ BCBuilder\ }}
+\DoxyCodeLine{00049\ \textcolor{comment}{\#\ \ define\ INLINE\ \_\_inline}}
+\DoxyCodeLine{00050\ \textcolor{comment}{\#endif*/}}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \textcolor{preprocessor}{\#ifdef\ \_\_linux\_\_}}
+\DoxyCodeLine{00053\ \textcolor{preprocessor}{\#\ \ define\ SLASH\ "{}/"{}}}
+\DoxyCodeLine{00054\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#\ \ define\ SLASH\ "{}\(\backslash\)\(\backslash\)"{}}}
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00057\ }
+\DoxyCodeLine{00058\ \textcolor{comment}{/********************************\ BORLAND\ *********************************/}}
+\DoxyCodeLine{00059\ \textcolor{preprocessor}{\#ifdef\ \_\_TURBOC\_\_}}
+\DoxyCodeLine{00060\ \textcolor{preprocessor}{\#include\ <graphics.h>}}
+\DoxyCodeLine{00061\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ \textcolor{comment}{/*********************************\ WATCOM\ **********************************/}}
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#ifdef\ \_\_WATCOMC\_\_}}
+\DoxyCodeLine{00065\ }
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\#include\ <graph.h>}}
+\DoxyCodeLine{00067\ \textcolor{preprocessor}{\#include\ <math.h>}}
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#include\ <time.h>}}
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\#include\ <conio.h>}}
+\DoxyCodeLine{00070\ }
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#define\ DETECT\ 0}}
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#define\ grOk\ 0}}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\#define\ M\_PI\ 3.14159265358979}}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \textcolor{preprocessor}{\#define\ graphresult()\ 0}}
+\DoxyCodeLine{00076\ }
+\DoxyCodeLine{00077\ \textcolor{preprocessor}{\#define\ grapherrormsg(a)\ "{}OK"{}}}
+\DoxyCodeLine{00078\ }
+\DoxyCodeLine{00079\ \textcolor{keyword}{extern}\ videoconfig\ \_videocfg;}
+\DoxyCodeLine{00080\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{short}\ \_fill;}
+\DoxyCodeLine{00081\ }
+\DoxyCodeLine{00082\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ setfillstyle(\textcolor{keywordtype}{int}\ a,\ \textcolor{keywordtype}{int}\ b)\ \{}
+\DoxyCodeLine{00083\ \_setcolor(b);}
+\DoxyCodeLine{00084\ \textcolor{keywordflow}{if}(a)}
+\DoxyCodeLine{00085\ \ \ \_fill\ =\ \_GFILLINTERIOR;}
+\DoxyCodeLine{00086\ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{00087\ \ \ \_fill\ =\ \_GBORDER;}
+\DoxyCodeLine{00088\ \}}
+\DoxyCodeLine{00089\ }
+\DoxyCodeLine{00090\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ initgraph(\textcolor{keywordtype}{int}\ *a,\ \textcolor{keywordtype}{int}\ *b,\ \textcolor{keywordtype}{char}\ *c)\ \{}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\_setvideomode(\_MAXRESMODE);*/}}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\_setvideomode(\_SVRES16COLOR);*/}}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \_setvideomode(\_XRES256COLOR);}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \_setcharsize(11,9);}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \_setcharspacing(0);}
+\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \_getvideoconfig(\&\_videocfg);}
+\DoxyCodeLine{00097\ \}}
+\DoxyCodeLine{00098\ }
+\DoxyCodeLine{00099\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ line(\textcolor{keywordtype}{int}\ x1,\ \textcolor{keywordtype}{int}\ y1,\ \textcolor{keywordtype}{int}\ x2,\ \textcolor{keywordtype}{int}\ y2)\ \{}
+\DoxyCodeLine{00100\ \_moveto(x1,\ y1);}
+\DoxyCodeLine{00101\ \_lineto(x2,y2);}
+\DoxyCodeLine{00102\ \}}
+\DoxyCodeLine{00103\ }
+\DoxyCodeLine{00104\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ putpixel(\textcolor{keywordtype}{int}\ x,\ \textcolor{keywordtype}{int}\ y,\ \textcolor{keywordtype}{int}\ colour)\ \{}
+\DoxyCodeLine{00105\ \textcolor{keywordtype}{int}\ colour2;}
+\DoxyCodeLine{00106\ colour2\ =\ \_getcolor();}
+\DoxyCodeLine{00107\ \_setcolor(colour);}
+\DoxyCodeLine{00108\ \_setpixel(x,y);}
+\DoxyCodeLine{00109\ \_setcolor(colour2);}
+\DoxyCodeLine{00110\ \}}
+\DoxyCodeLine{00111\ }
+\DoxyCodeLine{00112\ \textcolor{preprocessor}{\#define\ getmaxx()\ \_videocfg.numxpixels}}
+\DoxyCodeLine{00113\ \textcolor{preprocessor}{\#define\ getmaxy()\ \_videocfg.numypixels}}
+\DoxyCodeLine{00114\ \textcolor{preprocessor}{\#define\ getmaxcolor()\ \_videocfg.numcolors}}
+\DoxyCodeLine{00115\ \textcolor{preprocessor}{\#define\ closegraph()\ \_setvideomode(\_DEFAULTMODE)}}
+\DoxyCodeLine{00116\ \textcolor{preprocessor}{\#define\ cleardevice()\ \_clearscreen(0)}}
+\DoxyCodeLine{00117\ \textcolor{comment}{//\#define\ ellipse(x,\ y,\ alpha,\ beta,\ xradius,\ yradius)\ \_pie(\_GBORDER,\ x-\/xradius,\ y-\/yradius,\ x+xradius,\ y+yradius,\ x+cos(alpha*M\_PI/180),\ y+sin(alpha*M\_PI/180),\ x+cos(beta*M\_PI/180),\ y+sin(beta*M\_PI/180))}}
+\DoxyCodeLine{00118\ \textcolor{comment}{//\#define\ ellipse(x,\ y,\ alpha,\ beta,\ xradius,\ yradius)\ \_pie(\_GBORDER,\ x-\/xradius,\ y-\/yradius,\ x+xradius,\ y+yradius,\ x+1,\ y+1,\ x+2,\ y+2)}}
+\DoxyCodeLine{00119\ \textcolor{preprocessor}{\#define\ ellipse(x,\ y,\ a,\ b,\ xradius,\ yradius)\ \_ellipse(\_GBORDER,\ x-\/xradius,\ y+yradius,\ x+xradius,\ y-\/yradius)}}
+\DoxyCodeLine{00120\ \textcolor{preprocessor}{\#define\ fillellipse(x,\ y,\ xradius,\ yradius)\ \_ellipse(\_GFILLINTERIOR,\ x-\/xradius,\ y-\/yradius,\ x+xradius,\ y+yradius)}}
+\DoxyCodeLine{00121\ \textcolor{preprocessor}{\#define\ circle(x,y,radius)\ \_ellipse(\_GBORDER,\ x-\/radius,\ y-\/radius,\ x+radius,\ y+radius)}}
+\DoxyCodeLine{00122\ \textcolor{preprocessor}{\#define\ bar(a,b,c,d)\ \_rectangle\ (\_GFILLINTERIOR,a,b,c,d)}}
+\DoxyCodeLine{00123\ \textcolor{preprocessor}{\#define\ outtextxy\ \_grtext}}
+\DoxyCodeLine{00124\ \textcolor{preprocessor}{\#define\ moveto\ \_moveto}}
+\DoxyCodeLine{00125\ \textcolor{preprocessor}{\#define\ lineto\ \_lineto}}
+\DoxyCodeLine{00126\ \textcolor{preprocessor}{\#define\ getpixel\ \_getpixel}}
+\DoxyCodeLine{00127\ \textcolor{preprocessor}{\#define\ floodfill\ \_floodfill}}
+\DoxyCodeLine{00128\ \textcolor{preprocessor}{\#define\ rectangle(a,b,c,d)\ \_rectangle(\_fill,a,b,c,d)}}
+\DoxyCodeLine{00129\ \textcolor{preprocessor}{\#define\ setcolor\ \_setcolor}}
+\DoxyCodeLine{00130\ }
+\DoxyCodeLine{00131\ \textcolor{preprocessor}{\#define\ randomize()\ srand((unsigned)time(NULL))}}
+\DoxyCodeLine{00132\ \textcolor{preprocessor}{\#define\ random(a)\ (a\ <=\ 0)\ ?\ 0\ :\ (rand()\ \%\ a)}}
+\DoxyCodeLine{00133\ }
+\DoxyCodeLine{00134\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00135\ }
+\DoxyCodeLine{00136\ \textcolor{comment}{/*********************************\ LINUX\ ***********************************/}}
+\DoxyCodeLine{00137\ \textcolor{preprocessor}{\#ifdef\ \_\_linux\_\_}}
+\DoxyCodeLine{00138\ \textcolor{preprocessor}{\#define\ sound(a)}}
+\DoxyCodeLine{00139\ \textcolor{preprocessor}{\#define\ nosound()}}
+\DoxyCodeLine{00140\ \textcolor{preprocessor}{\#define\ randomize()\ srand((unsigned)time(NULL))}}
+\DoxyCodeLine{00141\ \textcolor{comment}{//\#define\ random(a)\ (a\ <=\ 0)\ ?\ 0\ :\ (rand()\ \%\ a)}}
+\DoxyCodeLine{00142\ }
+\DoxyCodeLine{00143\ \textcolor{comment}{//void\ delay(unsigned\ long\ milisec);}}
+\DoxyCodeLine{00144\ }
+\DoxyCodeLine{00145\ \textcolor{preprocessor}{\#include<time.h>}\ \ }
+\DoxyCodeLine{00146\ \textcolor{preprocessor}{\#include<signal.h>}\ \ }
+\DoxyCodeLine{00147\ }
+\DoxyCodeLine{00148\ \textcolor{comment}{/*void\ delay(unsigned\ long\ milisec)\ \{\ \ }}
+\DoxyCodeLine{00149\ \textcolor{comment}{\ \ struct\ timespec\ req=\{0\},rem=\{0\};\ \ }}
+\DoxyCodeLine{00150\ \textcolor{comment}{\ \ time\_t\ sec=(int)(milisec/1000);\ \ }}
+\DoxyCodeLine{00151\ \textcolor{comment}{\ \ milisec=milisec-\/(sec*1000);\ \ }}
+\DoxyCodeLine{00152\ \textcolor{comment}{\ \ req.tv\_sec=sec;\ \ }}
+\DoxyCodeLine{00153\ \textcolor{comment}{\ \ req.tv\_nsec=milisec*1000000L;\ \ }}
+\DoxyCodeLine{00154\ \textcolor{comment}{\ \ nanosleep(\&req,\&rem);\ \ }}
+\DoxyCodeLine{00155\ \textcolor{comment}{\}\ */}\ }
+\DoxyCodeLine{00156\ }
+\DoxyCodeLine{00157\ \textcolor{comment}{//\#define\ \_\_STRICT\_ANSI\_\_}}
+\DoxyCodeLine{00158\ }
+\DoxyCodeLine{00159\ \textcolor{comment}{/*********************************\ LINUX\ SVGA\ lib\ ****************************/}}
+\DoxyCodeLine{00160\ \textcolor{preprocessor}{\#ifdef\ LINUX\_GRAPHICS}}
+\DoxyCodeLine{00161\ }
+\DoxyCodeLine{00162\ \textcolor{preprocessor}{\#include\ <vga.h>}}
+\DoxyCodeLine{00163\ }
+\DoxyCodeLine{00164\ \textcolor{preprocessor}{\#define\ initgraph(a,b,c)\ vga\_setmode(4)}}
+\DoxyCodeLine{00165\ \textcolor{preprocessor}{\#define\ getmaxx\ vga\_getxdim}}
+\DoxyCodeLine{00166\ \textcolor{preprocessor}{\#define\ getmaxy\ vga\_getydim}}
+\DoxyCodeLine{00167\ \textcolor{preprocessor}{\#define\ getmaxcolor\ vga\_getcolors}}
+\DoxyCodeLine{00168\ \textcolor{preprocessor}{\#define\ closegraph()\ vga\_setmode(vga\_getdefaultmode())}}
+\DoxyCodeLine{00169\ \textcolor{preprocessor}{\#define\ cleardevice\ vga\_clear}}
+\DoxyCodeLine{00170\ \textcolor{preprocessor}{\#define\ setcolor\ \ vga\_setcolor}}
+\DoxyCodeLine{00171\ \textcolor{preprocessor}{\#define\ setfillstyle(a,b)}}
+\DoxyCodeLine{00172\ \textcolor{preprocessor}{\#define\ bar(a,b,c,d)}}
+\DoxyCodeLine{00173\ \textcolor{preprocessor}{\#define\ outtextxy}}
+\DoxyCodeLine{00174\ \textcolor{preprocessor}{\#define\ circle(x,y,radius)\ \{line(x-\/radius,\ y,\ x,\ y-\/radius);line(x,y-\/radius,\ x+radius,y);line(x+radius,y,x,y+radius);line(x,y+radius,x-\/radius,y);\}}}
+\DoxyCodeLine{00175\ \textcolor{preprocessor}{\#define\ moveto}}
+\DoxyCodeLine{00176\ \textcolor{preprocessor}{\#define\ lineto}}
+\DoxyCodeLine{00177\ \textcolor{preprocessor}{\#define\ line\ vga\_drawline}}
+\DoxyCodeLine{00178\ \textcolor{preprocessor}{\#define\ getpixel\ vga\_getpixel}}
+\DoxyCodeLine{00179\ \textcolor{preprocessor}{\#define\ getpalette\ vga\_getpalette}}
+\DoxyCodeLine{00180\ \textcolor{preprocessor}{\#define\ setpalette\ vga\_getpalette}}
+\DoxyCodeLine{00181\ \textcolor{preprocessor}{\#define\ getgraphmode\ vga\_getcurrentmode}}
+\DoxyCodeLine{00182\ }
+\DoxyCodeLine{00183\ \textcolor{preprocessor}{\#define\ getch\ vga\_getch}}
+\DoxyCodeLine{00184\ \textcolor{preprocessor}{\#define\ kbhit\ vga\_getkey}}
+\DoxyCodeLine{00185\ }
+\DoxyCodeLine{00186\ \textcolor{keyword}{static}\ \_\_inline\_\_\ \textcolor{keywordtype}{void}\ putpixel(\textcolor{keywordtype}{int}\ x,\ \textcolor{keywordtype}{int}\ y,\ \textcolor{keywordtype}{int}\ colour)\ \{}
+\DoxyCodeLine{00187\ \ \ vga\_setcolor(colour);}
+\DoxyCodeLine{00188\ \ \ vga\_drawpixel(x,\ y);}
+\DoxyCodeLine{00189\ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00190\ \}}
+\DoxyCodeLine{00191\ }
+\DoxyCodeLine{00192\ \textcolor{preprocessor}{\#define\ graphresult()\ 0}}
+\DoxyCodeLine{00193\ \textcolor{preprocessor}{\#define\ grapherrormsg}}
+\DoxyCodeLine{00194\ }
+\DoxyCodeLine{00195\ \textcolor{preprocessor}{\#define\ \_setcharsize(a,b)}}
+\DoxyCodeLine{00196\ \textcolor{preprocessor}{\#define\ \_setlinestyle(a)}}
+\DoxyCodeLine{00197\ \textcolor{preprocessor}{\#define\ \_grtext(a,b,c)}}
+\DoxyCodeLine{00198\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00199\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00200\ }
+\DoxyCodeLine{00201\ \textcolor{comment}{/*******************************\ SUN\ GNU\ c\ ************************************/}}
+\DoxyCodeLine{00202\ \textcolor{preprocessor}{\#ifdef\ \_\_SUN\_\_}}
+\DoxyCodeLine{00203\ }
+\DoxyCodeLine{00204\ \textcolor{preprocessor}{\#include\ <curses.h>}}
+\DoxyCodeLine{00205\ }
+\DoxyCodeLine{00206\ \textcolor{preprocessor}{\#define\ randomize()\ srand((unsigned)time(NULL))}}
+\DoxyCodeLine{00207\ \textcolor{preprocessor}{\#define\ random(a)\ (a\ <=\ 0)\ ?\ 0\ :\ (rand()\ \%\ a)}}
+\DoxyCodeLine{00208\ \textcolor{preprocessor}{\#define\ itoa(value,\ str,\ radix)\ sprintf((str),"{}\%d"{},(value))}}
+\DoxyCodeLine{00209\ }
+\DoxyCodeLine{00210\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00211\ }
+\DoxyCodeLine{00212\ \textcolor{comment}{/*\#ifdef\ \_\_GNUC\_\_}}
+\DoxyCodeLine{00213\ \textcolor{comment}{}}
+\DoxyCodeLine{00214\ \textcolor{comment}{\#include\ <libbcc.h>}}
+\DoxyCodeLine{00215\ \textcolor{comment}{}}
+\DoxyCodeLine{00216\ \textcolor{comment}{\#define\ randomize()\ srand((unsigned)time(NULL))}}
+\DoxyCodeLine{00217\ \textcolor{comment}{\#define\ random(a)\ (a\ <=\ 0)\ ?\ 0\ :\ (rand()\ \%\ a)}}
+\DoxyCodeLine{00218\ \textcolor{comment}{\#define\ itoa(value,\ str,\ radix)\ sprintf((str),"{}\%d"{},(value))}}
+\DoxyCodeLine{00219\ \textcolor{comment}{\#define\ getch()\ getkey()}}
+\DoxyCodeLine{00220\ \textcolor{comment}{}}
+\DoxyCodeLine{00221\ \textcolor{comment}{\#endif*/}}
+\DoxyCodeLine{00222\ }
+\DoxyCodeLine{00223\ \textcolor{comment}{/************************\ Borland\ C\ Builder\ ********************************/}}
+\DoxyCodeLine{00224\ \textcolor{preprocessor}{\#ifdef\ BCBuilder}}
+\DoxyCodeLine{00225\ }
+\DoxyCodeLine{00226\ \textcolor{preprocessor}{\#include\ <vcl\(\backslash\)Classes.hpp>}}
+\DoxyCodeLine{00227\ \textcolor{preprocessor}{\#include\ <vcl\(\backslash\)Controls.hpp>}}
+\DoxyCodeLine{00228\ \textcolor{preprocessor}{\#include\ <vcl\(\backslash\)StdCtrls.hpp>}}
+\DoxyCodeLine{00229\ \textcolor{preprocessor}{\#include\ <vcl\(\backslash\)Forms.hpp>}}
+\DoxyCodeLine{00230\ }
+\DoxyCodeLine{00231\ \textcolor{keyword}{class\ }TForm1\ :\ \textcolor{keyword}{public}\ TForm}
+\DoxyCodeLine{00232\ \{}
+\DoxyCodeLine{00233\ \_\_published:\ \ \ \ \textcolor{comment}{//\ IDE-\/managed\ Components}}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ \_\_fastcall\ FormPaint(TObject\ *Sender);}
+\DoxyCodeLine{00235\ \textcolor{keyword}{private}:\ \ \ \ \textcolor{comment}{//\ User\ declarations}}
+\DoxyCodeLine{00236\ \textcolor{keyword}{public}:\ \ \ \ \ \textcolor{comment}{//\ User\ declarations}}
+\DoxyCodeLine{00237\ \ \ \ \ \ \ \ \ \_\_fastcall\ TForm1(TComponent*\ Owner);}
+\DoxyCodeLine{00238\ \};}
+\DoxyCodeLine{00239\ }
+\DoxyCodeLine{00240\ \textcolor{keyword}{extern}\ TForm1\ *Form1;}
+\DoxyCodeLine{00241\ }
+\DoxyCodeLine{00242\ \textcolor{preprocessor}{\#define\ DETECT\ 0}}
+\DoxyCodeLine{00243\ \textcolor{preprocessor}{\#define\ grOk\ 0}}
+\DoxyCodeLine{00244\ \textcolor{preprocessor}{\#define\ closegraph()}}
+\DoxyCodeLine{00245\ \textcolor{preprocessor}{\#define\ initgraph(a,b,c)}}
+\DoxyCodeLine{00246\ \textcolor{preprocessor}{\#define\ graphresult()\ 0}}
+\DoxyCodeLine{00247\ \textcolor{preprocessor}{\#define\ grapherrormsg}}
+\DoxyCodeLine{00248\ \textcolor{preprocessor}{\#define\ delay(a)}}
+\DoxyCodeLine{00249\ \textcolor{preprocessor}{\#define\ outtext(a)}}
+\DoxyCodeLine{00250\ \textcolor{preprocessor}{\#define\ outtextxy\ Form1-\/>Canvas-\/>TextOut}}
+\DoxyCodeLine{00251\ \textcolor{preprocessor}{\#define\ getmaxx()\ Form1-\/>Width}}
+\DoxyCodeLine{00252\ \textcolor{preprocessor}{\#define\ getmaxy()\ Form1-\/>Height}}
+\DoxyCodeLine{00253\ \textcolor{preprocessor}{\#define\ lineto\ Form1-\/>Canvas-\/>LineTo}}
+\DoxyCodeLine{00254\ \textcolor{preprocessor}{\#define\ moveto\ Form1-\/>Canvas-\/>MoveTo}}
+\DoxyCodeLine{00255\ }
+\DoxyCodeLine{00256\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{int}\ \_\_color(\textcolor{keywordtype}{int}\ i)\ \{}
+\DoxyCodeLine{00257\ }
+\DoxyCodeLine{00258\ \textcolor{keywordtype}{int}\ clr[16]=\{}
+\DoxyCodeLine{00259\ 0,\ \textcolor{comment}{//clBlack\ (TColor)(0)}}
+\DoxyCodeLine{00260\ \textcolor{comment}{//711680,\ //clBlue\ (TColor)}}
+\DoxyCodeLine{00261\ \textcolor{comment}{//5,\ clRed\ (TColor)}}
+\DoxyCodeLine{00262\ 128,\textcolor{comment}{//Maroon\ (TColor)}}
+\DoxyCodeLine{00263\ 32768,\ \textcolor{comment}{//clGreen\ (TColor)}}
+\DoxyCodeLine{00264\ 32896,\textcolor{comment}{//clOlive\ (TColor)}}
+\DoxyCodeLine{00265\ 8388608,\textcolor{comment}{//\#define\ clNavy\ (TColor)}}
+\DoxyCodeLine{00266\ 8388736,\textcolor{comment}{//\#define\ clPurple\ (TColor)}}
+\DoxyCodeLine{00267\ 8421376,\textcolor{comment}{//\#define\ clTeal\ (TColor)}}
+\DoxyCodeLine{00268\ 8421504,\textcolor{comment}{//\#define\ clGray\ (TColor)}}
+\DoxyCodeLine{00269\ 12632256,\textcolor{comment}{//\#define\ clSilver\ (TColor)}}
+\DoxyCodeLine{00270\ 65280,\textcolor{comment}{//\#define\ clLime\ (TColor)}}
+\DoxyCodeLine{00271\ 65535,\textcolor{comment}{//\#define\ clYellow\ (TColor)}}
+\DoxyCodeLine{00272\ 16711935,\textcolor{comment}{//\#define\ clFuchsia\ (TColor)}}
+\DoxyCodeLine{00273\ 16776960,\textcolor{comment}{//\#define\ clAqua\ (TColor)}}
+\DoxyCodeLine{00274\ 12632256,\textcolor{comment}{//\#define\ clLtGray\ (TColor)}}
+\DoxyCodeLine{00275\ 8421504,\textcolor{comment}{//\#define\ clDkGray\ (TColor)}}
+\DoxyCodeLine{00276\ 16777215\textcolor{comment}{//\#define\ clWhite\ (TColor)}}
+\DoxyCodeLine{00277\ \};}
+\DoxyCodeLine{00278\ }
+\DoxyCodeLine{00279\ \textcolor{comment}{//(536870911),//\#define\ clNone\ (TColor)}}
+\DoxyCodeLine{00280\ }
+\DoxyCodeLine{00281\ \textcolor{comment}{/*\#define\ clDefault\ (TColor)(536870912)}}
+\DoxyCodeLine{00282\ \textcolor{comment}{\#define\ cmBlackness\ (Byte)(66)}}
+\DoxyCodeLine{00283\ \textcolor{comment}{\#define\ cmDstInvert\ (int)(5570569)}}
+\DoxyCodeLine{00284\ \textcolor{comment}{\#define\ cmMergeCopy\ (int)(12583114)}}
+\DoxyCodeLine{00285\ \textcolor{comment}{\#define\ cmMergePaint\ (int)(12255782)}}
+\DoxyCodeLine{00286\ \textcolor{comment}{\#define\ cmNotSrcCopy\ (int)(3342344)}}
+\DoxyCodeLine{00287\ \textcolor{comment}{\#define\ cmNotSrcErase\ (int)(1114278)}}
+\DoxyCodeLine{00288\ \textcolor{comment}{\#define\ cmPatCopy\ (int)(15728673)}}
+\DoxyCodeLine{00289\ \textcolor{comment}{\#define\ cmPatInvert\ (int)(5898313)}}
+\DoxyCodeLine{00290\ \textcolor{comment}{\#define\ cmPatPaint\ (int)(16452105)}}
+\DoxyCodeLine{00291\ \textcolor{comment}{\#define\ cmSrcAnd\ (int)(8913094)}}
+\DoxyCodeLine{00292\ \textcolor{comment}{\#define\ cmSrcCopy\ (int)(13369376)}}
+\DoxyCodeLine{00293\ \textcolor{comment}{\#define\ cmSrcErase\ (int)(4457256)}}
+\DoxyCodeLine{00294\ \textcolor{comment}{\#define\ cmSrcInvert\ (int)(6684742)}}
+\DoxyCodeLine{00295\ \textcolor{comment}{\#define\ cmSrcPaint\ (int)(15597702)}}
+\DoxyCodeLine{00296\ \textcolor{comment}{\#define\ cmWhiteness\ (int)(16711778)}}
+\DoxyCodeLine{00297\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00298\ \textcolor{keywordflow}{return}\ clr[i];}
+\DoxyCodeLine{00299\ \}}
+\DoxyCodeLine{00300\ }
+\DoxyCodeLine{00301\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ setcolor(\textcolor{keywordtype}{int}\ c)\ \{}
+\DoxyCodeLine{00302\ Form1-\/>Canvas-\/>Pen-\/>Color\ =\ (TColor)(\_\_color(c));}
+\DoxyCodeLine{00303\ \}}
+\DoxyCodeLine{00304\ }
+\DoxyCodeLine{00305\ \textcolor{keyword}{inline}\ circle(\textcolor{keywordtype}{int}\ x,\textcolor{keywordtype}{int}\ y,\textcolor{keywordtype}{int}\ r)\ \{}
+\DoxyCodeLine{00306\ Form1-\/>Canvas-\/>Brush-\/>Style\ =\ bsClear;}
+\DoxyCodeLine{00307\ Form1-\/>Canvas-\/>Brush-\/>Color\ =\ clNone;}
+\DoxyCodeLine{00308\ Form1-\/>Canvas-\/>Ellipse(x-\/r,y-\/r,x+r,y+r);}
+\DoxyCodeLine{00309\ \textcolor{comment}{/*bsSolid,\ bsClear,\ bsHorizontal,\ bsVertical,\ bsFDiagonal,\ bsBDiagonal,}}
+\DoxyCodeLine{00310\ \textcolor{comment}{bsCross,\ bsDiagCross*/}}
+\DoxyCodeLine{00311\ \}}
+\DoxyCodeLine{00312\ }
+\DoxyCodeLine{00313\ \textcolor{preprocessor}{\#include\ <math.h>}}
+\DoxyCodeLine{00314\ }
+\DoxyCodeLine{00315\ \textcolor{keyword}{inline}\ ellipse(\textcolor{keywordtype}{int}\ x,\textcolor{keywordtype}{int}\ y,\textcolor{keywordtype}{int}\ alpha,\textcolor{keywordtype}{int}\ beta,\textcolor{keywordtype}{int}\ rx,\textcolor{keywordtype}{int}\ ry)\ \{}
+\DoxyCodeLine{00316\ Form1-\/>Canvas-\/>Brush-\/>Style\ =\ bsClear;}
+\DoxyCodeLine{00317\ Form1-\/>Canvas-\/>Brush-\/>Color\ =\ clNone;}
+\DoxyCodeLine{00318\ Form1-\/>Canvas-\/>Arc(x-\/rx,y-\/ry,x+rx,y+ry,x+rx*cos(alpha/180*3.14159265468979),y+ry*sin(alpha/180*3.14159265468979),x+rx*cos(beta/180*3.14159265468979),y+ry*sin(beta/180*3.14159265468979));}
+\DoxyCodeLine{00319\ \}}
+\DoxyCodeLine{00320\ }
+\DoxyCodeLine{00321\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ line(\textcolor{keywordtype}{int}\ x1,\ \textcolor{keywordtype}{int}\ y1,\ \textcolor{keywordtype}{int}\ x2,\ \textcolor{keywordtype}{int}\ y2)\ \{}
+\DoxyCodeLine{00322\ Form1-\/>Canvas-\/>MoveTo(x1,\ y1);}
+\DoxyCodeLine{00323\ Form1-\/>Canvas-\/>LineTo(x2,\ y2);}
+\DoxyCodeLine{00324\ \}}
+\DoxyCodeLine{00325\ }
+\DoxyCodeLine{00326\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ rectangle(\textcolor{keywordtype}{int}\ x1,\ \textcolor{keywordtype}{int}\ y1,\ \textcolor{keywordtype}{int}\ x2,\ \textcolor{keywordtype}{int}\ y2)\ \{}
+\DoxyCodeLine{00327\ Form1-\/>Canvas-\/>Rectangle(x1,y1,x2,y2);}
+\DoxyCodeLine{00328\ \}}
+\DoxyCodeLine{00329\ }
+\DoxyCodeLine{00330\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{int}\ getpixel(\textcolor{keywordtype}{int}\ x,\ \textcolor{keywordtype}{int}\ y)\ \{}
+\DoxyCodeLine{00331\ \ \textcolor{keywordtype}{int}\ c;}
+\DoxyCodeLine{00332\ \ \textcolor{keywordtype}{int}\ i;}
+\DoxyCodeLine{00333\ \ c=(int)Form1-\/>Canvas-\/>Pixels[x][y];}
+\DoxyCodeLine{00334\ \ \textcolor{keywordflow}{for}\ (i=0;i<16;i++)\ \textcolor{keywordflow}{if}\ (\_\_color(i)==(\textcolor{keywordtype}{int})c)\ \textcolor{keywordflow}{return}\ i;}
+\DoxyCodeLine{00335\ \ \textcolor{keywordflow}{return}\ 1;}
+\DoxyCodeLine{00336\ \}}
+\DoxyCodeLine{00337\ }
+\DoxyCodeLine{00338\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{int}\ floodfill(\textcolor{keywordtype}{int}\ x,\ \textcolor{keywordtype}{int}\ y,\textcolor{keywordtype}{int}\ c)\ \{}
+\DoxyCodeLine{00339\ Form1-\/>Canvas-\/>FloodFill(x,y,\_\_color(c),fsBorder);}
+\DoxyCodeLine{00340\ \}}
+\DoxyCodeLine{00341\ }
+\DoxyCodeLine{00342\ \textcolor{preprocessor}{\#define\ cleardevice\ Form1-\/>Canvas-\/>Refresh}}
+\DoxyCodeLine{00343\ \textcolor{preprocessor}{\#define\ bar\ Form1-\/>Canvas-\/>Rectangle}}
+\DoxyCodeLine{00344\ }
+\DoxyCodeLine{00345\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ setfillstyle(\textcolor{keywordtype}{int}\ a,\ \textcolor{keywordtype}{int}\ b)\{}
+\DoxyCodeLine{00346\ \textcolor{keywordflow}{if}\ (a)}
+\DoxyCodeLine{00347\ \ \ \ Form1-\/>Canvas-\/>Brush-\/>Style\ =\ bsSolid;}
+\DoxyCodeLine{00348\ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{00349\ \ \ \ Form1-\/>Canvas-\/>Brush-\/>Style\ =\ bsClear;}
+\DoxyCodeLine{00350\ }
+\DoxyCodeLine{00351\ Form1-\/>Canvas-\/>Brush-\/>Color\ =\ (TColor)\ \_\_color(b);}
+\DoxyCodeLine{00352\ \}}
+\DoxyCodeLine{00353\ }
+\DoxyCodeLine{00354\ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}\ drawpoly(\textcolor{keywordtype}{int}\ a,\ \textcolor{keywordtype}{int}\ *b)\ \{}
+\DoxyCodeLine{00355\ \ \ \ \textcolor{keywordtype}{int}\ i;}
+\DoxyCodeLine{00356\ }
+\DoxyCodeLine{00357\ \ \ \ moveto(b[0],\ b[1]);}
+\DoxyCodeLine{00358\ }
+\DoxyCodeLine{00359\ \ \ \ \textcolor{keywordflow}{for}(i=1;\ i<a;\ i++)}
+\DoxyCodeLine{00360\ \ \ \ \ \ \ lineto(b[2*i],\ b[2*i+1]);}
+\DoxyCodeLine{00361\ }
+\DoxyCodeLine{00362\ \ \ \ lineto(b[0],\ b[1]);}
+\DoxyCodeLine{00363\ \}}
+\DoxyCodeLine{00364\ }
+\DoxyCodeLine{00365\ \textcolor{preprocessor}{\#define\ fillpoly\ drawpoly}}
+\DoxyCodeLine{00366\ \textcolor{preprocessor}{\#define\ putpixel(x,y,c)\ Form1-\/>Canvas-\/>Pixels[x][y]=\_\_color(c)}}
+\DoxyCodeLine{00367\ }
+\DoxyCodeLine{00368\ \textcolor{preprocessor}{\#define\ main\ Main}}
+\DoxyCodeLine{00369\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00370\ }
+\DoxyCodeLine{00371\ \textcolor{comment}{/*Definitions\ for\ the\ dumb\ display\ */}}
+\DoxyCodeLine{00372\ \textcolor{preprocessor}{\#ifdef\ \_\_DUMB\_\_}}
+\DoxyCodeLine{00373\ }
+\DoxyCodeLine{00374\ \textcolor{preprocessor}{\#define\ initgraph(a,b,c)}}
+\DoxyCodeLine{00375\ \textcolor{preprocessor}{\#define\ graphresult()\ 0}}
+\DoxyCodeLine{00376\ \textcolor{preprocessor}{\#define\ grapherrormsg(a)\ "{}This\ is\ simulation\ of\ the\ dumb\ display"{}}}
+\DoxyCodeLine{00377\ \textcolor{preprocessor}{\#define\ getmaxx()\ 1}}
+\DoxyCodeLine{00378\ \textcolor{preprocessor}{\#define\ getmaxy()\ 1}}
+\DoxyCodeLine{00379\ \textcolor{preprocessor}{\#define\ getmaxcolor()\ 1}}
+\DoxyCodeLine{00380\ \textcolor{preprocessor}{\#define\ closegraph()\ }}
+\DoxyCodeLine{00381\ \textcolor{preprocessor}{\#define\ cleardevice()\ }}
+\DoxyCodeLine{00382\ \textcolor{preprocessor}{\#define\ ellipse(x,\ y,\ alpha,\ beta,\ xradius,\ yradius)}}
+\DoxyCodeLine{00383\ \textcolor{preprocessor}{\#define\ line(a,b,c,d)\ }}
+\DoxyCodeLine{00384\ \textcolor{preprocessor}{\#define\ fillellipse(x,\ y,\ xradius,\ yradius)}}
+\DoxyCodeLine{00385\ \textcolor{preprocessor}{\#define\ circle(x,y,radius)}}
+\DoxyCodeLine{00386\ \textcolor{preprocessor}{\#define\ bar(a,b,c,d)}}
+\DoxyCodeLine{00387\ \textcolor{preprocessor}{\#define\ outtextxy}}
+\DoxyCodeLine{00388\ \textcolor{preprocessor}{\#define\ moveto(a,b)}}
+\DoxyCodeLine{00389\ \textcolor{preprocessor}{\#define\ lineto(a,b)}}
+\DoxyCodeLine{00390\ \textcolor{preprocessor}{\#define\ getpixel(a,x)\ 1}}
+\DoxyCodeLine{00391\ \textcolor{preprocessor}{\#define\ floodfill(a)}}
+\DoxyCodeLine{00392\ \textcolor{preprocessor}{\#define\ rectangle(a,b,c,d)}}
+\DoxyCodeLine{00393\ \textcolor{preprocessor}{\#define\ setcolor(c)}}
+\DoxyCodeLine{00394\ \textcolor{preprocessor}{\#define\ putpixel(a,b,c)}}
+\DoxyCodeLine{00395\ \textcolor{preprocessor}{\#define\ kbhit()\ 0}}
+\DoxyCodeLine{00396\ \textcolor{preprocessor}{\#define\ getch()\ 0}}
+\DoxyCodeLine{00397\ }
+\DoxyCodeLine{00398\ \textcolor{preprocessor}{\#define\ \_setlinestyle(a)}}
+\DoxyCodeLine{00399\ \textcolor{preprocessor}{\#define\ \_grtext(a,b,c)}}
+\DoxyCodeLine{00400\ \textcolor{preprocessor}{\#define\ \_setcharsize(a,b)}}
+\DoxyCodeLine{00401\ }
+\DoxyCodeLine{00402\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00403\ }
+\DoxyCodeLine{00404\ \textcolor{comment}{/*\ General\ constants\ */}}
+\DoxyCodeLine{00405\ }
+\DoxyCodeLine{00406\ \textcolor{preprocessor}{\#define\ ON\ 1}}
+\DoxyCodeLine{00407\ \textcolor{preprocessor}{\#define\ OFF\ 0}}
+\DoxyCodeLine{00408\ }
+\DoxyCodeLine{00409\ \textcolor{preprocessor}{\#define\ \_E\ \ \ \ \ \ \ \ \ 2.71828182845904523536}}
+\DoxyCodeLine{00410\ \textcolor{preprocessor}{\#define\ \_LOG2E\ \ \ \ \ 1.44269504088896340736}}
+\DoxyCodeLine{00411\ \textcolor{preprocessor}{\#define\ \_LOG10E\ \ \ \ 0.434294481903251827651}}
+\DoxyCodeLine{00412\ \textcolor{preprocessor}{\#define\ \_LN2\ \ \ \ \ \ \ 0.693147180559945309417}}
+\DoxyCodeLine{00413\ \textcolor{preprocessor}{\#define\ \_LN10\ \ \ \ \ \ 2.30258509299404568402}}
+\DoxyCodeLine{00414\ }
+\DoxyCodeLine{00415\ \textcolor{preprocessor}{\#define\ \_PI\ \ \ \ \ \ \ \ 3.14159265358979323846264338327950288}}
+\DoxyCodeLine{00416\ \textcolor{preprocessor}{\#define\ \_PI\_2\ \ \ \ \ \ 1.57079632679489661923}}
+\DoxyCodeLine{00417\ \textcolor{preprocessor}{\#define\ \_PI\_4\ \ \ \ \ \ 0.785398163397448309616}}
+\DoxyCodeLine{00418\ \textcolor{preprocessor}{\#define\ \_2PI\ \ \ \ \ \ \ 6.2831853071795864769252867665590058}}
+\DoxyCodeLine{00419\ \textcolor{preprocessor}{\#define\ \_1\_PI\ \ \ \ \ \ 0.318309886183790671538}}
+\DoxyCodeLine{00420\ \textcolor{preprocessor}{\#define\ \_2\_PI\ \ \ \ \ \ 0.636619772367581343076}}
+\DoxyCodeLine{00421\ \textcolor{preprocessor}{\#define\ \_SQRTPI\ \ \ \ 1.772453850905515840000}}
+\DoxyCodeLine{00422\ \textcolor{preprocessor}{\#define\ \_1\_SQRTPI\ \ 0.564189583547756286948}}
+\DoxyCodeLine{00423\ \textcolor{preprocessor}{\#define\ \_2\_SQRTPI\ \ 1.12837916709551257390\ }\textcolor{comment}{//\ 2\ /\ sqrt(pi)}}
+\DoxyCodeLine{00424\ }
+\DoxyCodeLine{00425\ \textcolor{preprocessor}{\#define\ \_SQRT2\ \ \ \ \ 1.41421356237309504880}}
+\DoxyCodeLine{00426\ \textcolor{preprocessor}{\#define\ \_SQRT\_2\ \ \ \ 0.707106781186547524401}}
+\DoxyCodeLine{00427\ \textcolor{preprocessor}{\#define\ gammaE\ \ \ \ \ 0.577215664901532860606512090082402431042\ }\textcolor{comment}{//\ Euler-\/Mascheroni\ constant}}
+\DoxyCodeLine{00428\ }
+\DoxyCodeLine{00429\ \textcolor{preprocessor}{\#define\ pi\ \ \ \ \ \ \ \ \ \_PI}}
+\DoxyCodeLine{00430\ \textcolor{preprocessor}{\#define\ PI\ \ \ \ \ \ \ \ \ \_PI}}
+\DoxyCodeLine{00431\ \textcolor{preprocessor}{\#define\ PI2\ \ \ \ \ \ \ \ 9.8696044010893586188}}
+\DoxyCodeLine{00432\ \textcolor{preprocessor}{\#define\ PI3\ \ \ \ \ \ \ \ 31.006276680299820175}}
+\DoxyCodeLine{00433\ \textcolor{preprocessor}{\#define\ PI4\ \ \ \ \ \ \ \ 97.409091034002437236}}
+\DoxyCodeLine{00434\ \textcolor{preprocessor}{\#define\ PI5\ \ \ \ \ \ \ \ 306.01968478528145326}}
+\DoxyCodeLine{00435\ \textcolor{preprocessor}{\#define\ PI6\ \ \ \ \ \ \ \ 961.38919357530443703}}
+\DoxyCodeLine{00436\ }
+\DoxyCodeLine{00437\ \textcolor{preprocessor}{\#define\ SOLID\ \ 0xFFFF}}
+\DoxyCodeLine{00438\ \textcolor{preprocessor}{\#define\ DASHED\ 0xF0F0}}
+\DoxyCodeLine{00439\ }
+\DoxyCodeLine{00440\ \textcolor{preprocessor}{\#define\ BLACK\ \ \ \ \ \ \ \ \ \ 0}}
+\DoxyCodeLine{00441\ \textcolor{preprocessor}{\#define\ BLUE\ \ \ \ \ \ \ \ \ \ \ 1}}
+\DoxyCodeLine{00442\ \textcolor{preprocessor}{\#define\ GREEN\ \ \ \ \ \ \ \ \ \ 2}}
+\DoxyCodeLine{00443\ \textcolor{preprocessor}{\#define\ CYAN\ \ \ \ \ \ \ \ \ \ \ 3}}
+\DoxyCodeLine{00444\ \textcolor{preprocessor}{\#define\ RED\ \ \ \ \ \ \ \ \ \ \ \ 4}}
+\DoxyCodeLine{00445\ \textcolor{preprocessor}{\#define\ MAGENTA\ \ \ \ \ \ \ \ 5}}
+\DoxyCodeLine{00446\ \textcolor{preprocessor}{\#define\ BROWN\ \ \ \ \ \ \ \ \ \ 6}}
+\DoxyCodeLine{00447\ \textcolor{preprocessor}{\#define\ WHITE\ \ \ \ \ \ \ \ \ \ 7}}
+\DoxyCodeLine{00448\ \textcolor{preprocessor}{\#define\ GRAY\ \ \ \ \ \ \ \ \ \ \ 8}}
+\DoxyCodeLine{00449\ \textcolor{preprocessor}{\#define\ LIGHTBLUE\ \ \ \ \ \ 9}}
+\DoxyCodeLine{00450\ \textcolor{preprocessor}{\#define\ LIGHTGREEN\ \ \ \ \ 10}}
+\DoxyCodeLine{00451\ \textcolor{preprocessor}{\#define\ LIGHTCYAN\ \ \ \ \ \ 11}}
+\DoxyCodeLine{00452\ \textcolor{preprocessor}{\#define\ LIGHTRED\ \ \ \ \ \ \ 12}}
+\DoxyCodeLine{00453\ \textcolor{preprocessor}{\#define\ LIGHTMAGENTA\ \ \ 13}}
+\DoxyCodeLine{00454\ \textcolor{preprocessor}{\#define\ YELLOW\ \ \ \ \ \ \ \ \ 14}}
+\DoxyCodeLine{00455\ \textcolor{preprocessor}{\#define\ BRIGHTWHITE\ \ \ \ 15}}
+\DoxyCodeLine{00456\ }
+\DoxyCodeLine{00457\ }
+\DoxyCodeLine{00458\ \textcolor{comment}{//Definitions\ for\ the\ Microsoft\ Visual\ Studio}}
+\DoxyCodeLine{00459\ \textcolor{preprocessor}{\#ifdef\ \_\_MVC\_\_}}
+\DoxyCodeLine{00460\ }
+\DoxyCodeLine{00461\ \textcolor{preprocessor}{\#define\ \_CRT\_SECURE\_NO\_WARNINGS\ }\textcolor{comment}{//\ no\ fopen()\ warning,\ define\ in\ compiler\ options}}
+\DoxyCodeLine{00462\ }
+\DoxyCodeLine{00463\ \textcolor{preprocessor}{\#include\ "{}Windows.h"{}}}
+\DoxyCodeLine{00464\ \textcolor{preprocessor}{\#include\ <stdio.h>}}
+\DoxyCodeLine{00465\ }
+\DoxyCodeLine{00466\ \textcolor{comment}{//\#define\ MAXX\ 1920}}
+\DoxyCodeLine{00467\ \textcolor{comment}{//\#define\ MAXY\ 1150}}
+\DoxyCodeLine{00468\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ MAXX;}
+\DoxyCodeLine{00469\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ MAXY;}
+\DoxyCodeLine{00470\ }
+\DoxyCodeLine{00471\ \textcolor{keyword}{extern}\ HWND\ MyHWND;}
+\DoxyCodeLine{00472\ \textcolor{keyword}{extern}\ HDC\ MyHDC;}
+\DoxyCodeLine{00473\ \textcolor{keyword}{extern}\ \textcolor{keyword}{const}\ SMALL\_RECT\ MyRect;}
+\DoxyCodeLine{00474\ }
+\DoxyCodeLine{00475\ LOGPALETTE\ MyPLTE;}
+\DoxyCodeLine{00476\ HANDLE\ MyConsoleHndl;}
+\DoxyCodeLine{00477\ \textcolor{comment}{//LPPAINTSTRUCT\ MylpPaint;}}
+\DoxyCodeLine{00478\ PAINTSTRUCT\ MylpPaint;}
+\DoxyCodeLine{00479\ }
+\DoxyCodeLine{00480\ \_\_inline\ \textcolor{keywordtype}{void}\ initgraph(\textcolor{keywordtype}{int}\ *a,\ \textcolor{keywordtype}{int}\ *b,\ \textcolor{keywordtype}{char}\ *c)\ \{}
+\DoxyCodeLine{00481\ }
+\DoxyCodeLine{00482\ \ \ MyHWND\ =\ FindWindow(\textcolor{stringliteral}{"{}tty"{}},\ \textcolor{stringliteral}{"{}main"{}});}
+\DoxyCodeLine{00483\ \ \ MyHDC\ =\ GetWindowDC(MyHWND);}
+\DoxyCodeLine{00484\ \ \ \textcolor{comment}{//MyHDC=\ BeginPaint(MyHWND,\ \&MylpPaint);}}
+\DoxyCodeLine{00485\ \ \ \textcolor{comment}{//MylpPaint.rcPaint.left);}}
+\DoxyCodeLine{00486\ }
+\DoxyCodeLine{00487\ \ \ SetBkColor(MyHDC,\ 0);}
+\DoxyCodeLine{00488\ \ \ SetTextColor(MyHDC,\ RGB(255,255,255));}
+\DoxyCodeLine{00489\ }
+\DoxyCodeLine{00490\ \ \ MAXX\ =\ GetDeviceCaps(MyHDC,\ HORZRES);}
+\DoxyCodeLine{00491\ \ \ MAXY\ =\ GetDeviceCaps(MyHDC,\ VERTRES);}
+\DoxyCodeLine{00492\ }
+\DoxyCodeLine{00493\ \ \ printf(\textcolor{stringliteral}{"{}Initializing\ screen:\(\backslash\)n\ \ width\ \ \%i\ pixels,\ \%i\ mm\(\backslash\)n"{}},\ GetDeviceCaps(MyHDC,\ HORZRES),\ GetDeviceCaps(MyHDC,\ HORZSIZE));}
+\DoxyCodeLine{00494\ \ \ printf(\textcolor{stringliteral}{"{}\ \ height\ \%i\ pixels,\ \%i\ mm\(\backslash\)ndone\(\backslash\)n"{}},\ GetDeviceCaps(MyHDC,\ VERTRES),\ GetDeviceCaps(MyHDC,\ VERTSIZE));}
+\DoxyCodeLine{00495\ \}}
+\DoxyCodeLine{00496\ }
+\DoxyCodeLine{00497\ HPEN\ MyPen;}
+\DoxyCodeLine{00498\ }
+\DoxyCodeLine{00499\ \_\_inline\ COLORREF\ EGA2RGB(\textcolor{keywordtype}{int}\ c)\ \{}
+\DoxyCodeLine{00500\ \ \ \textcolor{keywordflow}{switch}(c\%16)\ \{}
+\DoxyCodeLine{00501\ \ \ \ \ \textcolor{keywordflow}{case}\ 0\ :\ \textcolor{keywordflow}{return}\ RGB(000,000,000);}
+\DoxyCodeLine{00502\ \ \ \ \ \textcolor{keywordflow}{case}\ 1\ :\ \textcolor{keywordflow}{return}\ RGB(000,000,168);}
+\DoxyCodeLine{00503\ \ \ \ \ \textcolor{keywordflow}{case}\ 2\ :\ \textcolor{keywordflow}{return}\ RGB(000,168,000);}
+\DoxyCodeLine{00504\ \ \ \ \ \textcolor{keywordflow}{case}\ 3\ :\ \textcolor{keywordflow}{return}\ RGB(000,168,168);}
+\DoxyCodeLine{00505\ \ \ \ \ \textcolor{keywordflow}{case}\ 4\ :\ \textcolor{keywordflow}{return}\ RGB(168,000,000);}
+\DoxyCodeLine{00506\ \ \ \ \ \textcolor{keywordflow}{case}\ 5\ :\ \textcolor{keywordflow}{return}\ RGB(168,000,168);}
+\DoxyCodeLine{00507\ \ \ \ \ \textcolor{keywordflow}{case}\ 6\ :\ \textcolor{keywordflow}{return}\ RGB(168,168,000);}
+\DoxyCodeLine{00508\ \ \ \ \ \textcolor{keywordflow}{case}\ 7\ :\ \textcolor{keywordflow}{return}\ RGB(208,208,208);}
+\DoxyCodeLine{00509\ \ \ \ \ \textcolor{keywordflow}{case}\ 8\ :\ \textcolor{keywordflow}{return}\ RGB(168,168,168);}
+\DoxyCodeLine{00510\ \ \ \ \ \textcolor{keywordflow}{case}\ 9\ :\ \textcolor{keywordflow}{return}\ RGB(000,000,255);}
+\DoxyCodeLine{00511\ \ \ \ \ \textcolor{keywordflow}{case}\ 10:\ \textcolor{keywordflow}{return}\ RGB(000,255,000);}
+\DoxyCodeLine{00512\ \ \ \ \ \textcolor{keywordflow}{case}\ 11:\ \textcolor{keywordflow}{return}\ RGB(000,255,255);}
+\DoxyCodeLine{00513\ \ \ \ \ \textcolor{keywordflow}{case}\ 12:\ \textcolor{keywordflow}{return}\ RGB(255,000,000);}
+\DoxyCodeLine{00514\ \ \ \ \ \textcolor{keywordflow}{case}\ 13:\ \textcolor{keywordflow}{return}\ RGB(255,000,255);}
+\DoxyCodeLine{00515\ \ \ \ \ \textcolor{keywordflow}{case}\ 14:\ \textcolor{keywordflow}{return}\ RGB(255,255,000);}
+\DoxyCodeLine{00516\ \ \ \ \ \textcolor{keywordflow}{case}\ 15:\ \textcolor{keywordflow}{return}\ RGB(255,255,255);}
+\DoxyCodeLine{00517\ \ \ \ \ \textcolor{keywordflow}{default}:\ \textcolor{keywordflow}{return}\ RGB(255,255,255);}
+\DoxyCodeLine{00518\ \ \ \}\ \ \ \ \ }
+\DoxyCodeLine{00519\ \}}
+\DoxyCodeLine{00520\ \_\_inline\ \textcolor{keywordtype}{void}\ setcolor(\textcolor{keywordtype}{int}\ c)\ \{}
+\DoxyCodeLine{00521\ \ \ MyPen\ =\ CreatePen(PS\_SOLID,\ 0,\ EGA2RGB(c));}
+\DoxyCodeLine{00522\ \ \ SelectObject(MyHDC,\ MyPen);}
+\DoxyCodeLine{00523\ \}}
+\DoxyCodeLine{00524\ }
+\DoxyCodeLine{00525\ \textcolor{preprocessor}{\#define\ putpixel(a,b,c)\ SetPixel(MyHDC,\ a,\ b,\ EGA2RGB(c))}}
+\DoxyCodeLine{00526\ \textcolor{preprocessor}{\#define\ line(a,b,c,d)\ \{MoveToEx(MyHDC,\ a,\ b,\ NULL);\ LineTo(MyHDC,\ c,\ d);\}}}
+\DoxyCodeLine{00527\ \textcolor{preprocessor}{\#define\ ellipse(x,\ y,\ alpha,\ beta,\ xradius,\ yradius)\ Ellipse(MyHDC,\ x-\/xradius,\ y+yradius,\ x+xradius,\ y-\/yradius)}}
+\DoxyCodeLine{00528\ \textcolor{preprocessor}{\#define\ circle(x,y,radius)\ Ellipse(MyHDC,\ x-\/radius,\ y+radius,\ x+radius,\ y-\/radius);}}
+\DoxyCodeLine{00529\ \textcolor{preprocessor}{\#define\ bar(a,b,c,d)\ PatBlt\ (MyHDC,\ a,\ b,\ c,\ d,\ BLACKNESS)}}
+\DoxyCodeLine{00530\ \textcolor{preprocessor}{\#define\ outtextxy(x,y,string)\ TextOut(MyHDC,\ x,\ y,\ string,\ strlen(string))}}
+\DoxyCodeLine{00531\ \textcolor{preprocessor}{\#define\ cleardevice()\ SetBkMode(MyHDC,\ OPAQUE)}}
+\DoxyCodeLine{00532\ }
+\DoxyCodeLine{00533\ \textcolor{preprocessor}{\#define\ getmaxcolor()\ 16}}
+\DoxyCodeLine{00534\ \textcolor{preprocessor}{\#define\ getmaxx()\ MAXX}}
+\DoxyCodeLine{00535\ \textcolor{preprocessor}{\#define\ getmaxy()\ MAXY}}
+\DoxyCodeLine{00536\ }
+\DoxyCodeLine{00537\ \textcolor{preprocessor}{\#define\ graphresult()\ 0}}
+\DoxyCodeLine{00538\ \textcolor{preprocessor}{\#define\ grapherrormsg(a)\ "{}This\ is\ simulation\ of\ the\ dumb\ display"{}}}
+\DoxyCodeLine{00539\ \textcolor{preprocessor}{\#define\ closegraph()\ }}
+\DoxyCodeLine{00540\ \textcolor{preprocessor}{\#define\ fillellipse(x,\ y,\ xradius,\ yradius)}}
+\DoxyCodeLine{00541\ \textcolor{preprocessor}{\#define\ floodfill(a)}}
+\DoxyCodeLine{00542\ \textcolor{preprocessor}{\#define\ getpixel(a,x)\ 1}}
+\DoxyCodeLine{00543\ \textcolor{preprocessor}{\#define\ kbhit()\ 0}}
+\DoxyCodeLine{00544\ \textcolor{preprocessor}{\#define\ getch()\ 0}}
+\DoxyCodeLine{00545\ \textcolor{preprocessor}{\#define\ moveto(a,b)}}
+\DoxyCodeLine{00546\ \textcolor{preprocessor}{\#define\ lineto(a,b)}}
+\DoxyCodeLine{00547\ \textcolor{preprocessor}{\#define\ rectangle(a,b,c,d)}}
+\DoxyCodeLine{00548\ }
+\DoxyCodeLine{00549\ \textcolor{preprocessor}{\#define\ \_setlinestyle(a)}}
+\DoxyCodeLine{00550\ \textcolor{preprocessor}{\#define\ \_grtext(a,b,c)}}
+\DoxyCodeLine{00551\ \textcolor{preprocessor}{\#define\ \_setcharsize(a,b)}}
+\DoxyCodeLine{00552\ }
+\DoxyCodeLine{00553\ \textcolor{comment}{//\#define\ \_CRT\_SECURE\_NO\_DEPRECATE}}
+\DoxyCodeLine{00554\ \textcolor{comment}{//Or\ add\ \_CRT\_SECURE\_NO\_DEPRECATE\ to\ Project\ Properties\ -\/>\ Configuration\ Properties\ -\/>\ C/C++\ -\/>\ Preprocessor\ -\/>\ Preprocessor\ Definitions.}}
+\DoxyCodeLine{00555\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00557\ }
+\DoxyCodeLine{00558\ \textcolor{comment}{//\ math\ functions}}
+\DoxyCodeLine{00559\ \textcolor{preprocessor}{\#define\ tg(x)\ tan(x)}}
+\DoxyCodeLine{00560\ \textcolor{preprocessor}{\#define\ arctg(x)\ atan(x)}}
+\DoxyCodeLine{00561\ \textcolor{preprocessor}{\#define\ th(x)\ tanh(x)}}
+\DoxyCodeLine{00562\ \textcolor{preprocessor}{\#define\ sh(x)\ sinh(x)}}
+\DoxyCodeLine{00563\ }
+\DoxyCodeLine{00564\ \textcolor{preprocessor}{\#ifdef\ \_\_INTEL\_COMPILER}}
+\DoxyCodeLine{00565\ \textcolor{preprocessor}{\#ifdef\ \_\_linux\_\_}}
+\DoxyCodeLine{00566\ \textcolor{preprocessor}{\#\ \ define\ MATHINCLUDE\ "{}mathimf.h"{}}}
+\DoxyCodeLine{00567\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00568\ \textcolor{preprocessor}{\#\ \ define\ MATHINCLUDE\ "{}math.h"{}}}
+\DoxyCodeLine{00569\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00570\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ not\ INTEL}}
+\DoxyCodeLine{00571\ \textcolor{preprocessor}{\#ifdef\ \_\_GNUC\_\_}}
+\DoxyCodeLine{00572\ \textcolor{preprocessor}{\#\ \ define\ MATHINCLUDE\ "{}math.h"{}}}
+\DoxyCodeLine{00573\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00574\ \textcolor{preprocessor}{\#\ \ define\ MATHINCLUDE\ "{}math.h"{}}}
+\DoxyCodeLine{00575\ \textcolor{preprocessor}{\#\ \ define\ erfc(x)\ erfc\_my(x)\ }}
+\DoxyCodeLine{00576\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00577\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00578\ }
+\DoxyCodeLine{00580\ }
+\DoxyCodeLine{00581\ \textcolor{preprocessor}{\#ifndef\ \_OPENMP}}
+\DoxyCodeLine{00582\ \textcolor{preprocessor}{\#\ \ define\ omp\_get\_thread\_num()\ 0}}
+\DoxyCodeLine{00583\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00584\ }
+\DoxyCodeLine{00586\ \textcolor{comment}{//\ define\ isnan()\ in\ old\ versions\ of\ visual\ studio}}
+\DoxyCodeLine{00587\ \textcolor{preprocessor}{\#if\ \_MSC\_VER\ ==\ 1310\ }\textcolor{comment}{//(Visual\ Studio\ 2003)}}
+\DoxyCodeLine{00588\ \textcolor{preprocessor}{\#\ define\ isnan\_not\_defined}}
+\DoxyCodeLine{00589\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00590\ }
+\DoxyCodeLine{00591\ \textcolor{preprocessor}{\#if\ \_MSC\_VER\ ==\ 1800\ }\textcolor{comment}{//\ (Visual\ Studio\ 2013)}}
+\DoxyCodeLine{00592\ \textcolor{preprocessor}{\#\ define\ isnan\_not\_defined}}
+\DoxyCodeLine{00593\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00594\ }
+\DoxyCodeLine{00595\ \textcolor{preprocessor}{\#if\ \_MSC\_VER\ ==\ 1700\ }\textcolor{comment}{//\ (Visual\ Studio\ 2012)}}
+\DoxyCodeLine{00596\ \textcolor{preprocessor}{\#\ define\ isnan\_not\_defined}}
+\DoxyCodeLine{00597\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00598\ }
+\DoxyCodeLine{00599\ \textcolor{preprocessor}{\#if\ \_MSC\_VER\ ==\ 1600\ }\textcolor{comment}{//\ (Visual\ Studio\ 2010)}}
+\DoxyCodeLine{00600\ \textcolor{preprocessor}{\#\ define\ isnan\_not\_defined}}
+\DoxyCodeLine{00601\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00602\ }
+\DoxyCodeLine{00603\ \textcolor{preprocessor}{\#if\ \_MSC\_VER\ ==\ 1500\ }\textcolor{comment}{//\ (Visual\ Studio\ 2008)}}
+\DoxyCodeLine{00604\ \textcolor{preprocessor}{\#\ define\ isnan\_not\_defined}}
+\DoxyCodeLine{00605\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00606\ }
+\DoxyCodeLine{00607\ \textcolor{preprocessor}{\#if\ \_MSC\_VER\ ==\ 1400\ }\textcolor{comment}{//\ (Visual\ Studio\ 2005)}}
+\DoxyCodeLine{00608\ \textcolor{preprocessor}{\#\ define\ isnan\_not\_defined}}
+\DoxyCodeLine{00609\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00610\ }
+\DoxyCodeLine{00611\ \textcolor{preprocessor}{\#ifdef\ \_WIN32}}
+\DoxyCodeLine{00612\ \textcolor{preprocessor}{\#include\ <float.h>}}
+\DoxyCodeLine{00613\ \textcolor{preprocessor}{\#ifdef\ isnan\_not\_defined}}
+\DoxyCodeLine{00614\ \textcolor{preprocessor}{\#\ \ define\ isnan\ \_isnan}}
+\DoxyCodeLine{00615\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00616\ \textcolor{preprocessor}{\#ifdef\ \_MSC\_VER\ }\textcolor{comment}{//\ visual\ studio}}
+\DoxyCodeLine{00617\ \textcolor{comment}{//\#define\ \_CRT\_SECURE\_NO\_WARNINGS}}
+\DoxyCodeLine{00618\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00619\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00620\ }
+\DoxyCodeLine{00621\ }
+\DoxyCodeLine{00622\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

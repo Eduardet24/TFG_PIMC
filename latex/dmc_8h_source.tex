@@ -1,0 +1,42 @@
+\doxysection{dmc.\+h}
+\hypertarget{dmc_8h_source}{}\label{dmc_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*DMC.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_DMC\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_DMC\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#define\ DMC\_LINEAR\_ONE\_SYMMETRIC\_MOVE}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{keywordtype}{void}\ DMCQuadraticMove(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00009\ \textcolor{keywordtype}{void}\ DMCLinearMoveDrift(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00010\ \textcolor{keywordtype}{void}\ DMCLinearMoveGaussian(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00011\ \textcolor{keywordtype}{void}\ DMCLinearMetropolisMove(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00012\ \textcolor{keywordtype}{void}\ DMCQuadraticMetropolisMove(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00013\ \textcolor{keywordtype}{void}\ DMCQuarticMove(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00014\ \textcolor{keywordtype}{void}\ DMCPseudopotentialMove(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00015\ \textcolor{keywordtype}{void}\ DMCLinearMoveOne(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{void}\ GaussianJump(\textcolor{keywordtype}{int}\ w,\ DOUBLE\ dt);}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{void}\ GaussianJumpWalker(\textcolor{keywordtype}{int}\ w,\ DOUBLE\ dt);}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{keywordtype}{void}\ DriftJump(DOUBLE\ dt,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00021\ \textcolor{keywordtype}{void}\ DriftJump1(DOUBLE\ dt,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00022\ \textcolor{keywordtype}{void}\ DriftJump2(DOUBLE\ dt,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \textcolor{keywordtype}{void}\ DriftForce(DOUBLE\ **F,\ DOUBLE\ **R,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{void}\ Branching(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{void}\ BranchingPseudopotential(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{keywordtype}{void}\ CopyVectorToWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}*\ W,\ DOUBLE**\ R,\ \textcolor{keywordtype}{int}\ *spin);}
+\DoxyCodeLine{00030\ \textcolor{keywordtype}{void}\ CopyWalkerToVector(DOUBLE**\ R,\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ W);}
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{void}\ CopyVector(DOUBLE**\ out,\ DOUBLE**\ in);}
+\DoxyCodeLine{00032\ DOUBLE\ EnergyO(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00033\ DOUBLE\ EnergyODMC(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00034\ }
+\DoxyCodeLine{00035\ \textcolor{keywordtype}{void}\ CalculateDriftForceAndKineticEnergyNumerically(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *walker,\ DOUBLE\ *Ekin);}
+\DoxyCodeLine{00036\ \textcolor{keywordtype}{void}\ WalkersSort(\textcolor{keywordtype}{void});\ \textcolor{comment}{//\ put\ all\ walkers\ into\ order:\ ALIVE,\ update\ dead\_walkers\_storage}}
+\DoxyCodeLine{00037\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

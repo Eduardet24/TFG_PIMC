@@ -1,0 +1,135 @@
+\doxysection{speckles.\+h}
+\hypertarget{speckles_8h_source}{}\label{speckles_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*speckles.h*/}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#ifndef\ \_SPECKLES\_H\_}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#define\ \_SPECKLES\_H\_}}
+\DoxyCodeLine{00004\ }
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#define\ N\_POINTS\ 513}}
+\DoxyCodeLine{00006\ \textcolor{comment}{//\#define\ N\_POINTS\ 129}}
+\DoxyCodeLine{00007\ \textcolor{comment}{//\#define\ N\_POINTS\ 257}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#define\ NR\_END\ 1}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#define\ FREE\_ARG\ char*}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{keywordtype}{void}\ SpecklesLoad(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00013\ \textcolor{comment}{//\ usingg\ splines}}
+\DoxyCodeLine{00014\ DOUBLE\ SpecklesEpotSplines(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ Speckle\ potential}}
+\DoxyCodeLine{00015\ DOUBLE\ SpecklesUSplines(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithm\ of\ one-\/body\ w.f.}}
+\DoxyCodeLine{00016\ DOUBLE\ SpecklesFppSplines(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ second\ derivative}}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{void}\ SpecklesFpSplines(DOUBLE\ *Fx,\ DOUBLE\ *Fy,\ DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithmic\ derivative}}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ DOUBLE\ SpecklesEpot9point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ Speckle\ potential}}
+\DoxyCodeLine{00020\ DOUBLE\ SpecklesU9point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithm\ of\ one-\/body\ w.f.}}
+\DoxyCodeLine{00021\ DOUBLE\ SpecklesFpp9point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ second\ derivative}}
+\DoxyCodeLine{00022\ \textcolor{keywordtype}{void}\ SpecklesFp9point(DOUBLE\ *Fx,\ DOUBLE\ *Fy,\ DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithmic\ derivative}}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ DOUBLE\ SpecklesEpot16point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ Speckle\ potential}}
+\DoxyCodeLine{00025\ DOUBLE\ SpecklesU16point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithm\ of\ one-\/body\ w.f.}}
+\DoxyCodeLine{00026\ DOUBLE\ SpecklesFpp16point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ second\ derivative}}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{void}\ SpecklesFp16point(DOUBLE\ *Fx,\ DOUBLE\ *Fy,\ DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithmic\ derivative}}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ DOUBLE\ SpecklesEpot16pointContinuous(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ Speckle\ potential}}
+\DoxyCodeLine{00030\ DOUBLE\ SpecklesU16pointContinuous(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithm\ of\ one-\/body\ w.f.}}
+\DoxyCodeLine{00031\ DOUBLE\ SpecklesFpp16pointContinuous(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ second\ derivative}}
+\DoxyCodeLine{00032\ \textcolor{keywordtype}{void}\ SpecklesFp16pointContinuous(DOUBLE\ *Fx,\ DOUBLE\ *Fy,\ DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithmic\ derivative}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keywordtype}{void}\ SpecklesInitialize4(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00035\ DOUBLE\ SpecklesEpot4point(DOUBLE\ x,\ DOUBLE\ y);}
+\DoxyCodeLine{00036\ DOUBLE\ SpecklesU4point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithm\ of\ one-\/body\ w.f.}}
+\DoxyCodeLine{00037\ DOUBLE\ SpecklesFpp4point(DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ second\ derivative}}
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{void}\ SpecklesFp4point(DOUBLE\ *Fx,\ DOUBLE\ *Fy,\ DOUBLE\ x1,\ DOUBLE\ x2);\ \textcolor{comment}{//\ logarithmic\ derivative}}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ DOUBLE\ *vector(\textcolor{keywordtype}{long}\ nl,\ \textcolor{keywordtype}{long}\ nh);\ \textcolor{comment}{//arrays.c}}
+\DoxyCodeLine{00041\ \textcolor{keywordtype}{void}\ free\_vector(DOUBLE\ *v,\ \textcolor{keywordtype}{long}\ nl,\ \textcolor{keywordtype}{long}\ nh);\ \textcolor{comment}{//arrays.c}}
+\DoxyCodeLine{00042\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{structspline}{spline}}(DOUBLE\ x[],\ DOUBLE\ y[],\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ yp1,\ DOUBLE\ ypn,\ DOUBLE\ y2[]);}
+\DoxyCodeLine{00043\ \textcolor{keywordtype}{void}\ splie2(DOUBLE\ x1a[],\ DOUBLE\ x2a[],\ DOUBLE\ **ya,\ \textcolor{keywordtype}{int}\ m,\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ **y2a);}
+\DoxyCodeLine{00044\ \textcolor{keywordtype}{void}\ splie2x1(DOUBLE\ x1a[],\ DOUBLE\ x2a[],\ DOUBLE\ **ya,\ \textcolor{keywordtype}{int}\ m,\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ **y2a);}
+\DoxyCodeLine{00045\ \textcolor{keywordtype}{void}\ splint(DOUBLE\ xa[],\ DOUBLE\ ya[],\ DOUBLE\ y2a[],\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ x,\ DOUBLE\ *y);}
+\DoxyCodeLine{00046\ \textcolor{keywordtype}{void}\ splin2(DOUBLE\ x1a[],\ DOUBLE\ x2a[],\ DOUBLE\ **ya,\ DOUBLE\ **y2a,\ \textcolor{keywordtype}{int}\ m,\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ x1,\ DOUBLE\ x2,\ DOUBLE\ *y);}
+\DoxyCodeLine{00047\ \textcolor{keywordtype}{void}\ nrerror(\textcolor{keywordtype}{char}\ error\_text[]);}
+\DoxyCodeLine{00048\ \textcolor{keywordtype}{void}\ splder1(DOUBLE\ xa[],\ DOUBLE\ ya[],\ DOUBLE\ y2a[],\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ x,\ DOUBLE\ *y1);}
+\DoxyCodeLine{00049\ \textcolor{keywordtype}{void}\ splder2(DOUBLE\ xa[],\ DOUBLE\ ya[],\ DOUBLE\ y2a[],\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ x,\ DOUBLE\ *y2);}
+\DoxyCodeLine{00050\ \textcolor{keywordtype}{void}\ nrerror(\textcolor{keywordtype}{char}\ error\_text[]);}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ DOUBLE\ **matrix(\textcolor{keywordtype}{long}\ nrl,\ \textcolor{keywordtype}{long}\ nrh,\ \textcolor{keywordtype}{long}\ ncl,\ \textcolor{keywordtype}{long}\ nch);}
+\DoxyCodeLine{00053\ DOUBLE\ *vector(\textcolor{keywordtype}{long}\ nl,\ \textcolor{keywordtype}{long}\ nh);}
+\DoxyCodeLine{00054\ \textcolor{keywordtype}{void}\ free\_vector(DOUBLE\ *v,\ \textcolor{keywordtype}{long}\ nl,\ \textcolor{keywordtype}{long}\ nh);}
+\DoxyCodeLine{00055\ DOUBLE\ ***f3tensor(\textcolor{keywordtype}{long}\ nrl,\ \textcolor{keywordtype}{long}\ nrh,\ \textcolor{keywordtype}{long}\ ncl,\ \textcolor{keywordtype}{long}\ nch,\ \textcolor{keywordtype}{long}\ ndl,\ \textcolor{keywordtype}{long}\ ndh);}
+\DoxyCodeLine{00056\ \textcolor{keywordtype}{void}\ splin2x1(DOUBLE\ x1a[],\ DOUBLE\ x2a[],\ DOUBLE\ **ya,\ DOUBLE\ **y2ax2,\ \textcolor{keywordtype}{int}\ m,\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ x1,\ DOUBLE\ x2,\ DOUBLE\ *y,\ DOUBLE\ *d11y,\ DOUBLE\ *d12y);}
+\DoxyCodeLine{00057\ \textcolor{keywordtype}{void}\ splintlong(DOUBLE\ xa[],\ DOUBLE\ ya[],\ DOUBLE\ y2a[],\ \textcolor{keywordtype}{int}\ n,\ DOUBLE\ x,\ DOUBLE\ *y,\ DOUBLE\ *d1y,\ DOUBLE\ *d2y);}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \textcolor{preprocessor}{\#ifdef\ SPLINES\_2D}}
+\DoxyCodeLine{00060\ \textcolor{preprocessor}{\#\ \ define\ SpecklesEpot\ SpecklesEpotSplines}}
+\DoxyCodeLine{00061\ \textcolor{preprocessor}{\#\ \ define\ SpecklesU\ SpecklesUSplines}}
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\#\ \ define\ SpecklesF\ SpecklesFSplines}}
+\DoxyCodeLine{00063\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFp\ SpecklesFpSplines}}
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFpp\ SpecklesFppSplines}}
+\DoxyCodeLine{00065\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \textcolor{preprocessor}{\#ifdef\ POINT9}}
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#\ \ define\ SpecklesEpot\ SpecklesEpot9point}}
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\#\ \ define\ SpecklesU\ SpecklesU9point}}
+\DoxyCodeLine{00070\ \textcolor{preprocessor}{\#\ \ define\ SpecklesF\ SpecklesF9point}}
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFp\ SpecklesFp9point}}
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFpp\ SpecklesFpp9point}}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \textcolor{preprocessor}{\#ifdef\ POINT16}}
+\DoxyCodeLine{00076\ \textcolor{preprocessor}{\#\ \ define\ SpecklesEpot\ SpecklesEpot16point}}
+\DoxyCodeLine{00077\ \textcolor{preprocessor}{\#\ \ define\ SpecklesU\ SpecklesU16point}}
+\DoxyCodeLine{00078\ \textcolor{preprocessor}{\#\ \ define\ SpecklesF\ SpecklesF16point}}
+\DoxyCodeLine{00079\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFp\ SpecklesFp16point}}
+\DoxyCodeLine{00080\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFpp\ SpecklesFpp16point}}
+\DoxyCodeLine{00081\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ \textcolor{preprocessor}{\#ifdef\ POINT16CONTINUOUS}}
+\DoxyCodeLine{00084\ \textcolor{preprocessor}{\#\ \ define\ SpecklesEpot\ SpecklesEpot16pointContinuous}}
+\DoxyCodeLine{00085\ \textcolor{preprocessor}{\#\ \ define\ SpecklesU\ SpecklesU16pointContinuous}}
+\DoxyCodeLine{00086\ \textcolor{preprocessor}{\#\ \ define\ SpecklesF\ SpecklesF16pointContinuous}}
+\DoxyCodeLine{00087\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFp\ SpecklesFp16pointContinuous}}
+\DoxyCodeLine{00088\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFpp\ SpecklesFpp16pointContinuous}}
+\DoxyCodeLine{00089\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \textcolor{preprocessor}{\#ifdef\ POINT4}}
+\DoxyCodeLine{00092\ \textcolor{preprocessor}{\#\ \ define\ SpecklesEpot\ SpecklesEpot4point}}
+\DoxyCodeLine{00093\ \textcolor{preprocessor}{\#\ \ define\ SpecklesU\ SpecklesU4point}}
+\DoxyCodeLine{00094\ \textcolor{preprocessor}{\#\ \ define\ SpecklesF\ SpecklesF4point}}
+\DoxyCodeLine{00095\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFp\ SpecklesFp4point}}
+\DoxyCodeLine{00096\ \textcolor{preprocessor}{\#\ \ define\ SpecklesFpp\ SpecklesFpp4point}}
+\DoxyCodeLine{00097\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00098\ }
+\DoxyCodeLine{00099\ \textcolor{preprocessor}{\#ifdef\ POINT4}}
+\DoxyCodeLine{00100\ \textcolor{keyword}{extern}\ DOUBLE\ v[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00101\ \textcolor{keyword}{extern}\ DOUBLE\ vx[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00102\ \textcolor{keyword}{extern}\ DOUBLE\ vy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00103\ \textcolor{keyword}{extern}\ DOUBLE\ vxx[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00104\ \textcolor{keyword}{extern}\ DOUBLE\ vxy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00105\ \textcolor{keyword}{extern}\ DOUBLE\ vyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00106\ \textcolor{keyword}{extern}\ DOUBLE\ vxxx[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00107\ \textcolor{keyword}{extern}\ DOUBLE\ vxxy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00108\ \textcolor{keyword}{extern}\ DOUBLE\ vxyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00109\ \textcolor{keyword}{extern}\ DOUBLE\ vyyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00110\ \textcolor{keyword}{extern}\ DOUBLE\ vxxxy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00111\ \textcolor{keyword}{extern}\ DOUBLE\ vxyyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00112\ }
+\DoxyCodeLine{00113\ \textcolor{keyword}{extern}\ DOUBLE\ w[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00114\ \textcolor{keyword}{extern}\ DOUBLE\ wx[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00115\ \textcolor{keyword}{extern}\ DOUBLE\ wy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00116\ \textcolor{keyword}{extern}\ DOUBLE\ wxx[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00117\ \textcolor{keyword}{extern}\ DOUBLE\ wxy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00118\ \textcolor{keyword}{extern}\ DOUBLE\ wyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00119\ \textcolor{keyword}{extern}\ DOUBLE\ wxxx[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00120\ \textcolor{keyword}{extern}\ DOUBLE\ wxxy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00121\ \textcolor{keyword}{extern}\ DOUBLE\ wxyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00122\ \textcolor{keyword}{extern}\ DOUBLE\ wyyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00123\ \textcolor{keyword}{extern}\ DOUBLE\ wxxxy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00124\ \textcolor{keyword}{extern}\ DOUBLE\ wxyyy[N\_POINTS][N\_POINTS];}
+\DoxyCodeLine{00125\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00126\ \textcolor{keyword}{extern}\ DOUBLE\ **v,**vx,**vy,**vxx,**vxy,**vyy,**vxxx,**vxxy,**vxyy,**vyyy,**vxxxy,**vxyyy;}
+\DoxyCodeLine{00127\ \textcolor{keyword}{extern}\ DOUBLE\ **w,**wx,**wy,**wxx,**wxy,**wyy,**wxxx,**wxxy,**wxyy,**wyyy,**wxxxy,**wxyyy;}
+\DoxyCodeLine{00128\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00129\ }
+\DoxyCodeLine{00130\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

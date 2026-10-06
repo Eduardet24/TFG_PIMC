@@ -1,0 +1,1304 @@
+\doxysection{main.\+h}
+\hypertarget{main_8h_source}{}\label{main_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ \_\_MAIN\_H\_}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ \_\_MAIN\_H\_}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ SRC\_CODE\_DATE\ "{}Monte\ Carlo\ for\ bosons.\ Source\ code\ of\ 23/IX/2026\(\backslash\)n\(\backslash\)n"{}}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{comment}{/*\ define\ SECURE\ to\ enable\ all\ self-\/consistent\ checks\ */}}
+\DoxyCodeLine{00007\ \textcolor{comment}{//\#define\ SECURE}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{comment}{//\#define\ MPI\ //\ define\ MPI\ for\ parallel\ computations}}
+\DoxyCodeLine{00010\ \textcolor{comment}{//\#define\ NPARTICLES\ 10\ //\ in\ parallel\ or\ static\ case\ N\ must\ be\ specified\ explicitly}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ OPENMP\_MAX\_NPROC\ 272\ }\textcolor{comment}{//\ 2048\ maximal\ number\ of\ nodes\ which\ can\ be\ used\ in\ Open\ MP;\ compile\ with\ /openmp\ option}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{comment}{//\#define\ DATATYPE\_FLOAT}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#define\ DATATYPE\_DOUBLE}}
+\DoxyCodeLine{00015\ \textcolor{comment}{//\#define\ DATATYPE\_LONG\_DOUBLE}}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#define\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00018\ \textcolor{comment}{//\#define\ IMAGES\_IF\_IF}}
+\DoxyCodeLine{00019\ \textcolor{comment}{//\#define\ IMAGES\_ABS\_IF}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{comment}{//\#define\ CALCULATE\_DERIVATIVES\_NUMERICALLY\ //\ only\ log\ of\ w.f.\ is\ needed}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{comment}{//\#define\ MEMORY\_CONTIGUOUS\ //\ use\ static\ allocation\ for\ walkers,\ otherwise\ dynamic\ array}}
+\DoxyCodeLine{00024\ \textcolor{comment}{//\#define\ BRANCHING\_ALWAYS\_STABLE\ //\ force\ branching\ that\ cannot\ collapse}}
+\DoxyCodeLine{00025\ \textcolor{comment}{//\#define\ BRANCHING\_FIXED\_NUMBER\_OF\_WALKERS}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#define\ MEASURE\_CORRELATION\_FUNCTIONS\_IN\_THE\_MIDDLE\_OF\_DRIFT}}
+\DoxyCodeLine{00027\ \textcolor{comment}{//\#define\ MEASURE\_CORRELATION\_FUNCTIONS\_AT\_THE\_END\_OF\_DRIFT}}
+\DoxyCodeLine{00028\ \textcolor{comment}{//\#define\ MEASURE\_PURE\_OBDM\ //\ add\ virtual\ walkers\ for\ pure\ OBDM\ or\ pure\ nk\ measurements}}
+\DoxyCodeLine{00029\ \textcolor{comment}{//\#define\ MEASURE\_PURE\_TBDM\ //\ add\ virtual\ walkers\ for\ pure\ OBDM\ or\ pure\ nk\ measurements}}
+\DoxyCodeLine{00030\ \textcolor{comment}{//\#define\ MEASURE\_ENERGY\_FROM\_GROWTH\_ESTIMATOR\ //\ additional\ energy\ estimator\ for\ DMC\ algorithm}}
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#define\ MEASURE\_FORM\_FACTOR\_FOR\_SUM\_RULES}}
+\DoxyCodeLine{00032\ \textcolor{comment}{//\#define\ DO\_NOT\_CALCULATE\_ENERGY\_AND\_U\ //\ use\ for\ VMC\ for\ the\ calculation\ of\ the\ correlation\ functions\ only}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{comment}{/*\ define\ ONLY\ ONE\ type\ of\ the\ interaction\ potential\ (which\ is\ not\ included\ in\ Eloc!)*/}}
+\DoxyCodeLine{00035\ \textcolor{comment}{//\#define\ HARD\_SPHERE\ //\ Check\ |r|>a\ condition,\ can\ be\ avoided\ if\ w.f.\ is\ very\ small\ for\ |r|<a\ }}
+\DoxyCodeLine{00036\ \textcolor{comment}{//\#define\ HARD\_SPHERE\_KILL\_OVERLAPPED\ //\ DMC\ chose\ to\ kill\ or\ rethrow\ an\ overlapping\ walker}}
+\DoxyCodeLine{00037\ \textcolor{comment}{//\#define\ HARD\_SPHERE\_HYPERRADIUS\ //\ kill\ all\ walkers\ with\ r3<R3,\ is\ implemented\ for\ VMC\ Move\ All,\ DMC\ quadratic}}
+\DoxyCodeLine{00038\ \textcolor{comment}{//\#define\ KURBAKOV\_SOFT\_CORE\ //\ U(r)+=(a/r)\string^100*(100*exp(-\/gammaE)/r)\string^2\ //\ Kurbakov\ 9-\/CORE}}
+\DoxyCodeLine{00039\ \textcolor{comment}{//\#define\ HARD\_SPHERE\_EXCLUDED\_VOLUME\_CHANGE\_OF\_VARIABLES\ //\ use\ Girardeau's\ trick\ for\ simulation\ of\ hard\ rods\ (VMC\ MoveAll)\ works\ with\ TRIAL\_TONKS\_SIMPLE\ and\ ONE\_BODY\_TRIAL\_ZBC}}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \textcolor{comment}{//\#define\ SPINFULL\ //\ define\ if\ multiple\ components\ are\ used}}
+\DoxyCodeLine{00042\ \textcolor{comment}{//\#define\ SPINFULL\_TUNNELING\ //\ allow\ spins\ to\ tunnel}}
+\DoxyCodeLine{00043\ \textcolor{comment}{//\#define\ SPINFULL\_GENERATE\_COORDENATES\_IN\_CHAIN\ }}
+\DoxyCodeLine{00044\ \textcolor{comment}{//\#define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00045\ \textcolor{comment}{//\#define\ OBDM\_ANYONS}}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \textcolor{preprocessor}{\#define\ INTERACTION\_ABSENT}}
+\DoxyCodeLine{00048\ \textcolor{comment}{//\#define\ INTERACTION\_Aziz\ //\ uses\ energy\_unit\ inside\ InteractionEnergy\ call,\ to\ have\ [K]\ as\ local\ energy\ unit}}
+\DoxyCodeLine{00049\ \textcolor{comment}{//\#define\ INTERACTION\_HYDROGEN\ //\ uses\ energy\_unit\ inside\ InteractionEnergy\ call,\ to\ have\ [K]\ as\ local\ energy\ unit}}
+\DoxyCodeLine{00050\ \textcolor{comment}{//\#define\ INTERACTION\_YUKAWA}}
+\DoxyCodeLine{00051\ \textcolor{comment}{//\#define\ INTERACTION\_LENNARD\_JONES}}
+\DoxyCodeLine{00052\ \textcolor{comment}{//\#define\ INTERACTION\_LENNARD\_JONES10}}
+\DoxyCodeLine{00053\ \textcolor{comment}{//\#define\ INTERACTION\_SUTHERLAND}}
+\DoxyCodeLine{00054\ \textcolor{comment}{//\#define\ INTERACTION\_CALOGERO\ //\ 1D:\ D(D-\/1)\ /\ r\string^2,\ 2D:\ D\ /\ r\string^2,\ 3D:\ D(D+1)\ /\ r\string^2}}
+\DoxyCodeLine{00055\ \textcolor{comment}{//\#define\ INTERACTION\_K0}}
+\DoxyCodeLine{00056\ \textcolor{comment}{//\#define\ INTERACTION\_PETROV}}
+\DoxyCodeLine{00057\ \textcolor{comment}{//\#define\ INTERACTION\_PETROV3D}}
+\DoxyCodeLine{00058\ \textcolor{comment}{//\#define\ INTERACTION\_COULOMB\_1D\ //\ -\/\ (digamma(r/L)\ +\ digamma(1.-\/r/L))\ /\ L}}
+\DoxyCodeLine{00059\ \textcolor{comment}{//\#define\ INTERACTION\_LINEAR\_1D\_COULOMB\ //\ r/a;}}
+\DoxyCodeLine{00060\ \textcolor{comment}{//\#define\ INTERACTION\_WITH\_DAMPING\ //\ Imaginary\ part\ of\ interaction\ potential\ is\ treated\ as\ a\ perturbation}}
+\DoxyCodeLine{00061\ \textcolor{comment}{//\#define\ INTERACTION\_ROTON}}
+\DoxyCodeLine{00062\ \textcolor{comment}{//\#define\ INTERACTION\_SOFT\_SPHERE\ //\ Vo,\ Ro}}
+\DoxyCodeLine{00063\ \textcolor{comment}{//\#define\ INTERACTION\_SQUARE\_WELL\ //\ of\ size\ RoSW}}
+\DoxyCodeLine{00064\ \textcolor{comment}{//\#define\ INTERACTION\_HARD\_SPHERE\_SQUARE\_WELL\ //\ hard\ sphere\ size\ (a),\ Ro,\ square\ well\ size\ (depth\ Vo),\ Apar\ -\/\ scattering\ length}}
+\DoxyCodeLine{00065\ \textcolor{comment}{//\#define\ INTERACTION\_GAUSSIAN\ //\ a*exp(-\/b*r*r)}}
+\DoxyCodeLine{00066\ \textcolor{comment}{//\#define\ INTERACTION\_KURBAKOV\ //}}
+\DoxyCodeLine{00067\ \textcolor{comment}{//\#define\ INTERACTION\_KURBAKOV\_GENERAL\ //\ uses\ D,\ Apar,\ Ipar}}
+\DoxyCodeLine{00068\ \textcolor{comment}{//\#define\ INTERACTION\_DOUBLE\_GAUSSIAN\ //\ -\/gaussian\_alpha*exp(-\/0.5*r*r)\ -\/\ gaussian\_beta*exp(-\/0.25*r*r)}}
+\DoxyCodeLine{00069\ \textcolor{comment}{//\#define\ INTERACTION\_LOGARITHMIC}}
+\DoxyCodeLine{00070\ \textcolor{comment}{//\#define\ INTERACTION\_POWER\ //\ D/r\string^Apar,\ Apar>2}}
+\DoxyCodeLine{00071\ \textcolor{comment}{//\#define\ INTERACTION\_COULOMB\ //\ 1/r}}
+\DoxyCodeLine{00072\ \textcolor{comment}{//\#define\ INTERACTION\_R2\ //\ 1/r\string^2}}
+\DoxyCodeLine{00073\ \textcolor{comment}{//\#define\ INTERACTION\_DIPOLE\ //\ D/r\string^3}}
+\DoxyCodeLine{00074\ \textcolor{comment}{//\#define\ INTERACTION\_QUADRUPOLE\ \ //\ 1/r\string^5}}
+\DoxyCodeLine{00075\ \textcolor{comment}{//\#define\ INTERACTION\_SPINFULL\_DIPOLE\_BILAYER}}
+\DoxyCodeLine{00076\ \textcolor{comment}{//\#define\ INTERACTION\_SPINFULL\_DIPOLE\_MULTILAYER}}
+\DoxyCodeLine{00077\ \textcolor{comment}{//\#define\ INTERACTION\_SPINFULL\_GAUSSIAN\ //\ exp(-\/x\string^2\ /\ 2)}}
+\DoxyCodeLine{00078\ \textcolor{comment}{//\#define\ INTERACTION\_SPINFULL\_GAUSSIANS\_3COMPONENT\ //\ strength\ a11,a12,a22\ exp(-\/x\string^2)}}
+\DoxyCodeLine{00079\ \textcolor{comment}{//\#define\ INTERACTION\_SPINFULL\_DOUBLE\_GAUSSIAN}}
+\DoxyCodeLine{00080\ \textcolor{comment}{//\#define\ INTERACTION\_DIPOLE\_TRUNCATED}}
+\DoxyCodeLine{00081\ \textcolor{comment}{//\#define\ INTERACTION\_DIPOLE\_SCREENED\ //\ 1/(r\string^3+a\string^3)}}
+\DoxyCodeLine{00082\ \textcolor{comment}{//\#define\ INTERACTION\_R4\ //\ 1/r\string^4}}
+\DoxyCodeLine{00083\ \textcolor{comment}{//\#define\ INTERACTION\_RYDBERG\ //\ 1/r\string^6}}
+\DoxyCodeLine{00084\ \textcolor{comment}{//\#define\ INTERACTION\_RYDBERG\_TRUNCATED}}
+\DoxyCodeLine{00085\ \textcolor{comment}{//\#define\ INTERACTION\_RYDBERG\_SCREENED\ //\ 1/(r\string^6+a\string^6)}}
+\DoxyCodeLine{00086\ \textcolor{comment}{//\#define\ INTERACTION\_RYDBERG\_WITH\_DELTA\ //-\/1/2+sqrt(C6/r\string^6+1/2);}}
+\DoxyCodeLine{00087\ \textcolor{comment}{//\#define\ INTERACTION\_R12\ //\ 1/r\string^12}}
+\DoxyCodeLine{00088\ \textcolor{comment}{//\#define\ INTERACTION\_Q1D\_DIPOLES\ //\ D*(-\/2\ x\ +\ sqrt(2*pi)\ (1\ +\ x\string^2)\ Erfcx(x/sqrt(2)))}}
+\DoxyCodeLine{00089\ \textcolor{comment}{//\#define\ INTERACTION\_SOFT\_SPHERE\_HYPERRADIUS\ //\ all\ walkers\ with\ r3<R3\ get\ energy\ +1}}
+\DoxyCodeLine{00090\ \textcolor{comment}{//\#define\ INTERACTION\_CH2\ //\ -\/Epar/ch\string^2(r),\ modified\ Poschl\ Teller\ potential,\ Epar=2\ corresponds\ to\ unitarity}}
+\DoxyCodeLine{00091\ \textcolor{comment}{//\#define\ INTERACTION\_GAPPED}}
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00093\ \textcolor{comment}{//\#define\ INTERACTION\_SUM\_OVER\_IMAGES\ //\ enable\ to\ sum\ up\ to\ convergence\ all\ PBC\ images,\ sums\ up\ to\ sum\_over\_images\_cut\_off\_num}}
+\DoxyCodeLine{00094\ \textcolor{comment}{//\#define\ INTERACTION\_EWALD\ //\ enable\ to\ use\ Ewald\ summation}}
+\DoxyCodeLine{00095\ \textcolor{comment}{//\#define\ INTERACTION\_SUM\_OVER\_IMAGES\_SMOOTH\_CUTOFF}}
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \textcolor{comment}{//\#define\ SCALABLE\ //\ define\ for\ duplicating\ the\ system\ Nc\ times\ in\ all\ directions}}
+\DoxyCodeLine{00098\ \textcolor{comment}{//\#define\ SCALABLE\_POTENTIAL\ \ \ \ \ //\ define\ for\ truncation\ of\ the\ potential}}
+\DoxyCodeLine{00099\ \textcolor{comment}{//\#define\ SCALE\_VMC\_AMPLITUDE\_WITH\_ALPHA\ //\ VMC\ displacement\ amplitude\ will\ be\ scaled\ by\ 1/sqrt(alpha\_Rx,\ alpha\_Ry,\ alpha\_Rz)}}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00101\ \textcolor{comment}{//\ put\ w.f.\ on\ a\ grid\ for\ a\ better\ performance\ (define\ to\ enable)}}
+\DoxyCodeLine{00102\ \textcolor{comment}{//s\#define\ LOAD\_WF\_FROM\_FILE}}
+\DoxyCodeLine{00103\ \textcolor{comment}{//\#define\ SAMPLE\_WF\ //\ resample\ w.f.\ to\ grid\ for\ a\ better\ performance}}
+\DoxyCodeLine{00104\ }
+\DoxyCodeLine{00105\ \textcolor{comment}{//\#define\ INTERPOLATE\_SPLINE\_JASTROW\_WF\ //\ spline\ interpolation,\ in\ case\ of\ HS\ set\ 0\ to\ 1e-\/15}}
+\DoxyCodeLine{00106\ \textcolor{comment}{//\#define\ INTERPOLATE\_LOG\ //\ use\ ln\ f(r)\ rather\ than\ f(r)}}
+\DoxyCodeLine{00107\ \textcolor{comment}{//\#define\ INTERPOLATE\_LOG\_ONE\_BODY\ //\ use\ ln\ f1(r)\ for\ interpolation\ rather\ than\ f1(r)\ (always\ enable\ for\ speckles)}}
+\DoxyCodeLine{00108\ \textcolor{comment}{//\#define\ INTERPOLATE\_LINEAR\_JASTROW\_WF\ //\ linear\ interpolation}}
+\DoxyCodeLine{00109\ }
+\DoxyCodeLine{00110\ \textcolor{comment}{//\#define\ SYMMETRIZE\_TRIAL\_WF\ //\ enable\ to\ use\ u(r)\ -\/>\ u(r)+u(L-\/r)}}
+\DoxyCodeLine{00111\ \textcolor{comment}{//\#define\ POWER\_TRIAL\_WF\ //\ enable\ to\ use\ u(r)\ -\/>\ alpha\_Jastrow\ u(r)\ (not\ compatible\ with\ SYMMETRIZE)}}
+\DoxyCodeLine{00112\ }
+\DoxyCodeLine{00113\ \textcolor{comment}{/*\ define\ ONLY\ ONE\ type\ of\ the\ trial\ wave\ function*/}}
+\DoxyCodeLine{00114\ \textcolor{preprocessor}{\#define\ \ TRIAL\_ABSENT11\ }\textcolor{comment}{//\ Ideal\ Bose\ gas}}
+\DoxyCodeLine{00115\ \textcolor{preprocessor}{\#define\ \ TRIAL\_ABSENT12\ }\textcolor{comment}{//\ Ideal\ Bose\ gas}}
+\DoxyCodeLine{00116\ \textcolor{preprocessor}{\#define\ \ TRIAL\_ABSENT22\ }\textcolor{comment}{//\ Ideal\ Bose\ gas}}
+\DoxyCodeLine{00117\ \textcolor{comment}{//\#define\ \ TRIAL22\_SAME\_AS\_11\ //\ if\ 22\ is\ not\ implemented,\ take\ it\ as\ a\ copy\ of\ 11}}
+\DoxyCodeLine{00118\ \textcolor{comment}{//\#define\ \ TRIAL12\_SAME\_AS\_11\ //\ if\ 22\ is\ not\ implemented,\ take\ it\ as\ a\ copy\ of\ 11}}
+\DoxyCodeLine{00119\ \textcolor{comment}{//\#define\ \ TRIAL11\_SAME\_AS\_12\ //\ if\ 11\ is\ not\ implemented,\ take\ it\ as\ a\ copy\ of\ 12}}
+\DoxyCodeLine{00120\ \textcolor{comment}{//\#define\ \ TRIAL22\_SAME\_AS\_12\ //\ if\ 22\ is\ not\ implemented,\ take\ it\ as\ a\ copy\ of\ 12}}
+\DoxyCodeLine{00121\ \textcolor{comment}{//\#define\ \ TRIAL\_EXTERNAL\ /*\ Load\ trial\ wave\ function\ from\ 'wf.in',\ 'wfpar.in'\ files*/}}
+\DoxyCodeLine{00122\ \textcolor{comment}{//\#define\ \ TRIAL\_TWO\_BODY\_SCATTERING\_NUMERICAL\ //\ find\ two\ body\ scattering\ solution\ and\ interpolate\ it\ with\ a\ spline}}
+\DoxyCodeLine{00123\ \textcolor{comment}{//\#define\ \ TRIAL\_TWO\_BODY\_SCATTERING\_NUMERICAL\_SPINFULL\ //\ same\ as\ before\ (max\ distance\ Rpar12)\ for\ 11,12,22,\ etc,\ define\ SPINFULL}}
+\DoxyCodeLine{00124\ \textcolor{comment}{//\#define\ \ TRIAL\_KURBAKOV\_NUMERIC\ \ //\ uses\ 0<Rpar<1\ matching\ distance,\ Epar\ scattering\ energy,\ Dpar\ effective\ dimensionality,\ Mpar\ effective\ mass,\ a<0\ scattering\ length\ or\ a>0\ hard\ core\ diameter,\ Kurbakov\_BC}}
+\DoxyCodeLine{00125\ }
+\DoxyCodeLine{00126\ \textcolor{comment}{//\#define\ \ JASTROW\_RIGHT\_BOUNDARY\_BOUND\_STATE\ //\ use\ bound\ state\ (spinless\ case)}}
+\DoxyCodeLine{00127\ \textcolor{comment}{//\#define\ \ JASTROW\_RIGHT\_BOUNDARY\_SPINFULL\_SAME\_SPIN\_BOUND\_STATE\ //\ use\ bound\ state\ asymptotics\ for\ same\ spin}}
+\DoxyCodeLine{00128\ \textcolor{comment}{//\#define\ \ JASTROW\_RIGHT\_BOUNDARY\_SPINFULL\_DIFFERENT\_SPIN\_BOUND\_STATE\ //\ use\ bound\ state\ asymptotics\ for\ different\ spin}}
+\DoxyCodeLine{00129\ \textcolor{comment}{//\#define\ \ JASTROW\_RIGHT\_BOUNDARY\_CONSTANT}}
+\DoxyCodeLine{00130\ \textcolor{comment}{//\#define\ \ JASTROW\_RIGHT\_BOUNDARY\_PHONONS\ //\ (2D,3D)\ Rpar,\ Apar\ }}
+\DoxyCodeLine{00131\ \textcolor{comment}{//\#define\ \ JASTROW\_LEFT\_BOUNDARY\_ZERO\ //\ f(0)\ =\ 0\ }}
+\DoxyCodeLine{00132\ \textcolor{comment}{//\#define\ \ JASTROW\_LEFT\_BOUNDARY\_U\_MINUS\_INF\_ZERO//\ u(t-\/>-\/inf)/dt\ =\ 0,\ f(r)\ =\ sinh\ u\ (asinh\ (ln\ (r)))}}
+\DoxyCodeLine{00133\ \textcolor{comment}{//\#define\ \ JASTROW\_LEFT\_BOUNDARY\_ZERO\_DERIVATIVE\ //\ f'(0)\ =\ 0}}
+\DoxyCodeLine{00134\ \textcolor{comment}{//\#define\ \ JASTROW\_LEFT\_BOUNDARY\_PSEUDOPOTENTIAL\ //\ (1D)\ f'(0)/f(0)\ =\ -\/1/a}}
+\DoxyCodeLine{00135\ }
+\DoxyCodeLine{00136\ \textcolor{comment}{//\#define\ \ JASTROW\_DIMENSIONALITY\_FROM\_DPAR\ //\ use\ Dpar\ parameter\ instead\ of\ D=1,2,3}}
+\DoxyCodeLine{00137\ \textcolor{comment}{//\#define\ \ JASTROW\_EFFECTIVE\_REPULSIVE\_INTERACTION\_FROM\_R0PAR\ //solve\ two-\/body\ problem\ spin1=spin2\ with\ R0PAR/r\string^3\ instead\ of\ 1/r\string^3}}
+\DoxyCodeLine{00138\ \textcolor{comment}{//\#define\ \ TRIAL\_TWO\_BODY\_SCATTERING\_PHONONS\_NUMERICAL\ //\ find\ two\ body\ scattering\ solution\ with\ (2D)\ exp(-\/Apar11*(1./r+1./(L-\/r))],\ r>Rpar11}}
+\DoxyCodeLine{00139\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_PHONON\_FINITE\_D\ /*\ (2D)\ Ko(2sqrt(D/r)),\ r<Rpar,\ exp\{-\/Apar*(1./r+1./(Lwf-\/r))\},\ r>Rpar\ */}}
+\DoxyCodeLine{00140\ \textcolor{comment}{//\#define\ \ TRIAL\_SCHIFF\_VERLET\_TRAP\ /*use\ SYMMETRIZE\_TRIAL\_WF\ for\ PBC\ (1D-\/3D):(1D)\ exp(-\/(Apar/(n|z|))\string^Bpar)\ (2D,\ hom)\ exp\{-\/[Apar/(r/L)]\string^Bpar\}\ (3D)\ exp(-\/Apar/r\string^Bpar)*/}}
+\DoxyCodeLine{00141\ \textcolor{comment}{//\#define\ \ TRIAL\_SCHIFF\_VERLET\_TRAP\_PHONON2D\ /*use\ SYMMETRIZE\_TRIAL\_WF\ for\ PBC\ (2D)\ exp\{-\/[Apar/(r/L)]\string^Bpar\ -\/\ Cpar*(1/r+1/(L-\/r))\}*/}}
+\DoxyCodeLine{00142\ \textcolor{comment}{//\#define\ \ TRIAL\_SCHIFF\_VERLET\_PHONON\ /*\ (1D-\/3D):(1D)\ exp(-\/(Apar/(n|z|))\string^Bpar)\ (2D,\ hom)\ exp\{-\/(Apar/r)\string^Bpar\}\ (e\string^-\/Cr+e\string^-\/C(r-\/L))\ (3D)\ exp(-\/Apar/r\string^Bpar),\ r<Rpar\ Lhalf,\ phonons\ otherwise*/}}
+\DoxyCodeLine{00143\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLES\_PHONON\ /*\ (2D):\ \ Atrial*exp(-\/2./sqrt(r)),\ r<Rpar*Lhalf,\ Btrial*exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf\ */}}
+\DoxyCodeLine{00144\ \textcolor{comment}{//\#define\ \ TRIAL\_POWER\_Ko\ /*(2D)\ Atrial*K0\string^-\/alpha\_1,\ r<Rpar*L/2,\ r<Rpar*Lhalf,\ Btrial*exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf,\ cutoff\ at\ small\ distances\ */}}
+\DoxyCodeLine{00145\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_Ko\ /*(2D)\ Atrial\ Ko(2/sqrt(r)),\ r<Rpar*Lhalf;\ Btrial*exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf*/}}
+\DoxyCodeLine{00146\ \textcolor{comment}{//\#define\ \ TRIAL\_QUADRUPOLE\_Ko\ /*(2D)\ ...\ ;\ Btrial*exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf*/}}
+\DoxyCodeLine{00147\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_Ko11\ /*(2D)\ Atrial\ Ko(2/sqrt(r)),\ r<Rpar*Lhalf;\ Btrial*exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf*/}}
+\DoxyCodeLine{00148\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_Ko11\_TRAP\ /*(2D)11\ Ko(2*sqrt(D/r))}}
+\DoxyCodeLine{00149\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_Ko\_TRAP\ /*(2D)\ Ko(2*sqrt(D/r))}}
+\DoxyCodeLine{00150\ \textcolor{comment}{//\#define\ \ TRIAL\_HS\ /*(3D)\ 2-\/body\ HS\ solution\ +\ symmetrized\ phonons,\ Rpar[L/2],\ Bpar\ -\/\ scatt.\ momentum\ k\ [2pi/L]:\ sin[k(x-\/a)]/x;\ A*Exp(-\/B/x\string^2-\/B/(L-\/x)\string^2)\ */}}
+\DoxyCodeLine{00151\ \textcolor{comment}{//\#define\ \ TRIAL\_PSEUDOPOTENTIAL\_PHONON\ \ \ \ /*(3D)\ 2-\/body\ HS\ solution\ +\ symmetrized\ phonons,\ Rpar[L/2],\ Bpar\ -\/\ scatt.\ momentum\ k\ [2pi/L]:\ sin[k(x-\/a)]/x;\ A*Exp(-\/B/x\string^2-\/B/(L-\/x)\string^2)\ */}}
+\DoxyCodeLine{00152\ \textcolor{comment}{//\#define\ \ TRIAL\_HS\_SIMPLE\ \ /*(3D,2D)\ 3D\ HardSphere\ +\ A1SW/x\ *\ sin(sqE*(x-\/a)),\ no\ variational\ parameters,\ r>a\ */}}
+\DoxyCodeLine{00153\ \textcolor{comment}{//\#define\ \ TRIAL\_HS\_SW\_SIMPLE\ \ /*(3D)\ 3D\ HardSphere\ +\ Square\ Well\ A1SW/x\ *\ sin(sqE*(x-\/a)),\ no\ variational\ parameters,\ r>a\ */}}
+\DoxyCodeLine{00154\ \textcolor{comment}{//\#define\ \ TRIAL\_PSEUDOPOTENTIAL\_SIMPLE\ /*(3D)\ 3D\ HardSphere\ +\ A1SW/x\ *\ sin(sqE*(x-\/a)),\ no\ variational\ parameters,\ r>0,\ node\ at\ r=a,\ works\ for\ positive\ a\ */}}
+\DoxyCodeLine{00155\ \textcolor{comment}{//\#define\ \ TRIAL\_HARD\_RODS\_3D\ /*(1D,2D,3D)\ sin[pi\ (r-\/1)/(L-\/2)]\string^Apar\ */}}
+\DoxyCodeLine{00156\ \textcolor{comment}{//\#define\ \ TRIAL\_EXP\_PHONON\ /*\ (2D):\ \ exp\{-\/[Apar/(r/L)]\string^Bpar\},\ r<Rpar*Lhalf,\ exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf\ */}}
+\DoxyCodeLine{00157\ }
+\DoxyCodeLine{00158\ \textcolor{comment}{//\#define\ \ TRIAL\_TONKS\ /*\ (1D)\ Tonks\ w.f.\ |sin(sqrt\{Bpar\}*(x-\/a))|,\ Rpar=0,\ a=0\ means\ TG\ */}}
+\DoxyCodeLine{00159\ \textcolor{comment}{//\#define\ \ TRIAL\_TONKS\_SIMPLE\ /*\ (1D)\ Tonks\ w.f.\ |sin(sqE*x)|\ with\ sqE\ =\ pi/L\ or\ pi/(L-\/N*Apar)*/}}
+\DoxyCodeLine{00160\ \textcolor{comment}{//\#define\ \ TRIAL\_TONKS\_TRAP11\ //(1D,2D,3D)\ f(r)\ =\ |r-\/b|,\ enable\ HS11\ to\ have\ f(r)=0\ for\ r<b}}
+\DoxyCodeLine{00161\ \textcolor{comment}{//\#define\ \ TRIAL\_TONKS\_TRAP\ //(1D,2D,3D)\ f(r)\ =\ |r-\/a|,\ enable\ HS\ to\ have\ f(r)=0\ for\ r<a}}
+\DoxyCodeLine{00162\ \textcolor{comment}{//\#define\ \ TRIAL\_TONKS\_TRAP\_tVMC\ //\ (1D)\ f(x)\ =\ 1\ -\/\ x/a\ \ +\ (c3R\ +\ i\ c3I)\ x\string^2\ +\ (c4R\ +\ i\ c4I)\ x\string^3\ +\ (c5R\ +\ i\ c5I)\ x\string^4}}
+\DoxyCodeLine{00163\ \textcolor{comment}{//\#define\ \ TRIAL\_CH2\_3D\_TRAP\ //\ (3D)\ th(r)/r,\ unitarity\ free\ state\ }}
+\DoxyCodeLine{00164\ \textcolor{comment}{//\#define\ \ TRIAL\_CH2\_1D\_TRAP\_FS\ //\ (1D)\ th(r),\ excited\ state\ with\ one\ node}}
+\DoxyCodeLine{00165\ \textcolor{comment}{//\#define\ \ TRIAL\_CH2\_1D\_TRAP\_BS\ //\ (1D)\ 1/ch(r),\ bound\ state}}
+\DoxyCodeLine{00166\ \textcolor{comment}{//\#define\ \ TRIAL\_TONKS\_CUTOFF\ //\ (1D)\ |sin(pi\ x/Rpar)|,\ a<Rpar;\ 1,x>Rpar}}
+\DoxyCodeLine{00167\ \textcolor{comment}{//\#define\ \ TRIAL\_SUTHERLAND\ /*\ (1D)\ sin\string^a\ r(pi*x/L),\ a=1/2\ (1+(1+D)\string^1/2)\ */}}
+\DoxyCodeLine{00168\ \textcolor{comment}{//\#define\ \ TRIAL\_SS\_1D\ //\ (1D)\ exp(k*x)\ +\ Apar*exp(-\/k*x))\ x<Ro,\ sin(pi*x/L)\string^(1/Kpar)\ x>Ro,\ var.\ parameters\ Apar,\ Kpar}}
+\DoxyCodeLine{00169\ \textcolor{comment}{//\#define\ \ TRIAL\_MCGUIRE\ //\ (1D,3D)\ 1D:\ f(r)\ =\ exp(-\/r/a),\ 3D:\ f(r)\ =\ exp(-\/r/a)/r,\ bound\ state\ of\ a\ pseudopotential}}
+\DoxyCodeLine{00170\ \textcolor{comment}{//\#define\ \ TRIAL\_MCGUIRE\_PHONON\ //\ (1D)\ exp(x/b);\ (x<Rpar12),\ sin\string^a(pi*x/L)\ otherwise}}
+\DoxyCodeLine{00171\ \textcolor{comment}{//\#define\ \ TRIAL\_CALOGERO\ /*(1D,2D,3D)\ |r|\string^lambda,\ lambda\ =\ D\ from\ cfg}}
+\DoxyCodeLine{00172\ \textcolor{comment}{//\#define\ \ TRIAL\_CALOGERO\_2D\ /*(2D\ PBC)\ Atrial\ r\string^2\ +\ Btrial/r\string^2,\ r<Rpar*Lhalf;\ exp(Ctrial-\/Apar*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf*/}}
+\DoxyCodeLine{00173\ \textcolor{comment}{//\#define\ \ TRIAL\_COULOMB\_1D\_PHONON\ /*(1D)\ r\string^1/2I\_1(2r\string^1/2),\ r<Rpar,\ sin\string^beta(pi\ r/L),\ r>Rpar*/}}
+\DoxyCodeLine{00174\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_1D\_PHONON\ /*(1D)\ D=1,\ r\string^1/2\ I\_1(2/r\string^1/2),\ r<Rpar,\ sin\string^beta(pi\ r/L),\ r>Rpar*/}}
+\DoxyCodeLine{00175\ \textcolor{comment}{//\#define\ \ TRIAL\_DIPOLE\_1D\_TRAP\ /*\ (1D)\ any\ D,\ (r/D)\string^1/2\ I\_1(2\ (D/r)\string^1/2)\ */}}
+\DoxyCodeLine{00176\ \textcolor{comment}{//\#define\ \ TRIAL\_COULOMB\_1D\_TRAP\ /*(1D)\ r\string^1/2I\_1(2r\string^1/2)*/}}
+\DoxyCodeLine{00177\ \textcolor{comment}{//\#define\ \ TRIAL\_COULOMB\_2D\_TRAP\ /*(2D)\ I\_0[2(Dr)\string^1/2]*/}}
+\DoxyCodeLine{00178\ \textcolor{comment}{//\#define\ \ TRIAL\_COULOMB\_3D\_PHONON\ /*(3D)\ I\_1(2r\string^1/2)/r\string^1/2,\ r<Rpar,\ exp(-\/c/r\string^2-\/c/(L-\/r)\string^2),\ r>Rpar*/}}
+\DoxyCodeLine{00179\ \textcolor{comment}{//\#define\ \ TRIAL\_HS1D\ \ /*\ (1D)\ HS\ +\ HS\ solution\ +\ exponent\ in\ 1D\ (hard\ rode)\ */}}
+\DoxyCodeLine{00180\ \textcolor{comment}{//\#define\ \ TRIAL\_LIEB\ \ /*\ (1D)\ cos(k(|z|-\/Rpar)),\ with\ f'(0)/f(0)\ =\ -\/\ 1/a\_\{1D\},\ for\ Rpar=0\ -\/>\ Rpar\ =\ L/2\ */}}
+\DoxyCodeLine{00181\ \textcolor{comment}{//\#define\ \ TRIAL\_LIEB\_RENORMALIZED}}
+\DoxyCodeLine{00182\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_NEGATIVE\ /*\ (1D)\ cos(k(|z|-\/Rpar))\ (x<L*Rpar),\ sin\string^a(pi*x/L)\ a<0,\ |a|\ is\ the\ node*/}}
+\DoxyCodeLine{00183\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\ /*\ (1D)\ Rpar:\ A\ cos(k(x-\/B))\ (x<L*Rpar),\ sin\string^a(pi*x/L),\ i.e.\ Lieb\ +\ phonons\ mat,\ if\ 0<Rpar<1\ treated\ as\ in\ units\ of\ L/2,\ otherwise\ is\ taken\ as\ it\ is*/}}
+\DoxyCodeLine{00184\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_LUTTINGER\ /*\ (1D)\ Kpar,\ Rpar:\ A\ cos(k(x-\/B))\ (x<L*Rpar),\ |sin(pi*x/L)|\string^\{1/Kpar\},\ i.e.\ Lieb\ +\ phonons,\ Rpar\ is\ taken\ as\ it\ is\ */}}
+\DoxyCodeLine{00185\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_LUTTINGER\_LATTICE\ /*\ Same\ as\ above\ times\ (1\ +\ Apar12\ (tanh[Bpar12\ (x\ -\/\ Rpar12)]\ +\ tanh[Bpar12\ (-\/x\ -\/\ Rpar12)])),\ changes\ boundary\ condition,\ i.e.\ not\ for\ delta\ interaction\ */}}
+\DoxyCodeLine{00186\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_LUTTINGER\_PIECEWISE\ /*\ */}}
+\DoxyCodeLine{00187\ \textcolor{comment}{//\#define\ \ TRIAL\_LIEB\_LUTTINGER\_PHONON\ /*\ sin(Atrial\ +\ Btrial\ r\ +\ Ctrial\ r\string^2)\string^(1/Rpar),\ where\ f(0)\ =\ Apar\ and\ Rpar\ is\ equivalent\ to\ the\ Luttinger\ parameter\ K*/}}
+\DoxyCodeLine{00188\ \textcolor{comment}{//\#define\ \ TRIAL\_LIEB\_EXPONENTIAL\_DECAY\ /*\ (1D)\ Atrial\ (r\ -\/\ a);\ 1\ -\/\ Btrial\ Exp[-\/Apar\ r]\ -\/\ Btrial\ Exp[-\/Apar\ (L\ -\/\ r)],\ parameters\ Rpar\ and\ Apar\ */}}
+\DoxyCodeLine{00189\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_LUTTINGER\_AUTO\ //\ (1D)\ Kpar\ (automatic\ Rpar):\ A\ cos(k(x-\/B))\ (x<L*Rpar),\ sin\string^a(pi*x/L),\ i.e.\ Lieb\ +\ phonons}}
+\DoxyCodeLine{00190\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_LUTTINGER\_AUTO11\_SPINFULL\ //\ (1D)\ aA,\ \ Kpar11\ (automatic\ Rpar11):\ A\ cos(k(x-\/B))\ (x<L*Rpar11),\ sin\string^a(pi*x/L),\ i.e.\ Lieb\ +\ phonons}}
+\DoxyCodeLine{00191\ \textcolor{comment}{//\#define\ \ TRIAL\_PHONON\_LUTTINGER\_AUTO12\_SPINFULL\ //\ (1D)\ aAB,\ Kpar12\ (automatic\ Rpar12):\ A\ cos(k(x-\/B))\ (x<L*Rpar11),\ sin\string^a(pi*x/L),\ i.e.\ Lieb\ +\ phonons}}
+\DoxyCodeLine{00192\ \textcolor{comment}{//\#define\ \ TRIAL\_SS\_PHONON\_LUTINGER\ //\ (1D)\ Rpar,Kpar:\ A\ ch(kappa\ x)\ (x<Ro),\ B\ sin(kx+delta)\ (Ro<x<Rpar),\ sin\string^a(pi*x/L),\ a=1/Kpar}}
+\DoxyCodeLine{00193\ \textcolor{comment}{//\#define\ \ TRIAL\_SS\_PHONON\_LUTINGER\_AUTO\ //\ (1D)\ A\ ch(k\ x)\ (x<Rpar),\ sin\string^a(pi*x/L)}}
+\DoxyCodeLine{00194\ \textcolor{comment}{//\#define\ \ TRIAL\_GAPPED\ /*\ (1D)\ gap\ D:\ Reatto\ Chester\ for\ gapped\ system,\ only\ f(x),\ not\ f'(x);\ f''(x);\ f(x)\ =\ exp\{-\/sum\_i\ L*L*D/(2.*pi*pi*N*i*i)*cos(2.*pi*x/L)\}\ */}}
+\DoxyCodeLine{00195\ \textcolor{comment}{//\#define\ \ TRIAL\_COS\ /*\ (1D)\ cos(Apar*pi*x/L)*/}}
+\DoxyCodeLine{00196\ \textcolor{comment}{//\#define\ \ TRIAL\_SIN\_EXCITED\_BOSONS\ /*\ (1D)\ sin(Apar*pi*x/L\ +\ Bpar)\string^(1/Kpar)*/}}
+\DoxyCodeLine{00197\ \textcolor{comment}{//\#define\ \ TRIAL\_COS\_OFFSET\ /*\ (1D)\ Apar\ +\ Bpar*cos(Cpar*pi*x/L)*/}}
+\DoxyCodeLine{00198\ \textcolor{comment}{//\#define\ \ TRIAL\_DECAY\ /*(2D)\ exp(-\/Apar/(1+Bpar*r\string^2)),\ for\ Ko(r)\ interaction\ (Magro\ et\ al.)\ */}}
+\DoxyCodeLine{00199\ \textcolor{comment}{//\#define\ \ TRIAL\_DECAY\_PHONON\ /*(2D)\ exp(-\/Apar/(1+Bpar*r\string^2)),\ \ r<Rpar*Lhalf,\ Btrial*exp(-\/Ctrial*(1./r+1./(L-\/r)))\ r>Rpar*Lhalf\ */}}
+\DoxyCodeLine{00200\ \textcolor{comment}{//\#define\ \ TRIAL\_YUKAWA\_2D\ \ /*(2D)\ */}}
+\DoxyCodeLine{00201\ \textcolor{comment}{//\#define\ \ TRIAL\_HS2D\ \ /*\ (2D)\ log(exp(-\/0.5*(1+Apar)*r)*(exp(Apar*r)-\/exp(Apar)))+shift;\ \ 0<Apar<1,\ Apar\ is\ close\ to\ 1\ */}}
+\DoxyCodeLine{00202\ \textcolor{comment}{//\#define\ \ TRIAL\_HS2D\_XING\ /*(2D)\ th(Apar(r\string^Bpar-\/1))\ */}}
+\DoxyCodeLine{00203\ \textcolor{comment}{//\#define\ \ TRIAL\_HS2D\_ZERO\_ENERGY\ /*\ (2D)\ ln(r)*/}}
+\DoxyCodeLine{00204\ \textcolor{comment}{//\#define\ \ TRIAL\_HS2D\_FINITE\_ENERGY\ /*\ (2D)\ parameter:\ a<Rpar<L/2\ -\/\ matching\ distance\ to\ 1,\ use\ Rpar=0\ for\ setting\ Rpar=L/2*/}}
+\DoxyCodeLine{00205\ \textcolor{comment}{//\#define\ \ TRIAL\_2D\_ZERO\_RANGE\_BOUND\_STATE\ //\ (2D)\ Ko(k*r)\ where\ k\ =\ 2e\string^(-\/gamma)/a}}
+\DoxyCodeLine{00206\ \textcolor{comment}{//\#define\ \ TRIAL\_2D\_ZERO\_RANGE\_K0\_SCREENING\ //\ (2D)\ Apar,b:\ Ko(k*r)\ exp(-\/r*r/(b*(Apar+r)))\ where\ k\ =\ 2e\string^(-\/gamma)/a}}
+\DoxyCodeLine{00207\ \textcolor{comment}{//\#define\ \ TRIAL\_SPHERE\_ZERO\_RANGE\_BOUND\_STATE\ //\ (sphere)\ Ko(k*r)\ where\ k\ =\ 2e\string^(-\/gamma)/a,\ Eloc(r)\ =\ +f"{}(r)/f(r)}}
+\DoxyCodeLine{00208\ \textcolor{comment}{//\#define\ \ TRIAL\_SPHERE\_ZERO\_RANGE\_FREE\_STATE\ //\ (sphere)\ ln(a/r),\ Eloc(r)\ =\ +f"{}(r)/f(r)}}
+\DoxyCodeLine{00209\ \textcolor{comment}{//\#define\ \ TRIAL\_SPHERE\_ZERO\_RANGE\_LOG\_MATCH\ //\ (sphere)\ Rpar:\ ln(r/a),\ r<Rpar;\ ln(r/a)\ *\ exp((r/Rpar-\/1)\ /\ ln(r/a)),\ Eloc(r)\ =\ +f"{}(r)/f(r)}}
+\DoxyCodeLine{00210\ \textcolor{comment}{//\#define\ \ TRIAL\_SPHERE\_ZERO\_RANGE\_K0\_SCREENING\ //\ (sphere)\ Apar,b:\ Ko(k*r)\ exp(-\/r*r/(b*(Apar+r)))\ where\ k\ =\ 2e\string^(-\/gamma)/a,\ Eloc(r)\ =\ +f"{}(r)/f(r)}}
+\DoxyCodeLine{00211\ \textcolor{comment}{//\#define\ \ TRIAL\_SPHERE\_ZERO\_RANGE\_LOG\_SCREENING\ //\ (sphere)\ b:\ ln(a/r)\ *\ exp(-\/r/b),\ Eloc(r)\ =\ +f"{}(r)/f(r),\ a>R}}
+\DoxyCodeLine{00212\ }
+\DoxyCodeLine{00213\ \textcolor{comment}{//\#define\ \ TRIAL\_MATRIX\ \ \ /*\ Load\ trial\ wavefuncion\ (matrix)\ from\ 'wf2D.in\ file'*/}}
+\DoxyCodeLine{00214\ }
+\DoxyCodeLine{00215\ \textcolor{comment}{//\#define\ \ TRIAL\_LIM\ \ \ /*\ (1D,2D,3D)\ 1\ -\/\ a/r\ \ i.e.\ limit\ of\ 3D\ HS\ +\ HS\ solution\ */}}
+\DoxyCodeLine{00216\ \textcolor{comment}{//\#define\ \ TRIAL\_POWER\ /*\ (1D,3D,3D)\ 1\ -\/\ a/r\string^Apar\ */}}
+\DoxyCodeLine{00217\ \textcolor{comment}{//\#define\ \ TRIAL\_PP\_FS\_TRAP\_MCGUIRE1D\ //\ (3D)\ exp(1\ -\/\ (Apar**2*b\ -\/\ a*r**2)/(a*Apar*b\ +\ a*b*r))/r,\ i.e.\ a<0:\ 3D\ scattering\ length,\ b:\ 1D\ scattering\ length,\ Apar\ -\/\ var.\ par}}
+\DoxyCodeLine{00218\ \textcolor{comment}{//\#define\ \ TRIAL\_SS\ \ \ \ /*\ (3D,2D):\ (3D\ PBC)\ SS\ +\ SS\ solution\ +\ exponent\ in\ 3D\ (hard\ sphere),\ (3D\ trap):\ sinh(Kr)/r,\ B-\/A/r\ D)\ symmetrize\ */}}
+\DoxyCodeLine{00219\ \textcolor{comment}{//\#define\ \ TRIAL\_SS\_LARGE\ /*(3D)\ 2b\ body\ SS\ +\ phonons,\ SS\ size\ Apar\ >\ Rpar*/}}
+\DoxyCodeLine{00220\ \textcolor{comment}{//\#define\ \ TRIAL\_SS\_EXP\ /*(3D)\ exp(-\/Apar\ r\string^2)\ +\ phonons,\ \ Rpar*/}}
+\DoxyCodeLine{00221\ }
+\DoxyCodeLine{00222\ \textcolor{comment}{//\#define\ \ TRIAL\_SQUARE\_WELL\_BS\_PHONONS\ /*\ (3D)\ SS+phonons\ at\ Rpar,\ C1\ sin(Kappa\ r)/r,\ C2\ exp(-\/k\ r)/r,\ C3\ exp(-\/c/r\string^2-\/c/(L-\/r)\string^2)*/}}
+\DoxyCodeLine{00223\ \textcolor{comment}{//\#define\ \ TRIAL\_SQUARE\_WELL\_FS\_PHONONS\ /*\ (3D)\ SS+SS(E>0)\ A\ sin(Kappa\ r)/r,\ B\ sin(k\ r\ +\ delta):\ Apar,\ Rpar\ */}}
+\DoxyCodeLine{00224\ \textcolor{comment}{//\#define\ \ TRIAL\_SQUARE\_WELL\_BS\_TRAP\ //\ (3D)\ sin(Kappa\ r)/r,\ C2\ exp(-\/k\ r)/r,\ SW\ width\ RoSW}}
+\DoxyCodeLine{00225\ \textcolor{comment}{//\#define\ \ TRIAL\_SQUARE\_WELL\_FS\_TRAP\ //\ (3D)\ free\ state,\ a<0\ (3D)\ SS\ sin(K\ r)/r\ [r<RoSW],\ 1+a/r\ [r<Rpar]}}
+\DoxyCodeLine{00226\ \textcolor{comment}{//\#define\ \ TRIAL\_SQUARE\_WELL\_FS\_TRAP\_MCGUIRE1D}}
+\DoxyCodeLine{00227\ \textcolor{comment}{//\#define\ \ TRIAL\_SQUARE\_WELL\_FS\ /*\ (3D)\ PBC\ SS+SS(E>0)\ A\ sin(Kappa\ r)/r,\ B\ sin(k\ r\ +\ delta)\ */}}
+\DoxyCodeLine{00228\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_UNITARY\ /*\ (3D)\ BC\ absent:\ 1/r\ PBC:\ 1/r,\ r<Rpar,\ otherwise\ phonons\ exp(-\/c/r\string^2-\/c/(L-\/r)\string^2)*/\ }}
+\DoxyCodeLine{00229\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_TRAP\ /*\ (3D)\ (r-\/a)/r,\ define\ HARD\_SPHERE\ for\ f(r)\ =\ 0,\ r<a}}
+\DoxyCodeLine{00230\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_3D\ /*\ (3D)\ sin(k*r+delta)}}
+\DoxyCodeLine{00231\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_K0\_TRAP\ //\ 2D\ Ko(Atrial*r),\ Atrial\ =\ 2e\string^\{-\/gamma\}/a}}
+\DoxyCodeLine{00232\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_LOG\_TRAP\ //\ 2D\ |ln(r/a)|}}
+\DoxyCodeLine{00233\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_LOG\_EXP\_TAIL\_TRAP\ //\ 2D\ ln(a/r)\ exp(-\/r\string^2/(b\ (Apar\ +\ r)))}}
+\DoxyCodeLine{00234\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_K0\_EXP\_TAIL\_TRAP\ //\ 2D\ Ko(Atrial*r)\ exp(-\/r\string^2/(b\ (Apar\ +\ r))),\ Atrial\ =\ 2e\string^\{-\/gamma\}/a}}
+\DoxyCodeLine{00235\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_LOG\_NO\_NODE\_TRAP\ //\ 2D\ Rpar:\ ln(1+a/r)\ *\ exp(-\/r/Rpar)*(1\ +\ r/Rpar)}}
+\DoxyCodeLine{00236\ \textcolor{comment}{//\#define\ \ TRIAL\_ZERO\_RANGE\_LOG\_MATCH\_TRAP\ //\ 2D\ Rpar:\ ln(r/a),\ r<Rpar;\ ln(r/a)\ *\ exp((r/Rpar-\/1)\ /\ ln(r/a))}}
+\DoxyCodeLine{00237\ \textcolor{comment}{//\#define\ \ TRIAL\_SR3D\ /*VMC\ only!\ (3D)\ A/r\ |sin(kr\ +\ B)|,\ no\ variational\ parameters\ */\ }}
+\DoxyCodeLine{00238\ \textcolor{comment}{//\#define\ \ TRIAL\_YUKAWA\_3D\_SYMM\ /*\ (3D)\ exp(\ -\/\ Apar\ exp(-\/Bpar\ r)/r\ (1\ -\/\ exp(-\/r/Cpar)))*(1-\/exp(-\/pow((L/2-\/r),Btrial)))\ */}}
+\DoxyCodeLine{00239\ \textcolor{comment}{//\#define\ \ TRIAL\_YUKAWA\_3D\ /*\ exp(\ -\/\ Apar\ exp(-\/Bpar\ r)/r\ (1\ -\/\ exp(-\/r/Cpar)))*/}}
+\DoxyCodeLine{00240\ \textcolor{comment}{//\#define\ \ TRIAL\_CSM\_3D\_PLASMON\ //\ Rpar,\ lambda:\ r\string^lambda(1\ +\ const\ r\string^2);\ exp(-\/const/r\string^3\ -\/\ const\ /\ r\string^2)}}
+\DoxyCodeLine{00241\ \textcolor{comment}{//\#define\ \ TRIAL\_SOFT\_DISKS\_2D\_ZERO\_ENERGY\_PHONONS\ /*\ a>0,\ (2D)\ SD(E=0)\ parameter\ 0<Rpar<1:\ Io(kappa\ r),\ r<Ro;\ A\ ln(r/aA),\ r<Rpar;\ B\ exp(-\/C/r\ +\ D/r\string^2)\ */}}
+\DoxyCodeLine{00242\ }
+\DoxyCodeLine{00243\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_TERMS}}
+\DoxyCodeLine{00244\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_HYPERRADIUS\_QUADRATIC\ //\ f\_3(R):\ 0,\ R<R3;\ 1\ -\/\ (R\ -\/\ Apar)\string^2\ /\ (R3\ -\/\ Apar)\string^2\ ,\ R3<R\ <\ Rpar;\ 1,\ R>Apar}}
+\DoxyCodeLine{00245\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_ZERO\_ENERGY\_SOLUTION\_3D\ //\ f\_3(R):\ 0,\ R<R3;\ 1\ -\/\ (R3/R)\string^4}}
+\DoxyCodeLine{00246\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_ZERO\_ENERGY\_SOLUTION\_2D\ //\ f\_3(R):\ 0,\ R<R3;\ 1\ -\/\ (R3/R)\string^2}}
+\DoxyCodeLine{00247\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_ZERO\_ENERGY\_SOLUTION\_1D\ //\ f\_3(R):\ 0,\ R<R3;\ log(R/R3)}}
+\DoxyCodeLine{00248\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_ZERO\_ENERGY\_SOLUTION\_3D\_SYMMETRIZED\ //\ f\_3(R):\ \ 1\ -\/\ (R3/R)\string^4\ -\/\ (R3/(L-\/R))\string^4}}
+\DoxyCodeLine{00249\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_ZERO\_ENERGY\_SOLUTION\_1D\_SYMMETRIZED\ //\ f\_3(R):\ ln[R*(L-\/R)/(R3*(L-\/R3))],\ define\ HARD\_SPHERE\_HYPER\ RADIUS\ for\ f\_3(R)\ =\ 0,\ R<R3}}
+\DoxyCodeLine{00250\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_ZERO\_ENERGY\_SOLUTION\_1D\_PHONONS\ //\ (1D)\ f\_3(R):\ 0,\ R<R3;\ ln(R/R3),\ r<Rpar;\ B\ exp(-\/C/r\ +\ D/r\string^2)}}
+\DoxyCodeLine{00251\ \textcolor{comment}{//\#define\ \ THREE\_BODY\_BOUND\_STATE\_SOLUTION\_1D}}
+\DoxyCodeLine{00252\ }
+\DoxyCodeLine{00253\ \textcolor{comment}{/*\ define\ the\ phase:\ CRYSTAL\ (simulation\ of\ solid),\ LIQUID/GAS\ otherwise\ */}}
+\DoxyCodeLine{00254\ }
+\DoxyCodeLine{00255\ \textcolor{comment}{//\#define\ CRYSTAL\ //\ solid\ phase\ add\ localizing\ terms\ to\ the\ trial\ w.f.\ and\ define\ one\ of\ the\ following\ options:}}
+\DoxyCodeLine{00256\ \textcolor{comment}{//\#define\ CRYSTAL\_NONSYMMETRIC\ //\ nonsymmetric\ w.f.\ for\ the\ crystal\ (symmetric\ otherwise)}}
+\DoxyCodeLine{00257\ \textcolor{comment}{//\#define\ CRYSTAL\_SYMMETRIC\ \ \ \ \ //\ symmetric\ w.f.\ prod\_\{j,Nc\}\ sum\_\{i=1,N\}\ exp(-\/alpha\_Rx[j](x\_i-\/x\_j\string^c)-\/alpha\_Ry[j](y\_i-\/y\_j\string^c)-\/alpha\_Rz[j](z\_i-\/z\_j\string^c))}}
+\DoxyCodeLine{00258\ \textcolor{comment}{//\#define\ CRYSTAL\_WIDTH\_ARRAY\ //\ define\ to\ treat\ Crystal.Rx[i]\ Ry[i]\ Rz[i]\ w[i]\ as\ parameters\ loaded\ from\ crystal\ coordinates\ file\ (x,y,z,Rx,Ry,Rz,w)}}
+\DoxyCodeLine{00259\ }
+\DoxyCodeLine{00260\ \textcolor{comment}{//\#define\ LATTICE\_TRIANGULAR\ //\ (2D)\ square/cubic\ otherwise}}
+\DoxyCodeLine{00261\ \textcolor{comment}{//\#define\ LATTICE\_3D\_BCC\ //\ 3D\ body\ centered\ cubic\ lattice}}
+\DoxyCodeLine{00262\ \textcolor{comment}{//\#define\ LATTICE\_3D\_FCC\ //\ 3D\ face\ centered\ cubic\ lattice}}
+\DoxyCodeLine{00263\ \textcolor{comment}{//\#define\ LATTICE\_3D\_CUBIC\ //\ default\ 3D\ lattice}}
+\DoxyCodeLine{00264\ \textcolor{comment}{//\#define\ LATTICE\_CHECKERBOARD\ //\ square\ (2D)\ checker\ board\ Ncrystal/2\ lattice\ sites}}
+\DoxyCodeLine{00265\ \textcolor{comment}{//\#define\ LATTICE\_DOMINO\ //\ square\ (2D)\ domino\ Ncrystal/2\ lattice\ sites}}
+\DoxyCodeLine{00266\ \textcolor{comment}{//\#define\ LATTICE\_ZIGZAG\ //\ zig-\/zag\ (2D),\ linear\ in\ X,\ zigzag\ in\ Y}}
+\DoxyCodeLine{00267\ \textcolor{comment}{//\#define\ MEASURE\_PROJECTION\_PARTICLES\_12\ //\ measure\ w.f.\ overlap\ in\ 1D}}
+\DoxyCodeLine{00268\ }
+\DoxyCodeLine{00269\ \textcolor{comment}{//\#define\ CENTER\_OF\_MASS\_IS\_NOT\_MOVED\ //\ only\ VMC\ Move\ All\ and\ DMC\ in\ trap\ (no\ PBC)}}
+\DoxyCodeLine{00270\ \textcolor{comment}{//\#define\ CENTER\_OF\_MASS\_Z\_IS\_NOT\_MOVED\ //\ only\ VMC\ Move\ All\ and\ DMC\ in\ trap\ (no\ PBC)}}
+\DoxyCodeLine{00271\ \textcolor{comment}{//\#define\ CENTER\_OF\_MASS\_IS\_NOT\_MOVED\_TWO\_PARTS\ \ //\ CMseparation\ is\ added\ to\ \{x,y,z\}\ coordinates\ of\ the\ second\ part\ of\ the\ system}}
+\DoxyCodeLine{00272\ \textcolor{comment}{//use\ R2\_subtract\_CM=1\ instead\ of\ \#define\ CENTER\_OF\_MASS\_SUBTRACTED\_IN\_RADIAL\_DISTRIBUTION}}
+\DoxyCodeLine{00273\ \textcolor{comment}{//\#define\ CHAINS\_PINNED\_TO\_CENTER\_OF\_MASS\ //\ DMC\ or\ VMC\ (VMC\ only\ for\ move\ one\ by\ one)}}
+\DoxyCodeLine{00274\ \textcolor{comment}{//\#define\ FIRST\_PARTICLE\_IS\_NOT\_MOVED\ //\ pin\ position\ of\ 1st\ particlr}}
+\DoxyCodeLine{00275\ \textcolor{comment}{//\#define\ PAIR\_DISTRBUTION\_EMPTINESS\_FORMATION\_PROBABILITY\_1D\ //\ calculate\ probability\ of\ a\ gap\ of\ size\ x\ between\ in\ particles\ in\ 1D}}
+\DoxyCodeLine{00276\ }
+\DoxyCodeLine{00277\ \textcolor{comment}{//\ select\ dimensionality}}
+\DoxyCodeLine{00278\ \textcolor{preprocessor}{\#define\ TRIAL\_1D}}
+\DoxyCodeLine{00279\ \textcolor{comment}{//\#define\ TRIAL\_2D}}
+\DoxyCodeLine{00280\ \textcolor{comment}{//\#define\ TRIAL\_3D}}
+\DoxyCodeLine{00281\ }
+\DoxyCodeLine{00282\ \textcolor{comment}{/*\ define\ ONLY\ ONE\ of\ following\ boundary\ conditions\ */}}
+\DoxyCodeLine{00283\ \textcolor{preprocessor}{\#define\ \ BC\_ABSENT\ }\textcolor{comment}{/*\ free\ boundary\ condition\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00284\ \textcolor{comment}{//\#define\ \ BC\_1DPBC\_Z\ \ \ /*\ boundary\ condition\ in\ Z\ direction\ */}}
+\DoxyCodeLine{00285\ \textcolor{comment}{//\#define\ \ BC\_1DPBC\_X\ \ \ /*\ boundary\ condition\ in\ X\ direction\ */}}
+\DoxyCodeLine{00286\ \textcolor{comment}{//\#define\ \ BC\_2DPBC\_SQUARE\ \ \ \ \ /*\ boundary\ condition\ in\ (X,Y)\ plane\ */}}
+\DoxyCodeLine{00287\ \textcolor{comment}{//\#define\ \ BC\_2DPBC\_HEXAGON}}
+\DoxyCodeLine{00288\ \textcolor{comment}{//\#define\ \ BC\_2DPBC\_NON\_ORTHOGONAL\ /**/}}
+\DoxyCodeLine{00289\ \textcolor{comment}{//\#define\ \ BC\_3DPBC\_CUBE\ \ \ /*\ PBC\ in\ all\ directions\ */}}
+\DoxyCodeLine{00290\ \textcolor{comment}{//\#define\ \ BC\_3DPBC\_TRUNCATED\_OCTAHEDRON\ /*\ overlap\ between\ cube\ and\ |x-\/L/2|+|y-\/L/2|+|z-\/L/2|\ <\ 3L/4\ */}}
+\DoxyCodeLine{00291\ \textcolor{comment}{//\#define\ \ BC\_SPHERE\ \ \ /*\ sphere\ of\ size\ Rsphere\ */}}
+\DoxyCodeLine{00292\ }
+\DoxyCodeLine{00293\ \textcolor{comment}{/*\ define\ if\ trap\ potential\ is\ present\ */}}
+\DoxyCodeLine{00294\ \textcolor{preprocessor}{\#define\ TRAP\_POTENTIAL}}
+\DoxyCodeLine{00295\ }
+\DoxyCodeLine{00296\ \textcolor{comment}{/*\ if\ trap\ one-\/body\ terms\ are\ present\ in\ the\ trial\ w.f.,\ enable\ ONE\_BODY\_TRIAL\_TERMS*/}}
+\DoxyCodeLine{00297\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00298\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_TRAP\ //\ alpha\_x\ *\ x*x\ +\ alpha\_y\ *\ y*y\ +\ alpha\_z\ *\ z*z;}}
+\DoxyCodeLine{00299\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_SIN\ //\ (1D,2D,3D)\ lattice:\ one-\/body\ term:\ (3D,2D)[sin(kL*x)\string^2\ +\ sin(kL*y)\string^2\ +\ sin(kL*z)\string^2]\string^alpha\_R\ with\ kL\ =\ PI*Nlattice/L\ (1D)\ beta\_latt\ +\ |sin(kL*z)|\string^alpha\_latt}}
+\DoxyCodeLine{00300\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_ZERO\_BOUNDARY\_CONDITION\ //\ one-\/body\ term:\ |sin(pi/L*z)|\string^beta\_z,\ default\ value\ beta\_z=1,\ see\ also\ ONE\_BODY\_TRIAL\_ABC,\ also\ can\ be\ used\ together\ with\ ONE\_BODY\_TRIAL\_SIN}}
+\DoxyCodeLine{00301\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_ZBC\ //\ sin(pi*z/L)}}
+\DoxyCodeLine{00302\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_ABC\ //\ antiperiodic\ boundary\ condition:\ |sin(pi\ x\ /L)|\string^alpha\_latt}}
+\DoxyCodeLine{00303\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_1D\_WAVE\_COS\ //\ down\ particles:\ |cos(one\_body\_momentum\_i\ pi\ z/L)|,\ where\ one\_body\_momentum\_i\ =\ 0,1,2,...}}
+\DoxyCodeLine{00304\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_1D\_WAVE\_SIN\ //\ down\ particles:\ |sin(one\_body\_momentum\_i\ pi\ z/L)|,\ where\ one\_body\_momentum\_i\ =\ 0,1,2,...}}
+\DoxyCodeLine{00305\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_COS\_SERIES\ //\ one-\/body\ term\ (1D)\ 1\ +\ alpha\_latt*cos(2*k*z)\ +\ beta\_latt*cos(4*k*z)+\ gamma\_latt*cos(6*k*z)}}
+\DoxyCodeLine{00306\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_1D\_WAVE\_COS\_FINITE\ //\ 1\ +\ S\ cos(one\_body\_momentum\_i\ 2\ pi\ z/L)}}
+\DoxyCodeLine{00307\ \textcolor{comment}{//\#define\ ONE\_BODY\_SOLITON}}
+\DoxyCodeLine{00308\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_TRAP\_POWER\_LAW\ \ //\ exp(-\/alpha\_latt\ *r*r)\ *\ r\string^beta\_latt}}
+\DoxyCodeLine{00309\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_LINEAR\_CHAIN\_UP}}
+\DoxyCodeLine{00310\ \textcolor{comment}{//\#define\ ONE\_BODY\_IMPURITY\ //\ define\ and\ chose\ one\ of\ the\ following}}
+\DoxyCodeLine{00311\ \textcolor{comment}{//\#define\ ONE\_BODY\_IMPURITY\_1D}}
+\DoxyCodeLine{00312\ \textcolor{comment}{//\#define\ ONE\_BODY\_IMPURITY\_3DSW\ //\ Square\ Well}}
+\DoxyCodeLine{00313\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_DOUBLE\_GAUSSIAN\ //\ exp(-\/alpha\_z\ *\ (z-\/R0par)\string^2)\ +\ exp(-\/alpha\_z\ *\ (z+R0par)\string^2)}}
+\DoxyCodeLine{00314\ \textcolor{comment}{//\#define\ VEXT\_IMPURITY\_3DSW}}
+\DoxyCodeLine{00315\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_LATTICE\ //\ beta\_latt\ +\ gamma\_latt\ *\ sum\ exp(-\/alpha\_latt*(r-\/r\_i)\string^2),\ i=1,...,Ncrystal}}
+\DoxyCodeLine{00316\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_TRAP\_DOWN\_ANTISYMMETRIC\_Z\ //\ (HO,n=1)\ multiplies\ one-\/body\ wave\ function\ by\ z\_dn,\ so\ that\ there\ is\ a\ node\ at\ z\_dn\ =\ 0}}
+\DoxyCodeLine{00317\ \textcolor{comment}{//\#define\ ONE\_BODY\_TRIAL\_TRAP\_DOWN\_HERMITE2\_Z\ //\ (HO,n=2)\ multiplies\ one-\/body\ wave\ function\ by\ z\_dn\string^2\ -\/\ beta,\ default\ value\ beta=1/2,\ so\ that\ there\ is\ a\ node\ at\ |z\_dn|\ =\ 1/sqrt(2)}}
+\DoxyCodeLine{00318\ \textcolor{comment}{//\#define\ MANY\_BODY\_TRIAL\_TRAP\_CENTER\_OF\_MASS\_NODE\_Z\ //\ (z1+...+zN)}}
+\DoxyCodeLine{00319\ \textcolor{comment}{//\#define\ MANY\_BODY\_TRIAL\_TRAP\_CENTER\_OF\_MASS\_HERMITE2\_Z\ //\ sum\ (z\_i/N)\string^2\ -\/\ beta}}
+\DoxyCodeLine{00320\ }
+\DoxyCodeLine{00321\ \textcolor{comment}{/*\ alternatively\ use\ splines\ */}}
+\DoxyCodeLine{00322\ \textcolor{comment}{//\#define\ INTERPOLATE\_SPLINE\_ONE\_BODY\_Z\_WF\ //\ use\ spline\ interpolation\ for\ 1-\/body\ terms\ in\ trial\ w.f.}}
+\DoxyCodeLine{00323\ }
+\DoxyCodeLine{00324\ \textcolor{comment}{/*\ define\ external\ confinement\ in\ a\ homogeneous\ system,\ define\ EXTERNAL\_POTENTIAL\ */}}
+\DoxyCodeLine{00325\ \textcolor{comment}{//\#define\ VEXT\_COS2\ //\ cos\string^2\ external\ lattice\ potential}}
+\DoxyCodeLine{00326\ \textcolor{comment}{//\#define\ VEXT\_SOLITON\_FIXED\_PHASE}}
+\DoxyCodeLine{00327\ \textcolor{comment}{//\#define\ VEXT\_SPLINE\_1D\ //\ use\ spline\ interpolation\ for\ Vext(z)}}
+\DoxyCodeLine{00328\ \textcolor{comment}{//\#define\ EXTERNAL\_POTENTIAL\_Uo\_R2}}
+\DoxyCodeLine{00329\ \textcolor{comment}{//\#define\ EXTERNAL\_POTENTIAL\_CONSTANT\_SPINFULL\ //\ D\ :\ potential\ energy\ of\ spin\ 0\ }}
+\DoxyCodeLine{00330\ \textcolor{comment}{//\#define\ VEXT\_GAUSSIAN\ //\ gaussian\_alpha\ *\ exp(\ -\/gaussian\_beta\ *x*x)}}
+\DoxyCodeLine{00331\ \textcolor{comment}{//\#define\ VEXT\_TRAP\_DOUBLE\_WELL\ //\ (0.5*z*z\ +\ alpha\_latt*Exp(-\/0.5*z*z)\ -\/\ (Log(alpha\_latt)+1))}}
+\DoxyCodeLine{00332\ }
+\DoxyCodeLine{00333\ \textcolor{comment}{//\#define\ SPECKLES\ //\ define\ for\ applying\ speckle\ potential}}
+\DoxyCodeLine{00334\ }
+\DoxyCodeLine{00335\ \textcolor{comment}{//\ Choose\ one\ type\ of\ interpolation\ method}}
+\DoxyCodeLine{00336\ \textcolor{comment}{//\#define\ SPLINES\_2D\ //\ 2D\ interpolation:\ use\ 2D\ splines\ }}
+\DoxyCodeLine{00337\ \textcolor{comment}{//\#define\ POINT9\ //\ 2D\ interpolation:\ use\ interpolation\ between\ nearest\ 9\ points}}
+\DoxyCodeLine{00338\ \textcolor{preprocessor}{\#define\ POINT16\ }\textcolor{comment}{//\ 2D\ interpolation:\ use\ interpolation\ between\ nearest\ 16\ points}}
+\DoxyCodeLine{00339\ \textcolor{comment}{//\#define\ POINT16CONTINUOUS\ //\ 2D\ interpolation:\ interp\ between\ nearest\ 16\ points,\ 1st\ deriv\ continous}}
+\DoxyCodeLine{00340\ \textcolor{comment}{//\#define\ POINT16CONTINUOUS\_2deriv\ //\ 2D\ interpolation:\ interp\ between\ nearest\ 16\ points,\ 1st,\ 2nd\ deriv\ continous\ enable\ togethe\ with\ POINT16CONTINUOUS}}
+\DoxyCodeLine{00341\ \textcolor{comment}{//\#define\ POINT4\ //\ 2D\ interpolation:\ 4\ points\ and\ 4\ 2nd\ derivatives}}
+\DoxyCodeLine{00342\ }
+\DoxyCodeLine{00343\ \textcolor{preprocessor}{\#define\ energy\_unit\ 1.}}
+\DoxyCodeLine{00344\ \textcolor{comment}{//\#define\ energy\_unit\ 16.079147954821714\ //\ He3\ units,\ i.e.\ [hbar\string^2\ /\ (mHe3\ A\string^2)]\ /\ (kB\ K)\ =\ 16.}}
+\DoxyCodeLine{00345\ \textcolor{comment}{//\#define\ energy\_unit\ 12.115916747700853\ //\ He4\ units}}
+\DoxyCodeLine{00346\ \textcolor{comment}{//\#define\ energy\_unit\ 12.485545424687677\ //\ He\ critical\ mass\ for\ two-\/body\ bound\ state,\ 12.4855\ u}}
+\DoxyCodeLine{00347\ \textcolor{comment}{//\#define\ energy\_unit\ 48.11317400458453\ //\ H\ units,\ i.e.\ [hbar\string^2\ /\ (mH\ A\string^2)]\ /\ (kB\ K)}}
+\DoxyCodeLine{00348\ \textcolor{comment}{//\#define\ energy\_unit\ 24.077826199121347\ //\ Deuterium\ units}}
+\DoxyCodeLine{00349\ \textcolor{comment}{//\#define\ energy\_unit\ 16.07904559586791\ //\ Tritium\ units}}
+\DoxyCodeLine{00350\ \textcolor{comment}{//\#define\ energy\_unit\ 15.64361051812288\ \ //\ hydrogen,\ meff\ =\ 3.1u}}
+\DoxyCodeLine{00351\ \textcolor{comment}{//\#define\ energy\_unit\ 15.154747689431542\ //\ hydrogen,\ meff\ =\ 3.2u}}
+\DoxyCodeLine{00352\ \textcolor{comment}{//\#define\ energy\_unit\ 14.93524884938404\ //\ hydrogen,\ meff\ =\ 3.247u\ threshold}}
+\DoxyCodeLine{00353\ \textcolor{comment}{//\#define\ energy\_unit\ 14.921597724978747\ //\ hydrogen,\ meff\ =\ 3.25u}}
+\DoxyCodeLine{00354\ \textcolor{comment}{//\#define\ energy\_unit\ 14.695512910963922\ //\ hydrogen,\ meff\ =\ 3.3u}}
+\DoxyCodeLine{00355\ \textcolor{comment}{//\#define\ energy\_unit\ 14.263291942994396\ //\ hydrogen,\ meff\ =\ 3.4u}}
+\DoxyCodeLine{00356\ \textcolor{comment}{//\#define\ energy\_unit\ 13.855769316051697\ //\ hydrogen,\ meff\ =\ 3.5u}}
+\DoxyCodeLine{00357\ \textcolor{comment}{//\#define\ energy\_unit\ 12.123798151545234\ //\ hydrogen,\ meff\ =\ 4u}}
+\DoxyCodeLine{00358\ \textcolor{comment}{//\#define\ energy\_unit\ 9.699038521236188\ //\ hydrogen,\ meff\ =\ 5u}}
+\DoxyCodeLine{00359\ }
+\DoxyCodeLine{00360\ \textcolor{comment}{/*\ disable\ checks\ of\ the\ continuity\ of\ the\ trial\ wf.*/}}
+\DoxyCodeLine{00361\ \textcolor{comment}{//\#define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00362\ \textcolor{comment}{//\#define\ DONT\_CHECK\_CONTINUITY\_OF\_WF\_AT\_L\_2}}
+\DoxyCodeLine{00363\ \textcolor{preprocessor}{\#define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00364\ }
+\DoxyCodeLine{00365\ \textcolor{comment}{//\ by\ default\ SD\ is\ measured\ in\ all\ accessible\ directions,\ unless\ the\ following\ is\ selected}}
+\DoxyCodeLine{00366\ \textcolor{comment}{//\#define\ SD\_MEASURE\_ONLY\_X\_DIRECTION}}
+\DoxyCodeLine{00367\ \textcolor{comment}{//\#define\ SD\_MEASURE\_ONLY\_Y\_DIRECTION}}
+\DoxyCodeLine{00368\ \textcolor{comment}{//\#define\ SD\_MEASURE\_ONLY\_Z\_DIRECTION}}
+\DoxyCodeLine{00369\ }
+\DoxyCodeLine{00370\ \textcolor{comment}{//\#define\ UNITS\_SET\_2M\_TO\_1\ //\ unit\ of\ energy\ is\ h2/2ma2\ instead\ of\ h2/ma2}}
+\DoxyCodeLine{00371\ \textcolor{comment}{//\#define\ RESCALE\_TO\_RADIAL\_OSC\_UNITS\ //\ units\ of\ h\ w\_perp\ (1D\ trapped\ system)}}
+\DoxyCodeLine{00372\ \textcolor{comment}{//\#define\ RESCALE\_COORDINATES\_TO\_OSC\_UNITS}}
+\DoxyCodeLine{00373\ }
+\DoxyCodeLine{00374\ \textcolor{preprocessor}{\#ifdef\ MPI}}
+\DoxyCodeLine{00375\ \textcolor{comment}{//\#\ \ define\ EXEC\_NAME\ "{}/home-\/kirk/astra/VMC/DMC"{}}}
+\DoxyCodeLine{00376\ \textcolor{comment}{//\#\ \ define\ INPATH\ "{}/disc1/users/astra/MC/"{}}}
+\DoxyCodeLine{00377\ \textcolor{comment}{//\#\ \ define\ INPATH\ \ "{}/home/astra/MC/"{}}}
+\DoxyCodeLine{00378\ \textcolor{comment}{//\#\ \ define\ OUTPATH\ "{}/home/astra/MC/"{}}}
+\DoxyCodeLine{00379\ \textcolor{preprocessor}{\#\ \ define\ INPATH\ \ "{}./"{}}}
+\DoxyCodeLine{00380\ \textcolor{preprocessor}{\#\ \ define\ OUTPATH\ "{}./"{}}}
+\DoxyCodeLine{00381\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00382\ \textcolor{preprocessor}{\#\ \ define\ INPATH\ \ "{}./"{}}}
+\DoxyCodeLine{00383\ \textcolor{preprocessor}{\#\ \ define\ OUTPATH\ "{}./"{}}}
+\DoxyCodeLine{00384\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00385\ }
+\DoxyCodeLine{00386\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_TONKS}}
+\DoxyCodeLine{00387\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00388\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00389\ }
+\DoxyCodeLine{00390\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_LIEB}}
+\DoxyCodeLine{00391\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00392\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00393\ }
+\DoxyCodeLine{00394\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_LIEB\_LUTTINGER\_PHONON}}
+\DoxyCodeLine{00395\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00396\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00397\ }
+\DoxyCodeLine{00398\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SCHIFF\_VERLET\_TRAP}}
+\DoxyCodeLine{00399\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00400\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00401\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00402\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SCHIFF\_VERLET\_TRAP\_PHONON2D}}
+\DoxyCodeLine{00403\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00404\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00405\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00406\ }
+\DoxyCodeLine{00407\ \textcolor{preprocessor}{\#ifdef\ BC\_SPHERE}}
+\DoxyCodeLine{00408\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF\_AT\_L\_2}}
+\DoxyCodeLine{00409\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00410\ }
+\DoxyCodeLine{00411\ \textcolor{preprocessor}{\#ifdef\ BC\_ABSENT}}
+\DoxyCodeLine{00412\ \textcolor{preprocessor}{\#\ \ define\ boundary\ NO\_BOUNDARY\_CONDITIONS}}
+\DoxyCodeLine{00413\ \textcolor{comment}{//\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00414\ \textcolor{comment}{//\#\ \ define\ BC\_TRAP}}
+\DoxyCodeLine{00415\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF\_AT\_L\_2}}
+\DoxyCodeLine{00416\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00417\ }
+\DoxyCodeLine{00418\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_1D}}
+\DoxyCodeLine{00419\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF\_AT\_L\_2}}
+\DoxyCodeLine{00420\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00421\ }
+\DoxyCodeLine{00422\ \textcolor{preprocessor}{\#ifdef\ BC\_TRAP}}
+\DoxyCodeLine{00423\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00424\ \textcolor{preprocessor}{\#\ \ define\ BC\_TRAP}}
+\DoxyCodeLine{00425\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00426\ \textcolor{preprocessor}{\#\ \ define\ SAVE\_RADIAL\_DISTR\ 1}}
+\DoxyCodeLine{00427\ \textcolor{comment}{//\#ifndef\ INTERPOLATE\_SPLINE\_ONE\_BODY\_Z\_WF\ //\ 1-\/body\ terms\ are\ described\ by\ splines}}
+\DoxyCodeLine{00428\ \textcolor{comment}{//\#\ \ \ \ define\ ONE\_BODY\_TRIAL\_TRAP}}
+\DoxyCodeLine{00429\ \textcolor{comment}{//\#endif}}
+\DoxyCodeLine{00430\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00431\ \textcolor{preprocessor}{\#\ \ define\ SAVE\_RADIAL\_DISTR\ 0}}
+\DoxyCodeLine{00432\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00433\ }
+\DoxyCodeLine{00434\ \textcolor{preprocessor}{\#ifdef\ TRAP\_POTENTIAL\ }}
+\DoxyCodeLine{00435\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00436\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00437\ }
+\DoxyCodeLine{00438\ \textcolor{preprocessor}{\#ifdef\ SPECKLES}}
+\DoxyCodeLine{00439\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00440\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00441\ }
+\DoxyCodeLine{00442\ \textcolor{preprocessor}{\#ifdef\ VEXT\_SOLITON\_FIXED\_PHASE}}
+\DoxyCodeLine{00443\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00444\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00445\ }
+\DoxyCodeLine{00446\ \textcolor{preprocessor}{\#ifdef\ VEXT\_IMPURITY\_3DSW}}
+\DoxyCodeLine{00447\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00448\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00449\ }
+\DoxyCodeLine{00450\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_Z}}
+\DoxyCodeLine{00451\ \textcolor{preprocessor}{\#\ \ define\ boundary\ ONE\_BOUNDARY\_CONDITION}}
+\DoxyCodeLine{00452\ \textcolor{preprocessor}{\#\ \ define\ BC\_1DPBC\_ANY}}
+\DoxyCodeLine{00453\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00454\ }
+\DoxyCodeLine{00455\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X}}
+\DoxyCodeLine{00456\ \textcolor{preprocessor}{\#\ \ define\ boundary\ ONE\_BOUNDARY\_CONDITION}}
+\DoxyCodeLine{00457\ \textcolor{preprocessor}{\#\ \ define\ BC\_1DPBC\_ANY}}
+\DoxyCodeLine{00458\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00459\ }
+\DoxyCodeLine{00460\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_SQUARE}}
+\DoxyCodeLine{00461\ \textcolor{preprocessor}{\#\ \ define\ BC\_2DPBC}}
+\DoxyCodeLine{00462\ \textcolor{preprocessor}{\#\ \ define\ boundary\ TWO\_BOUNDARY\_CONDITIONS}}
+\DoxyCodeLine{00463\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00464\ }
+\DoxyCodeLine{00465\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_HEXAGON}}
+\DoxyCodeLine{00466\ \textcolor{preprocessor}{\#\ \ define\ BC\_2DPBC}}
+\DoxyCodeLine{00467\ \textcolor{preprocessor}{\#\ \ define\ boundary\ TWO\_BOUNDARY\_CONDITIONS}}
+\DoxyCodeLine{00468\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00469\ }
+\DoxyCodeLine{00470\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_CUBE}}
+\DoxyCodeLine{00471\ \textcolor{preprocessor}{\#\ \ define\ boundary\ THREE\_BOUNDARY\_CONDITIONS}}
+\DoxyCodeLine{00472\ \textcolor{preprocessor}{\#\ \ define\ BC\_3DPBC}}
+\DoxyCodeLine{00473\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00474\ }
+\DoxyCodeLine{00475\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_TRUNCATED\_OCTAHEDRON}}
+\DoxyCodeLine{00476\ \textcolor{preprocessor}{\#\ \ define\ boundary\ THREE\_BOUNDARY\_CONDITIONS}}
+\DoxyCodeLine{00477\ \textcolor{preprocessor}{\#\ \ define\ BC\_3DPBC}}
+\DoxyCodeLine{00478\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00479\ }
+\DoxyCodeLine{00480\ \textcolor{preprocessor}{\#ifdef\ BC\_SPHERE}}
+\DoxyCodeLine{00481\ \textcolor{preprocessor}{\#\ \ define\ boundary\ NO\_BOUNDARY\_CONDITIONS\ }}
+\DoxyCodeLine{00482\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00483\ }
+\DoxyCodeLine{00484\ \textcolor{preprocessor}{\#ifdef\ LATTICE\ }}
+\DoxyCodeLine{00485\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00486\ \textcolor{preprocessor}{\#\ \ }\textcolor{comment}{//define\ CRYSTAL}}
+\DoxyCodeLine{00487\ \textcolor{preprocessor}{\#\ \ undef\ LATTICE\_TRIANGULAR}}
+\DoxyCodeLine{00488\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00489\ }
+\DoxyCodeLine{00490\ \textcolor{preprocessor}{\#ifdef\ VEXT\_COS2}}
+\DoxyCodeLine{00491\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00492\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00493\ }
+\DoxyCodeLine{00494\ \textcolor{preprocessor}{\#ifdef\ VEXT\_SPLINE\_1D}}
+\DoxyCodeLine{00495\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00496\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00497\ }
+\DoxyCodeLine{00498\ \textcolor{preprocessor}{\#ifdef\ EXTERNAL\_POTENTIAL\_Uo\_R2}}
+\DoxyCodeLine{00499\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00500\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00501\ }
+\DoxyCodeLine{00502\ \textcolor{preprocessor}{\#ifdef\ VEXT\_TRAP\_DOUBLE\_WELL}}
+\DoxyCodeLine{00503\ \textcolor{preprocessor}{\#\ \ define\ EXTERNAL\_POTENTIAL}}
+\DoxyCodeLine{00504\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00505\ }
+\DoxyCodeLine{00506\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SUTHERLAND}}
+\DoxyCodeLine{00507\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00508\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00509\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00510\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_CALOGERO}}
+\DoxyCodeLine{00511\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00512\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_ELOC}}
+\DoxyCodeLine{00513\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00514\ }
+\DoxyCodeLine{00515\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_PHONON\_NEGATIVE}}
+\DoxyCodeLine{00516\ \textcolor{preprocessor}{\#\ \ define\ TRIAL\_PHONON}}
+\DoxyCodeLine{00517\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00518\ }
+\DoxyCodeLine{00519\ \textcolor{preprocessor}{\#ifdef\ CRYSTAL}}
+\DoxyCodeLine{00520\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00521\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00522\ }
+\DoxyCodeLine{00523\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_IMPURITY}}
+\DoxyCodeLine{00524\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00525\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00526\ }
+\DoxyCodeLine{00527\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_SIN}}
+\DoxyCodeLine{00528\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00529\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00530\ }
+\DoxyCodeLine{00531\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_COS\_SERIES}}
+\DoxyCodeLine{00532\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00533\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00534\ }
+\DoxyCodeLine{00535\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_SOLITON}}
+\DoxyCodeLine{00536\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00537\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00538\ }
+\DoxyCodeLine{00539\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_LATTICE}}
+\DoxyCodeLine{00540\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00541\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00542\ }
+\DoxyCodeLine{00543\ \textcolor{preprocessor}{\#ifdef\ BC\_ABSENT}}
+\DoxyCodeLine{00544\ \textcolor{comment}{//\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00545\ \textcolor{comment}{//\#ifndef\ INTERPOLATE\_SPLINE\_ONE\_BODY\_Z\_WF\ //\ 1-\/body\ terms\ are\ described\ by\ splines}}
+\DoxyCodeLine{00546\ \textcolor{comment}{//\#\ \ \ \ define\ ONE\_BODY\_TRIAL\_TRAP}}
+\DoxyCodeLine{00547\ \textcolor{comment}{//\#endif}}
+\DoxyCodeLine{00548\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00549\ }
+\DoxyCodeLine{00550\ \textcolor{preprocessor}{\#ifdef\ CRYSTAL}}
+\DoxyCodeLine{00551\ \textcolor{preprocessor}{\#\ \ ifndef\ CRYSTAL\_NONSYMMETRIC}}
+\DoxyCodeLine{00552\ \textcolor{preprocessor}{\#\ \ \ \ ifndef\ CRYSTAL\_SYMMETRIC}}
+\DoxyCodeLine{00553\ \textcolor{comment}{//\#\ \ \ \ \ \ \ \ error\ "{}specify\ symmetry\ of\ the\ crystal"{}}}
+\DoxyCodeLine{00554\ \textcolor{preprocessor}{\#\ \ \ \ \ \ \ define\ CRYSTAL\_NONSYMMETRIC}}
+\DoxyCodeLine{00555\ \textcolor{preprocessor}{\#\ \ \ \ endif}}
+\DoxyCodeLine{00556\ \textcolor{preprocessor}{\#\ \ endif}}
+\DoxyCodeLine{00557\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00558\ }
+\DoxyCodeLine{00559\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_TRAP}}
+\DoxyCodeLine{00560\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00561\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00562\ }
+\DoxyCodeLine{00563\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_ZBC}}
+\DoxyCodeLine{00564\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00565\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00566\ }
+\DoxyCodeLine{00567\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_ABC}}
+\DoxyCodeLine{00568\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00569\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00570\ }
+\DoxyCodeLine{00571\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_1D\_WAVE}}
+\DoxyCodeLine{00572\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00573\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00574\ }
+\DoxyCodeLine{00575\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_ZERO\_BOUNDARY\_CONDITION}}
+\DoxyCodeLine{00576\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00577\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00578\ }
+\DoxyCodeLine{00579\ \textcolor{preprocessor}{\#ifdef\ SPECKLES}}
+\DoxyCodeLine{00580\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00581\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00582\ }
+\DoxyCodeLine{00583\ \textcolor{preprocessor}{\#ifdef\ INTERPOLATE\_SPLINE\_ONE\_BODY\_Z\_WF}}
+\DoxyCodeLine{00584\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00585\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00586\ }
+\DoxyCodeLine{00587\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_TRAP\_POWER\_LAW}}
+\DoxyCodeLine{00588\ \textcolor{preprocessor}{\#\ \ define\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00589\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00590\ }
+\DoxyCodeLine{00591\ \textcolor{comment}{//\ calculate\ OBDM\ and\ nk\ for\ fermions}}
+\DoxyCodeLine{00592\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SUTHERLAND}}
+\DoxyCodeLine{00593\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00594\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00595\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_CALOGERO}}
+\DoxyCodeLine{00596\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00597\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00598\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_COULOMB\_1D\_PHONON}}
+\DoxyCodeLine{00599\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00600\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00601\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_DIPOLE\_1D\_PHONON}}
+\DoxyCodeLine{00602\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00603\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00604\ \textcolor{preprocessor}{\#ifdef\ INTERACTION\_LINEAR\_1D\_COULOMB}}
+\DoxyCodeLine{00605\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00606\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00607\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SIN\_EXCITED\_BOSONS}}
+\DoxyCodeLine{00608\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00609\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_EXCITED\_BOSONS\ }\textcolor{comment}{//\ take\ into\ account\ a\ possible\ change\ in\ the\ sign\ of\ the\ w.f.}}
+\DoxyCodeLine{00610\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00611\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SIN\_EXCITED\_BOSONS\_KPAR}}
+\DoxyCodeLine{00612\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00613\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_EXCITED\_BOSONS\ }\textcolor{comment}{//\ take\ into\ account\ a\ possible\ change\ in\ the\ sign\ of\ the\ w.f.}}
+\DoxyCodeLine{00614\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00615\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_GAPPED}}
+\DoxyCodeLine{00616\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00617\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00618\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_TONKS\_TRAP\ }\textcolor{comment}{//\ p-\/wave\ fermions}}
+\DoxyCodeLine{00619\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00620\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00621\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_MCGUIRE\ }\textcolor{comment}{//\ p-\/wave\ fermions}}
+\DoxyCodeLine{00622\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00623\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00624\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_LIEB}}
+\DoxyCodeLine{00625\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00626\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00627\ \textcolor{preprocessor}{\#ifdef\ OBDM\_ANYONS}}
+\DoxyCodeLine{00628\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00629\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00630\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_TONKS}}
+\DoxyCodeLine{00631\ \textcolor{preprocessor}{\#\ \ define\ OBDM\_FERMIONS}}
+\DoxyCodeLine{00632\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00633\ }
+\DoxyCodeLine{00634\ \textcolor{preprocessor}{\#define\ VARIATIONAL\ 0}}
+\DoxyCodeLine{00635\ \textcolor{preprocessor}{\#define\ DIFFUSION\ 1}}
+\DoxyCodeLine{00636\ \textcolor{preprocessor}{\#define\ CLASSICAL\ 2}}
+\DoxyCodeLine{00637\ \textcolor{preprocessor}{\#define\ PIMC\ 3}}
+\DoxyCodeLine{00638\ \textcolor{preprocessor}{\#define\ PIGS\ 4}}
+\DoxyCodeLine{00639\ }
+\DoxyCodeLine{00640\ \textcolor{preprocessor}{\#define\ NO\_BOUNDARY\_CONDITIONS\ 0}}
+\DoxyCodeLine{00641\ \textcolor{preprocessor}{\#define\ THREE\_BOUNDARY\_CONDITIONS\ 1}}
+\DoxyCodeLine{00642\ \textcolor{preprocessor}{\#define\ ONE\_BOUNDARY\_CONDITION\ 2}}
+\DoxyCodeLine{00643\ \textcolor{preprocessor}{\#define\ TWO\_BOUNDARY\_CONDITIONS\ 3}}
+\DoxyCodeLine{00644\ }
+\DoxyCodeLine{00645\ \textcolor{comment}{//\ SmartMC\ constants}}
+\DoxyCodeLine{00646\ \textcolor{preprocessor}{\#define\ DMC\_QUADRATIC\ 0}}
+\DoxyCodeLine{00647\ \textcolor{preprocessor}{\#define\ DMC\_LINEAR\_DRIFT\ 1}}
+\DoxyCodeLine{00648\ \textcolor{preprocessor}{\#define\ DMC\_LINEAR\_GAUSSIAN\ 2}}
+\DoxyCodeLine{00649\ \textcolor{preprocessor}{\#define\ DMC\_LINEAR\_METROPOLIS\ 3}}
+\DoxyCodeLine{00650\ \textcolor{preprocessor}{\#define\ DMC\_QUADRATIC\_METROPOLIS\ 4}}
+\DoxyCodeLine{00651\ \textcolor{preprocessor}{\#define\ DMC\_QUARTIC\ 5}}
+\DoxyCodeLine{00652\ \textcolor{preprocessor}{\#define\ DMC\_PSEUDOPOTENTIAL\ 6}}
+\DoxyCodeLine{00653\ \textcolor{preprocessor}{\#define\ DMC\_MOVE\_ONE\ 7}}
+\DoxyCodeLine{00654\ }
+\DoxyCodeLine{00655\ \textcolor{preprocessor}{\#define\ VMC\_MOVE\_ALL\ 0}}
+\DoxyCodeLine{00656\ \textcolor{preprocessor}{\#define\ VMC\_MOVE\_ONE\ 1}}
+\DoxyCodeLine{00657\ \textcolor{preprocessor}{\#define\ VMC\_MOVE\_DRIFT\_ALL\ 2}}
+\DoxyCodeLine{00658\ \textcolor{preprocessor}{\#define\ VMC\_MOVE\_DRIFT\_ONE\ 3}}
+\DoxyCodeLine{00659\ \textcolor{preprocessor}{\#define\ VMC\_SUM\_OF\_TWO\_WAVEFUNCTIONS\ 4}}
+\DoxyCodeLine{00660\ }
+\DoxyCodeLine{00661\ \textcolor{preprocessor}{\#define\ PIGS\_PRIMITIVE\ 0}}
+\DoxyCodeLine{00662\ \textcolor{preprocessor}{\#define\ PIGS\_PSEUDOPOTENTIAL\ 1}}
+\DoxyCodeLine{00663\ \textcolor{preprocessor}{\#define\ PIGS\_PSEUDOPOTENTIAL\_OBDM\ 2}}
+\DoxyCodeLine{00664\ }
+\DoxyCodeLine{00665\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_1D}}
+\DoxyCodeLine{00666\ \textcolor{preprocessor}{\#\ \ define\ DIMENSION\ 1}}
+\DoxyCodeLine{00667\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00668\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_2D}}
+\DoxyCodeLine{00669\ \textcolor{preprocessor}{\#\ \ define\ DIMENSION\ 2}}
+\DoxyCodeLine{00670\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00671\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_3D}}
+\DoxyCodeLine{00672\ \textcolor{preprocessor}{\#\ \ define\ DIMENSION\ 3}}
+\DoxyCodeLine{00673\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00674\ }
+\DoxyCodeLine{00675\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_EXTERNAL}}
+\DoxyCodeLine{00676\ \textcolor{preprocessor}{\#\ \ define\ SUBSTITUTE\_INTERPOLATED\_WF}}
+\DoxyCodeLine{00677\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00678\ }
+\DoxyCodeLine{00679\ \textcolor{comment}{//\#ifdef\ INTERPOLATE\_LINEAR\_JASTROW\_WF}}
+\DoxyCodeLine{00680\ \textcolor{comment}{//\#\ \ define\ SUBSTITUTE\_INTERPOLATED\_WF}}
+\DoxyCodeLine{00681\ \textcolor{comment}{//\#endif}}
+\DoxyCodeLine{00682\ }
+\DoxyCodeLine{00683\ \textcolor{preprocessor}{\#ifdef\ INTERPOLATE\_SPLINE\_JASTROW\_WF}}
+\DoxyCodeLine{00684\ \textcolor{preprocessor}{\#define\ INTERPOLATE\_TYPE\_SPLINE}}
+\DoxyCodeLine{00685\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00686\ }
+\DoxyCodeLine{00687\ \textcolor{preprocessor}{\#ifdef\ INTERPOLATE\_SPLINE\_ONE\_BODY\_Z\_WF\ }}
+\DoxyCodeLine{00688\ \textcolor{preprocessor}{\#define\ INTERPOLATE\_TYPE\_SPLINE}}
+\DoxyCodeLine{00689\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00690\ \textcolor{preprocessor}{\#include\ <time.h>}}
+\DoxyCodeLine{00691\ }
+\DoxyCodeLine{00692\ \textcolor{preprocessor}{\#define\ RAN2\_SEED\ 1023}}
+\DoxyCodeLine{00693\ \textcolor{keywordtype}{int}\ AllocateMemory(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00694\ }
+\DoxyCodeLine{00695\ \textcolor{preprocessor}{\#ifdef\ CRYSTAL}}
+\DoxyCodeLine{00696\ \textcolor{preprocessor}{\#\ \ include\ "{}crystal.h"{}}}
+\DoxyCodeLine{00697\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00698\ }
+\DoxyCodeLine{00699\ \textcolor{preprocessor}{\#ifdef\ DATATYPE\_FLOAT}}
+\DoxyCodeLine{00700\ \textcolor{keyword}{typedef}\ \textcolor{keywordtype}{float}\ DOUBLE;}
+\DoxyCodeLine{00701\ \textcolor{preprocessor}{\#\ \ define\ LF\ "{}f"{}}}
+\DoxyCodeLine{00702\ \textcolor{preprocessor}{\#\ \ define\ LE\ "{}e"{}}}
+\DoxyCodeLine{00703\ \textcolor{preprocessor}{\#\ \ define\ LG\ "{}g"{}}}
+\DoxyCodeLine{00704\ \textcolor{preprocessor}{\#\ \ define\ Cos\ cosf}}
+\DoxyCodeLine{00705\ \textcolor{preprocessor}{\#\ \ define\ Sin\ sinf}}
+\DoxyCodeLine{00706\ \textcolor{preprocessor}{\#\ \ define\ Tg\ tanf}}
+\DoxyCodeLine{00707\ \textcolor{preprocessor}{\#\ \ define\ Arctg\ atanf}}
+\DoxyCodeLine{00708\ \textcolor{preprocessor}{\#\ \ define\ Log\ logf}}
+\DoxyCodeLine{00709\ \textcolor{preprocessor}{\#\ \ define\ Exp\ expf}}
+\DoxyCodeLine{00710\ \textcolor{preprocessor}{\#\ \ define\ Sqrt\ sqrtf}}
+\DoxyCodeLine{00711\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00712\ }
+\DoxyCodeLine{00713\ \textcolor{preprocessor}{\#ifdef\ DATATYPE\_DOUBLE}}
+\DoxyCodeLine{00714\ \textcolor{comment}{//typedef\ double\ DOUBLE;}}
+\DoxyCodeLine{00715\ \textcolor{preprocessor}{\#\ \ define\ DOUBLE\ double}}
+\DoxyCodeLine{00716\ \textcolor{preprocessor}{\#\ \ define\ LF\ "{}lf"{}}}
+\DoxyCodeLine{00717\ \textcolor{preprocessor}{\#\ \ define\ LE\ "{}le"{}}}
+\DoxyCodeLine{00718\ \textcolor{preprocessor}{\#\ \ define\ LG\ "{}lg"{}}}
+\DoxyCodeLine{00719\ \textcolor{preprocessor}{\#\ \ define\ Cos\ cos}}
+\DoxyCodeLine{00720\ \textcolor{preprocessor}{\#\ \ define\ Sin\ sin}}
+\DoxyCodeLine{00721\ \textcolor{preprocessor}{\#\ \ define\ Tg\ tan}}
+\DoxyCodeLine{00722\ \textcolor{preprocessor}{\#\ \ define\ Arctg\ atan}}
+\DoxyCodeLine{00723\ \textcolor{preprocessor}{\#\ \ define\ Log\ log}}
+\DoxyCodeLine{00724\ \textcolor{preprocessor}{\#\ \ define\ Exp\ exp}}
+\DoxyCodeLine{00725\ \textcolor{preprocessor}{\#\ \ define\ Sqrt\ sqrt}}
+\DoxyCodeLine{00726\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00727\ }
+\DoxyCodeLine{00728\ \textcolor{preprocessor}{\#ifdef\ DATATYPE\_LONG\_DOUBLE}}
+\DoxyCodeLine{00729\ \textcolor{preprocessor}{\#\ \ define\ DOUBLE\ long\ double}}
+\DoxyCodeLine{00730\ \textcolor{preprocessor}{\#\ \ define\ LF\ "{}Lf"{}}}
+\DoxyCodeLine{00731\ \textcolor{preprocessor}{\#\ \ define\ LE\ "{}Le"{}}}
+\DoxyCodeLine{00732\ \textcolor{preprocessor}{\#\ \ define\ LG\ "{}Lg"{}}}
+\DoxyCodeLine{00733\ \textcolor{preprocessor}{\#\ \ define\ Cos\ cosl}}
+\DoxyCodeLine{00734\ \textcolor{preprocessor}{\#\ \ define\ Sin\ sinl}}
+\DoxyCodeLine{00735\ \textcolor{preprocessor}{\#\ \ define\ Tg\ tanl}}
+\DoxyCodeLine{00736\ \textcolor{preprocessor}{\#\ \ define\ Arctg\ atanl}}
+\DoxyCodeLine{00737\ \textcolor{preprocessor}{\#\ \ define\ Log\ logl}}
+\DoxyCodeLine{00738\ \textcolor{preprocessor}{\#\ \ define\ Exp\ expl}}
+\DoxyCodeLine{00739\ \textcolor{preprocessor}{\#\ \ define\ Sqrt\ sqrtl}}
+\DoxyCodeLine{00740\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00741\ }
+\DoxyCodeLine{00742\ \textcolor{preprocessor}{\#ifdef\ CRYSTAL\_WIDTH\_ARRAY}}
+\DoxyCodeLine{00743\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rx\_i\ Crystal.Rx[i]}}
+\DoxyCodeLine{00744\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Ry\_i\ Crystal.Ry[i]}}
+\DoxyCodeLine{00745\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rz\_i\ Crystal.Rz[i]}}
+\DoxyCodeLine{00746\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_weight\_i\ Crystal.weight[i]}}
+\DoxyCodeLine{00747\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rx\_j\ Crystal.Rx[j]}}
+\DoxyCodeLine{00748\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Ry\_j\ Crystal.Ry[j]}}
+\DoxyCodeLine{00749\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rz\_j\ Crystal.Rz[j]}}
+\DoxyCodeLine{00750\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_weight\_j\ Crystal.weight[j]}}
+\DoxyCodeLine{00751\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00752\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rx\_i\ Crystal.Rx}}
+\DoxyCodeLine{00753\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Ry\_i\ Crystal.Ry}}
+\DoxyCodeLine{00754\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rz\_i\ Crystal.Rz}}
+\DoxyCodeLine{00755\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_weight\_i\ 1.}}
+\DoxyCodeLine{00756\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rx\_j\ Crystal.Rx}}
+\DoxyCodeLine{00757\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Ry\_j\ Crystal.Ry}}
+\DoxyCodeLine{00758\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_Rz\_j\ Crystal.Rz}}
+\DoxyCodeLine{00759\ \textcolor{preprocessor}{\#\ \ define\ Crystal\_dot\_weight\_j\ 1.}}
+\DoxyCodeLine{00760\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00761\ }
+\DoxyCodeLine{00762\ \textcolor{preprocessor}{\#ifndef\ INTERACTION\_SUM\_OVER\_IMAGES}}
+\DoxyCodeLine{00763\ \textcolor{preprocessor}{\#\ \ ifndef\ INTERACTION\_EWALD}}
+\DoxyCodeLine{00764\ \textcolor{preprocessor}{\#\ \ \ \ ifndef\ INTERACTION\_SUM\_OVER\_IMAGES\_SMOOTH\_CUTOFF}}
+\DoxyCodeLine{00765\ \textcolor{preprocessor}{\#\ \ \ \ \ \ define\ INTERACTION\_WITHOUT\_IMAGES}}
+\DoxyCodeLine{00766\ \textcolor{preprocessor}{\#\ \ \ \ endif}}
+\DoxyCodeLine{00767\ \textcolor{preprocessor}{\#\ \ endif}}
+\DoxyCodeLine{00768\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00769\ }
+\DoxyCodeLine{00770\ \textcolor{preprocessor}{\#ifdef\ MPI}}
+\DoxyCodeLine{00771\ \textcolor{preprocessor}{\#\ \ define\ MEMORY\_CONTIGUOUS}}
+\DoxyCodeLine{00772\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00773\ }
+\DoxyCodeLine{00774\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_3D}}
+\DoxyCodeLine{00775\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_X}}
+\DoxyCodeLine{00776\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_Y}}
+\DoxyCodeLine{00777\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_Z}}
+\DoxyCodeLine{00778\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00779\ }
+\DoxyCodeLine{00780\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_2D}}
+\DoxyCodeLine{00781\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_X}}
+\DoxyCodeLine{00782\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_Y}}
+\DoxyCodeLine{00783\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00784\ }
+\DoxyCodeLine{00785\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_1D}}
+\DoxyCodeLine{00786\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X\ }\textcolor{comment}{//\ in\ 1D\ trap\ move\ in\ z}}
+\DoxyCodeLine{00787\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_X}}
+\DoxyCodeLine{00788\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00789\ \textcolor{preprocessor}{\#\ \ define\ MOVE\_IN\_Z}}
+\DoxyCodeLine{00790\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00791\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00792\ }
+\DoxyCodeLine{00793\ \textcolor{preprocessor}{\#ifdef\ MOVE\_IN\_X}}
+\DoxyCodeLine{00794\ \textcolor{preprocessor}{\#\ define\ CaseX(arg)\ arg}}
+\DoxyCodeLine{00795\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00796\ \textcolor{preprocessor}{\#\ define\ CaseX(arg)}}
+\DoxyCodeLine{00797\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00798\ }
+\DoxyCodeLine{00799\ \textcolor{preprocessor}{\#ifdef\ MOVE\_IN\_Y}}
+\DoxyCodeLine{00800\ \textcolor{preprocessor}{\#\ define\ CaseY(arg)\ arg}}
+\DoxyCodeLine{00801\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00802\ \textcolor{preprocessor}{\#\ define\ CaseY(arg)}}
+\DoxyCodeLine{00803\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00804\ }
+\DoxyCodeLine{00805\ \textcolor{preprocessor}{\#ifdef\ MOVE\_IN\_Z}}
+\DoxyCodeLine{00806\ \textcolor{preprocessor}{\#\ define\ CaseZ(arg)\ arg}}
+\DoxyCodeLine{00807\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00808\ \textcolor{preprocessor}{\#\ define\ CaseZ(arg)}}
+\DoxyCodeLine{00809\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00810\ }
+\DoxyCodeLine{00811\ \textcolor{preprocessor}{\#ifdef\ SD\_MEASURE\_ONLY\_X\_DIRECTION}}
+\DoxyCodeLine{00812\ \textcolor{preprocessor}{\#\ \ define\ CaseXSD(arg)\ arg}}
+\DoxyCodeLine{00813\ \textcolor{preprocessor}{\#\ \ define\ CaseYSD(arg)}}
+\DoxyCodeLine{00814\ \textcolor{preprocessor}{\#\ \ define\ CaseZSD(arg)}}
+\DoxyCodeLine{00815\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00816\ \textcolor{preprocessor}{\#ifdef\ SD\_MEASURE\_ONLY\_Y\_DIRECTION}}
+\DoxyCodeLine{00817\ \textcolor{preprocessor}{\#\ \ define\ CaseXSD(arg)}}
+\DoxyCodeLine{00818\ \textcolor{preprocessor}{\#\ \ define\ CaseYSD(arg)\ arg}}
+\DoxyCodeLine{00819\ \textcolor{preprocessor}{\#\ \ define\ CaseZSD(arg)}}
+\DoxyCodeLine{00820\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00821\ \textcolor{preprocessor}{\#ifdef\ MOVE\_IN\_X}}
+\DoxyCodeLine{00822\ \textcolor{preprocessor}{\#\ \ define\ CaseXSD(arg)\ arg}}
+\DoxyCodeLine{00823\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00824\ \textcolor{preprocessor}{\#\ \ define\ CaseXSD(arg)}}
+\DoxyCodeLine{00825\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00826\ \textcolor{preprocessor}{\#ifdef\ MOVE\_IN\_Y}}
+\DoxyCodeLine{00827\ \textcolor{preprocessor}{\#\ \ define\ CaseYSD(arg)\ arg}}
+\DoxyCodeLine{00828\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00829\ \textcolor{preprocessor}{\#\ \ define\ CaseYSD(arg)}}
+\DoxyCodeLine{00830\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00831\ \textcolor{preprocessor}{\#ifdef\ MOVE\_IN\_Z}}
+\DoxyCodeLine{00832\ \textcolor{preprocessor}{\#\ \ define\ CaseZSD(arg)\ arg}}
+\DoxyCodeLine{00833\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00834\ \textcolor{preprocessor}{\#\ \ define\ CaseZSD(arg)}}
+\DoxyCodeLine{00835\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00836\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00837\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00838\ }
+\DoxyCodeLine{00839\ \textcolor{preprocessor}{\#ifdef\ SD\_MEASURE\_ONLY\_Z\_DIRECTION}}
+\DoxyCodeLine{00840\ \textcolor{preprocessor}{\#\ \ define\ CaseXSD(arg)}}
+\DoxyCodeLine{00841\ \textcolor{preprocessor}{\#\ \ define\ CaseYSD(arg)}}
+\DoxyCodeLine{00842\ \textcolor{preprocessor}{\#\ \ define\ CaseZSD(arg)\ arg}}
+\DoxyCodeLine{00843\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00844\ }
+\DoxyCodeLine{00845\ \textcolor{preprocessor}{\#ifdef\ SPECKLES\ }\textcolor{comment}{//\ spline\ interpolation\ fail\ if\ any\ coordinate\ is\ outside\ of\ the\ array\ limits}}
+\DoxyCodeLine{00846\ \textcolor{preprocessor}{\#\ define\ PARTICLES\_NEVER\_LEAVE\_THE\_BOX}}
+\DoxyCodeLine{00847\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00848\ }
+\DoxyCodeLine{00849\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SCHIFF\_VERLET\_TRAP}}
+\DoxyCodeLine{00850\ \textcolor{preprocessor}{\#\ define\ TRIAL\_SCHIFF\_VERLET}}
+\DoxyCodeLine{00851\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00852\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SCHIFF\_VERLET\_PHONON}}
+\DoxyCodeLine{00853\ \textcolor{preprocessor}{\#\ define\ TRIAL\_SCHIFF\_VERLET}}
+\DoxyCodeLine{00854\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00855\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_SCHIFF\_VERLET\_TRAP\_PHONON2D}}
+\DoxyCodeLine{00856\ \textcolor{preprocessor}{\#\ define\ TRIAL\_SCHIFF\_VERLET}}
+\DoxyCodeLine{00857\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00858\ }
+\DoxyCodeLine{00859\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_3D\ }\textcolor{comment}{//\ quasi\ 2D\ geometry}}
+\DoxyCodeLine{00860\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC}}
+\DoxyCodeLine{00861\ \textcolor{preprocessor}{\#define\ BC\_Q2D}}
+\DoxyCodeLine{00862\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00863\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00864\ }
+\DoxyCodeLine{00865\ \textcolor{preprocessor}{\#ifndef\ BC\_2DPBC\_HEXAGON\ }}
+\DoxyCodeLine{00866\ \textcolor{preprocessor}{\#\ \ define\ BOX\_EQUAL\_SIDES\ }\textcolor{comment}{//\ set\ Lx=Ly=Lz}}
+\DoxyCodeLine{00867\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00868\ }
+\DoxyCodeLine{00869\ \textcolor{preprocessor}{\#ifndef\ LATTICE\_3D\_BCC}}
+\DoxyCodeLine{00870\ \textcolor{preprocessor}{\#\ \ ifndef\ LATTICE\_3D\_FCC}}
+\DoxyCodeLine{00871\ \textcolor{preprocessor}{\#\ \ \ \ define\ LATTICE\_3D\_CUBIC}}
+\DoxyCodeLine{00872\ \textcolor{preprocessor}{\#\ \ endif}}
+\DoxyCodeLine{00873\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00874\ }
+\DoxyCodeLine{00875\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_Z}}
+\DoxyCodeLine{00876\ \textcolor{preprocessor}{\#\ \ define\ BC\_1DPBC}}
+\DoxyCodeLine{00877\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00878\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X}}
+\DoxyCodeLine{00879\ \textcolor{preprocessor}{\#\ \ define\ BC\_1DPBC}}
+\DoxyCodeLine{00880\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00881\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_SQUARE}}
+\DoxyCodeLine{00882\ \textcolor{preprocessor}{\#\ \ define\ BC\_2DPBC}}
+\DoxyCodeLine{00883\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00884\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_HEXAGON}}
+\DoxyCodeLine{00885\ \textcolor{preprocessor}{\#\ \ define\ BC\_2DPBC}}
+\DoxyCodeLine{00886\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00887\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_NON\_ORTHOGONAL}}
+\DoxyCodeLine{00888\ \textcolor{preprocessor}{\#\ \ define\ BC\_2DPBC}}
+\DoxyCodeLine{00889\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00890\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_CUBE}}
+\DoxyCodeLine{00891\ \textcolor{preprocessor}{\#\ \ define\ BC\_3DPBC}}
+\DoxyCodeLine{00892\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00893\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_TRUNCATED\_OCTAHEDRON}}
+\DoxyCodeLine{00894\ \textcolor{preprocessor}{\#\ \ define\ BC\_3DPBC}}
+\DoxyCodeLine{00895\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00896\ }
+\DoxyCodeLine{00897\ \textcolor{preprocessor}{\#ifndef\ TRIAL\_1D}}
+\DoxyCodeLine{00898\ \textcolor{preprocessor}{\#\ \ ifndef\ TRIAL\_2D}}
+\DoxyCodeLine{00899\ \textcolor{preprocessor}{\#\ \ \ \ ifndef\ TRIAL\_3D}}
+\DoxyCodeLine{00900\ \textcolor{preprocessor}{\#\ \ \ \ \ \ error\ "{}define\ TRIAL\_XD"{}}}
+\DoxyCodeLine{00901\ \textcolor{preprocessor}{\#\ \ \ \ endif}}
+\DoxyCodeLine{00902\ \textcolor{preprocessor}{\#\ \ endif}}
+\DoxyCodeLine{00903\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00904\ }
+\DoxyCodeLine{00905\ \textcolor{preprocessor}{\#ifndef\ CALCULATE\_DERIVATIVES\_NUMERICALLY}}
+\DoxyCodeLine{00906\ \textcolor{preprocessor}{\#\ \ define\ CALCULATE\_DERIVATIVES\_ANALYTICALLY}}
+\DoxyCodeLine{00907\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00908\ }
+\DoxyCodeLine{00909\ \textcolor{preprocessor}{\#ifndef\ SPINFULL}}
+\DoxyCodeLine{00910\ \textcolor{preprocessor}{\#\ \ define\ SPINLESS}}
+\DoxyCodeLine{00911\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00912\ }
+\DoxyCodeLine{00913\ \textcolor{comment}{//\#ifdef\ SPINFULL}}
+\DoxyCodeLine{00914\ \textcolor{comment}{//extern\ struct\ Distribution\ **PDSpin;\ //\ PDSpin[spin1\ -\/\ spin2][grid\_PD]\ array}}
+\DoxyCodeLine{00915\ \textcolor{comment}{//\#endif}}
+\DoxyCodeLine{00916\ }
+\DoxyCodeLine{00917\ \textcolor{preprocessor}{\#ifdef\ TRIAL22\_SAME\_AS\_11}}
+\DoxyCodeLine{00918\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactU22\ InterpolateExactU11}}
+\DoxyCodeLine{00919\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactFp22\ InterpolateExactFp11}}
+\DoxyCodeLine{00920\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactE22\ InterpolateExactE11}}
+\DoxyCodeLine{00921\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00922\ }
+\DoxyCodeLine{00923\ \textcolor{preprocessor}{\#ifdef\ TRIAL12\_SAME\_AS\_11}}
+\DoxyCodeLine{00924\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactU\ InterpolateExactU11}}
+\DoxyCodeLine{00925\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactFp\ InterpolateExactFp11}}
+\DoxyCodeLine{00926\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactE\ InterpolateExactE11}}
+\DoxyCodeLine{00927\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00928\ }
+\DoxyCodeLine{00929\ \textcolor{preprocessor}{\#ifdef\ TRIAL11\_SAME\_AS\_12}}
+\DoxyCodeLine{00930\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactU11\ InterpolateExactU}}
+\DoxyCodeLine{00931\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactFp11\ InterpolateExactFp}}
+\DoxyCodeLine{00932\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactE11\ InterpolateExactE}}
+\DoxyCodeLine{00933\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00934\ }
+\DoxyCodeLine{00935\ \textcolor{preprocessor}{\#ifdef\ TRIAL22\_SAME\_AS\_12}}
+\DoxyCodeLine{00936\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactU22\ InterpolateExactU}}
+\DoxyCodeLine{00937\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactFp22\ InterpolateExactFp}}
+\DoxyCodeLine{00938\ \textcolor{preprocessor}{\#\ \ define\ InterpolateExactE22\ InterpolateExactE}}
+\DoxyCodeLine{00939\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00940\ }
+\DoxyCodeLine{00941\ }
+\DoxyCodeLine{00942\ \textcolor{preprocessor}{\#ifdef\ MEASURE\_PURE\_OBDM}}
+\DoxyCodeLine{00943\ \textcolor{preprocessor}{\#\ \ ifdef\ MEASURE\_PURE\_TBDM}}
+\DoxyCodeLine{00944\ \textcolor{preprocessor}{\#\ \ \ \ error\ "{}define\ either\ MEASURE\_PURE\_OBDM\ or\ MEASURE\_PURE\_TBDM,\ but\ not\ both\ of\ them"{}}}
+\DoxyCodeLine{00945\ \textcolor{preprocessor}{\#\ \ endif}}
+\DoxyCodeLine{00946\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00947\ }
+\DoxyCodeLine{00948\ \textcolor{preprocessor}{\#ifdef\ MEASURE\_PURE\_OBDM}}
+\DoxyCodeLine{00949\ \textcolor{preprocessor}{\#\ \ define\ VIRTUAL\_WALKERS}}
+\DoxyCodeLine{00950\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00951\ }
+\DoxyCodeLine{00952\ \textcolor{preprocessor}{\#ifdef\ MEASURE\_PURE\_TBDM}}
+\DoxyCodeLine{00953\ \textcolor{preprocessor}{\#\ \ define\ VIRTUAL\_WALKERS}}
+\DoxyCodeLine{00954\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00955\ }
+\DoxyCodeLine{00956\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_TWO\_BODY\_SCATTERING\_NUMERICAL\_SPINFULL}}
+\DoxyCodeLine{00957\ \ \ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structGrid}{Grid}}\ **GridSpin;\ \textcolor{comment}{//\ [spin1][spin2]\ array}}
+\DoxyCodeLine{00958\ \textcolor{preprocessor}{\#undef\ INTERPOLATE\_SPLINE\_JASTROW\_WF}}
+\DoxyCodeLine{00959\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00960\ }
+\DoxyCodeLine{00961\ \textcolor{preprocessor}{\#ifdef\ INTERACTION\_SPINFULL\_GAUSSIAN}}
+\DoxyCodeLine{00962\ \textcolor{preprocessor}{\#\ \ define\ SAME\_SPIN\_CONSTANT\_JASTROW}}
+\DoxyCodeLine{00963\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00964\ }
+\DoxyCodeLine{00965\ \textcolor{preprocessor}{\#ifdef\ INTERACTION\_SPINFULL\_DOUBLE\_GAUSSIAN}}
+\DoxyCodeLine{00966\ \textcolor{preprocessor}{\#\ \ define\ SAME\_SPIN\_CONSTANT\_JASTROW}}
+\DoxyCodeLine{00967\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00968\ }
+\DoxyCodeLine{00969\ \textcolor{preprocessor}{\#ifdef\ JASTROW\_RIGHT\_BOUNDARY\_SPINFULL\_SAME\_SPIN\_BOUND\_STATE}}
+\DoxyCodeLine{00970\ \textcolor{preprocessor}{\#\ \ define\ JASTROW\_RIGHT\_BOUNDARY\_BOUND\_STATE}}
+\DoxyCodeLine{00971\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00972\ }
+\DoxyCodeLine{00973\ \textcolor{preprocessor}{\#ifdef\ JASTROW\_RIGHT\_BOUNDARY\_SPINFULL\_DIFFERENT\_SPIN\_BOUND\_STATE}}
+\DoxyCodeLine{00974\ \textcolor{preprocessor}{\#\ \ define\ JASTROW\_RIGHT\_BOUNDARY\_BOUND\_STATE}}
+\DoxyCodeLine{00975\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00976\ }
+\DoxyCodeLine{00977\ \textcolor{preprocessor}{\#define\ JASTROW\_GOES\_TO\_ONE\_AT\_LARGEST\_DISTANCE}}
+\DoxyCodeLine{00978\ }
+\DoxyCodeLine{00979\ \textcolor{preprocessor}{\#ifdef\ JASTROW\_RIGHT\_BOUNDARY\_PHONONS}}
+\DoxyCodeLine{00980\ \textcolor{preprocessor}{\#\ \ undef\ JASTROW\_GOES\_TO\_ONE\_AT\_LARGEST\_DISTANCE}}
+\DoxyCodeLine{00981\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00982\ }
+\DoxyCodeLine{00983\ \textcolor{preprocessor}{\#ifdef\ INTERACTION\_LINEAR\_1D\_COULOMB}}
+\DoxyCodeLine{00984\ \textcolor{preprocessor}{\#\ \ define\ DONT\_CHECK\_CONTINUITY\_OF\_WF}}
+\DoxyCodeLine{00985\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00986\ }
+\DoxyCodeLine{00987\ \textcolor{preprocessor}{\#ifndef\ JASTROW\_LEFT\_BOUNDARY\_ZERO}}
+\DoxyCodeLine{00988\ \textcolor{preprocessor}{\#\ \ ifndef\ JASTROW\_LEFT\_BOUNDARY\_PSEUDOPOTENTIAL}}
+\DoxyCodeLine{00989\ \textcolor{preprocessor}{\#\ \ \ \ define\ \ JASTROW\_LEFT\_BOUNDARY\_ZERO\_DERIVATIVE}}
+\DoxyCodeLine{00990\ \textcolor{preprocessor}{\#\ \ endif}}
+\DoxyCodeLine{00991\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00992\ }
+\DoxyCodeLine{00993\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structWalker}{Walker}}\ \{}
+\DoxyCodeLine{00994\ \ \ \textcolor{comment}{/*\ coordinates\ */}}
+\DoxyCodeLine{00995\ \textcolor{preprocessor}{\#ifdef\ NPARTICLES}}
+\DoxyCodeLine{00996\ \ \ DOUBLE\ x[NPARTICLES];}
+\DoxyCodeLine{00997\ \ \ DOUBLE\ y[NPARTICLES];}
+\DoxyCodeLine{00998\ \ \ DOUBLE\ z[NPARTICLES];}
+\DoxyCodeLine{00999\ \ \ \textcolor{keywordtype}{int}\ spin[NPARTICLES];}
+\DoxyCodeLine{01000\ \textcolor{preprocessor}{\#ifdef\ SPINFULL}}
+\DoxyCodeLine{01001\ \ \ DOUBLE\ psiT\_sigma\_inv[NPARTICLES];\ \textcolor{comment}{//\ psi\_T(R,-\/sigma\_i)\ /\ psi\_T(R,sigma\_i)}}
+\DoxyCodeLine{01002\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{01003\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{01004\ \ \ DOUBLE\ *x;}
+\DoxyCodeLine{01005\ \ \ DOUBLE\ *y;}
+\DoxyCodeLine{01006\ \ \ DOUBLE\ *z;}
+\DoxyCodeLine{01007\ \ \ \textcolor{keywordtype}{int}\ *spin;}
+\DoxyCodeLine{01008\ \textcolor{preprocessor}{\#ifdef\ SPINFULL}}
+\DoxyCodeLine{01009\ \ \ DOUBLE\ *psiT\_sigma\_inv;\ \textcolor{comment}{//\ psi\_T(R,-\/sigma\_i)\ /\ psi\_T(R,sigma\_i)}}
+\DoxyCodeLine{01010\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{01011\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{01012\ \ \ DOUBLE\ E;\ }
+\DoxyCodeLine{01013\ \ \ DOUBLE\ EFF;\ }
+\DoxyCodeLine{01014\ \ \ DOUBLE\ Ekin;\ }
+\DoxyCodeLine{01015\ \ \ DOUBLE\ Epot;\ }
+\DoxyCodeLine{01016\ \ \ DOUBLE\ Edamping;\ }
+\DoxyCodeLine{01017\ \ \ DOUBLE\ Eint;}
+\DoxyCodeLine{01018\ \ \ DOUBLE\ Eext;}
+\DoxyCodeLine{01019\ \textcolor{preprocessor}{\#ifdef\ CHAINS\_PINNED\_TO\_CENTER\_OF\_MASS}}
+\DoxyCodeLine{01020\ \ \ DOUBLE\ *Crystal\_x;}
+\DoxyCodeLine{01021\ \ \ DOUBLE\ *Crystal\_y;}
+\DoxyCodeLine{01022\ \ \ DOUBLE\ *Crystal\_z;}
+\DoxyCodeLine{01023\ \textcolor{preprocessor}{\#endif\ \ }}
+\DoxyCodeLine{01024\ \textcolor{preprocessor}{\#ifdef\ VIRTUAL\_WALKERS\ }\textcolor{comment}{//\ Pure\ OBDM\ or\ TBDM}}
+\DoxyCodeLine{01025\ \ \ DOUBLE\ OBDMpureB;\ \textcolor{comment}{//\ bosons}}
+\DoxyCodeLine{01026\ \ \ DOUBLE\ OBDMpureF;\ \textcolor{comment}{//\ fermions}}
+\DoxyCodeLine{01027\ \ \ DOUBLE\ OBDMpure\_r;\ \ \textcolor{comment}{//\ displacement\ in\ r\ for\ nk\ calculation}}
+\DoxyCodeLine{01028\ \ \ DOUBLE\ *OBDMweight;\ }
+\DoxyCodeLine{01029\ \ \ \textcolor{keywordtype}{int}\ OBDM\_position;}
+\DoxyCodeLine{01030\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{01031\ \textcolor{preprocessor}{\#ifdef\ CRYSTAL\_SYMMETRIC}}
+\DoxyCodeLine{01032\ \ \ DOUBLE\ *Mo;\ \textcolor{comment}{//\ needed\ for\ the\ symm.\ crystal\ w.f.\ }}
+\DoxyCodeLine{01033\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{01034\ \ \ DOUBLE\ Eold;\ }
+\DoxyCodeLine{01035\ \ \ DOUBLE\ U;\ \textcolor{comment}{//\ f=exp(U)}}
+\DoxyCodeLine{01036\ \ \ \textcolor{keywordtype}{int}\ status;\ \textcolor{comment}{//0-\/alive,\ 1-\/dead,\ 2-\/reincarnation,\ 3-\/killed,\ 4-\/virtual(OBDM)}}
+\DoxyCodeLine{01037\ \textcolor{preprocessor}{\#ifdef\ MEASURE\_CORRELATION\_FUNCTIONS\_IN\_THE\_MIDDLE\_OF\_DRIFT}}
+\DoxyCodeLine{01038\ \ \ \textcolor{keywordtype}{int}\ status\_end\_of\_step\_initialized;}
+\DoxyCodeLine{01039\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{01040\ \ \ \textcolor{keywordtype}{int}\ status\_sum\_of\_two\_walkers\_U;}
+\DoxyCodeLine{01041\ \ \ \textcolor{keywordtype}{int}\ status\_sum\_of\_two\_walkers\_E;}
+\DoxyCodeLine{01042\ \ \ DOUBLE\ weight;}
+\DoxyCodeLine{01043\ \ \ \textcolor{keywordtype}{int}\ w;\ \textcolor{comment}{//\ Walker\ index}}
+\DoxyCodeLine{01044\ }
+\DoxyCodeLine{01045\ \ \ DOUBLE\ r2,\ z2,\ r4,\ z4,\ r2pd;\ \textcolor{comment}{//\ storing\ information\ of\ the\ current\ block}}
+\DoxyCodeLine{01046\ \ \ DOUBLE\ r2old,\ z2old;\ \textcolor{comment}{//\ storing\ information\ of\ the\ previous\ block}}
+\DoxyCodeLine{01047\ }
+\DoxyCodeLine{01048\ \ \ \textcolor{keywordtype}{int}\ times\_measured;\ \textcolor{comment}{//\ needed\ pure\ estimators,\ for\ the\ arrays\ to\ be\ filly\ filled}}
+\DoxyCodeLine{01049\ }
+\DoxyCodeLine{01050\ \ \ \textcolor{keywordtype}{int}\ **PD;\ \ \ \textcolor{comment}{//\ Pure\ pair\ distribution\ [grid\_pure\_block][gridPD]}}
+\DoxyCodeLine{01051\ \ \ DOUBLE\ **rhoRe;\ \ \textcolor{comment}{//\ form\ factor\ measurement\ [gridSKT\_t][gridSKT\_k]}}
+\DoxyCodeLine{01052\ \ \ DOUBLE\ **rhoIm;\ \ \textcolor{comment}{//\ form\ factor\ measurement\ [gridSKT\_t][gridSKT\_k]}}
+\DoxyCodeLine{01053\ \ \ DOUBLE\ **psi;\ \ \textcolor{comment}{//\ one-\/body\ density\ matrix\ <psi(tau)psi(0)>\ [gridSKT\_t][gridSKT\_k]}}
+\DoxyCodeLine{01054\ \ \ \textcolor{keywordtype}{int}\ PD\_position;}
+\DoxyCodeLine{01055\ }
+\DoxyCodeLine{01056\ \ \ \textcolor{keywordtype}{int}\ **RD;\ \ \ \textcolor{comment}{//\ Pure\ radial\ distribution\ [grid\_pure\_block][gridRD]}}
+\DoxyCodeLine{01057\ \ \ \textcolor{keywordtype}{int}\ **RDz;\ \ \textcolor{comment}{//\ Pure\ radial\ distribution\ [grid\_pure\_block][gridRD]}}
+\DoxyCodeLine{01058\ \ \ DOUBLE\ **HR;\ \ \ \textcolor{comment}{//\ 3body\ correlation\ function\ in\ hyperradius\ [grid\_pure\_block][gridg3]}}
+\DoxyCodeLine{01059\ \ \ DOUBLE\ *R2pure;\ \textcolor{comment}{//\ pure\ r2}}
+\DoxyCodeLine{01060\ \ \ DOUBLE\ *Z2pure;\ \textcolor{comment}{//\ pure\ r2}}
+\DoxyCodeLine{01061\ \ \ DOUBLE\ *PD\_R2pure;\ \textcolor{comment}{//\ pure\ r2\ calculated\ over\ pair\ distribution}}
+\DoxyCodeLine{01062\ \ \ \textcolor{keywordtype}{int}\ RD\_wait;}
+\DoxyCodeLine{01063\ \ \ \textcolor{keywordtype}{int}\ RD\_position;}
+\DoxyCodeLine{01064\ \ \ \textcolor{keywordtype}{int}\ HR\_position;}
+\DoxyCodeLine{01065\ \ \ \textcolor{keywordtype}{int}\ g3\_store;\ \textcolor{comment}{//\ g3(0)}}
+\DoxyCodeLine{01066\ }
+\DoxyCodeLine{01067\ \ \ DOUBLE\ **Sk;\ \textcolor{comment}{//\ Pure\ static\ structure\ factor}}
+\DoxyCodeLine{01068\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ **Sk\_N;\ \textcolor{comment}{//\ Pure\ static\ structure\ factor}}
+\DoxyCodeLine{01069\ \ \ DOUBLE\ *Skx,\ *Sky;\ \textcolor{comment}{//\ check\ for\ a\ crystal\ structure}}
+\DoxyCodeLine{01070\ \ \ \textcolor{keywordtype}{int}\ Sk\_position;}
+\DoxyCodeLine{01071\ \ \ \textcolor{keywordtype}{int}\ Sk\_tau\_position;}
+\DoxyCodeLine{01072\ \ \ \textcolor{keywordtype}{int}\ Sk\_count;}
+\DoxyCodeLine{01073\ \ \ \textcolor{keywordtype}{int}\ Skxy\_count;}
+\DoxyCodeLine{01074\ }
+\DoxyCodeLine{01075\ \ \ DOUBLE\ *LindF;\ \ \ \textcolor{comment}{//\ Pure\ Lindemann\ ratio\ [grid\_pure\_block]}}
+\DoxyCodeLine{01076\ \ \ \textcolor{keywordtype}{int}\ *LindN;\ \ \ \textcolor{comment}{//\ Pure\ Lindemann\ ratio\ [grid\_pure\_block]}}
+\DoxyCodeLine{01077\ \ \ \textcolor{keywordtype}{int}\ Lind\_position;}
+\DoxyCodeLine{01078\ }
+\DoxyCodeLine{01079\ \ \ \textcolor{comment}{//\ calculation\ of\ the\ superfluid\ density}}
+\DoxyCodeLine{01080\ \ \ DOUBLE\ **CM;\ \textcolor{comment}{//\ [(x,y,z)][SD.size]\ center\ of\ mass\ position}}
+\DoxyCodeLine{01081\ \ \ DOUBLE\ **rreal;\ \textcolor{comment}{//\ [N][3]}}
+\DoxyCodeLine{01082\ }
+\DoxyCodeLine{01083\ \ \ DOUBLE\ *Epot\_pure;\ \textcolor{comment}{//\ Pure\ potential\ energy\ [grid\_pure\_block]}}
+\DoxyCodeLine{01084\ \ \ DOUBLE\ *x\_pure;\ \textcolor{comment}{//\ Pure\ coordinates\ [N]}}
+\DoxyCodeLine{01085\ \ \ DOUBLE\ *y\_pure;\ \textcolor{comment}{//\ Pure\ coordinates\ [N]}}
+\DoxyCodeLine{01086\ \ \ DOUBLE\ *z\_pure;\ \textcolor{comment}{//\ Pure\ coordinates\ [N]}}
+\DoxyCodeLine{01087\ \ \ }
+\DoxyCodeLine{01088\ \ \ \textcolor{comment}{//\ scalable\ code}}
+\DoxyCodeLine{01089\ \ \ \textcolor{keywordtype}{int}\ *c\_Nlocal;\ \textcolor{comment}{//\ [Nc]\ number\ of\ particles\ in\ the\ current\ cell\ only}}
+\DoxyCodeLine{01090\ \ \ \textcolor{keywordtype}{int}\ **c\_index\_local;\ \textcolor{comment}{//\ [Nc][N\_local]\ indices\ of\ particles\ belonging\ to\ the\ current\ cell}}
+\DoxyCodeLine{01091\ \ \ \textcolor{keywordtype}{int}\ *c\_Nall;\ \textcolor{comment}{//\ [Nc]\ number\ of\ particles\ in\ the\ current\ cell\ and\ in\ the\ nearest\ cells}}
+\DoxyCodeLine{01092\ \ \ \textcolor{keywordtype}{int}\ **c\_index\_all;\ \textcolor{comment}{//\ [Nc][N\_all]\ indices\ of\ particles\ belonging\ to\ the\ current\ and\ nearest\ cells}}
+\DoxyCodeLine{01093\ \ \ \textcolor{keywordtype}{int}\ *c\_Npositive;\ \textcolor{comment}{//\ [Nc]\ same\ as\ cN\_all,\ but\ avoids\ DOUBLE\ counting}}
+\DoxyCodeLine{01094\ \ \ \textcolor{keywordtype}{int}\ **c\_index\_positive;\ \textcolor{comment}{//\ [Nc][N\_positive]\ same\ as\ c\_index\_all,\ but\ avoids\ DOUBLE\ counting}}
+\DoxyCodeLine{01095\ }
+\DoxyCodeLine{01096\ \ \ \textcolor{comment}{//\ DMC\ or\ smart\ VMC\ drift\ variables\ }}
+\DoxyCodeLine{01097\ \ \ DOUBLE\ **F,\ **Fp,\ **Fpp;\ \textcolor{comment}{/*FF[N][3]*/}}
+\DoxyCodeLine{01098\ \ \ DOUBLE\ **R,\ **Rp,\ **Rpp,\ **Rppp,\ **R\_dmc\_end\_of\_step;}
+\DoxyCodeLine{01099\ \ \ \textcolor{comment}{//DOUBLE\ **Fold,\ **Rold,\ **dR\_drift\_old,\ **dR\_drift,\ **dR\_gauss;\ //\ for\ Metropolis\ quadratic\ move}}
+\DoxyCodeLine{01100\ \ \ DOUBLE\ **dR\_drift,\ **dR\_drift\_old,\ **dR,\ **dR\_gauss;\ \textcolor{comment}{//\ for\ Metropolis\ quadratic\ move}}
+\DoxyCodeLine{01101\ }
+\DoxyCodeLine{01102\ \textcolor{preprocessor}{\#ifdef\ SPINFULL}}
+\DoxyCodeLine{01103\ \ \ \textcolor{keywordtype}{int}\ ***PDSpin;}
+\DoxyCodeLine{01104\ \textcolor{preprocessor}{\#endif\ }}
+\DoxyCodeLine{01105\ \};}
+\DoxyCodeLine{01106\ }
+\DoxyCodeLine{01107\ \textcolor{preprocessor}{\#define\ ALIVE\ 0}}
+\DoxyCodeLine{01108\ \textcolor{preprocessor}{\#define\ DEAD\ 1}}
+\DoxyCodeLine{01109\ \textcolor{preprocessor}{\#define\ REINCARNATION\ 2}}
+\DoxyCodeLine{01110\ \textcolor{preprocessor}{\#define\ KILLED\ 3}}
+\DoxyCodeLine{01111\ \textcolor{preprocessor}{\#define\ VIRTUAL\ 4}}
+\DoxyCodeLine{01112\ }
+\DoxyCodeLine{01113\ \textcolor{preprocessor}{\#define\ ONE\_COMPONENT\_CODE}}
+\DoxyCodeLine{01114\ }
+\DoxyCodeLine{01115\ \textcolor{comment}{/*\ define\ Walker\ structure\ BEFORE\ including\ "{}quantities.h"{}\ */}}
+\DoxyCodeLine{01116\ \textcolor{preprocessor}{\#include\ "{}quantities.h"{}}}
+\DoxyCodeLine{01117\ }
+\DoxyCodeLine{01118\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ MC,\ SmartMC;}
+\DoxyCodeLine{01119\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structWalker}{Walker}}\ *W,\ *Wp;}
+\DoxyCodeLine{01120\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structGrid}{Grid}}\ G;\ \ \textcolor{comment}{//\ Jastrow}}
+\DoxyCodeLine{01121\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structGrid}{Grid}}\ G1;\ \textcolor{comment}{//\ One-\/body}}
+\DoxyCodeLine{01122\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structGrid}{Grid}}\ GV;\ \textcolor{comment}{//\ Vext}}
+\DoxyCodeLine{01123\ }
+\DoxyCodeLine{01124\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsOBDM}{sOBDM}}\ OBDM,\ OBDMtrap,\ OBDMfermi,\ TBDM,\ TBDMfermi;}
+\DoxyCodeLine{01125\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsMATRIX}{sMATRIX}}\ OBDM\_MATRIX,\ TBDM\_MATRIX,\ OBDMfermi\_MATRIX,\ TBDMfermi\_MATRIX,\ PD\_MATRIX,\ RD\_MATRIX,\ SKT,\ SKTre,\ SKTim,\ PhiTau,\ Nk\_MATRIX,\ Nkfermi\_MATRIX;}
+\DoxyCodeLine{01126\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structDistribution}{Distribution}}\ PD,\ PDz,\ PD\_pure,\ RD,\ RDz,\ RD\_pure,\ RDz\_pure,\ HD,\ HR,\ HR\_pure,\ Veff;}
+\DoxyCodeLine{01127\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsSk}{sSk}}\ Sk,\ Sk\_pure;}
+\DoxyCodeLine{01128\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsSD}{sSD}}\ SD;}
+\DoxyCodeLine{01129\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsOrderParameter}{sOrderParameter}}\ OrderParameter;}
+\DoxyCodeLine{01130\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsLindemannRatio}{sLindemannRatio}}\ LindemannRatio;}
+\DoxyCodeLine{01131\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsPureEstimator}{sPureEstimator}}\ Epot\_pure;}
+\DoxyCodeLine{01132\ }
+\DoxyCodeLine{01133\ \textcolor{keyword}{extern}\ DOUBLE\ L,\ Lhalf,\ L2,\ Lhalf2,\ Lmax,\ Lwf,\ Lhalfwf,\ Lhalfwf2,\ Lcutoff\_pot,\ Lcutoff\_pot2;}
+\DoxyCodeLine{01134\ \textcolor{keyword}{extern}\ DOUBLE\ Lx,\ Ly,\ Lz,\ L\_half\_x,\ L\_half\_y,\ L\_half\_z,\ L\_inv\_x,\ L\_inv\_y,\ L\_inv\_z,\ kL;}
+\DoxyCodeLine{01135\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ grid\_trial;}
+\DoxyCodeLine{01136\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridOBDM;}
+\DoxyCodeLine{01137\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridOBDM\_MATRIX;}
+\DoxyCodeLine{01138\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridRD;}
+\DoxyCodeLine{01139\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridPD;}
+\DoxyCodeLine{01140\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridg3;}
+\DoxyCodeLine{01141\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridRDx;}
+\DoxyCodeLine{01142\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridRDy;}
+\DoxyCodeLine{01143\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ grid\_pure\_block;}
+\DoxyCodeLine{01144\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridRD\_pure\_block;}
+\DoxyCodeLine{01145\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridSk;}
+\DoxyCodeLine{01146\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridPD\_MATRIX\_x;}
+\DoxyCodeLine{01147\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridPD\_MATRIX\_y;}
+\DoxyCodeLine{01148\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ gridSKT\_t,\ gridSKT\_k;}
+\DoxyCodeLine{01149\ \textcolor{keyword}{extern}\ DOUBLE\ SKT\_dk,\ SKT\_kmin;}
+\DoxyCodeLine{01150\ \textcolor{keyword}{extern}\ DOUBLE\ PD\_MATRIX\_x;}
+\DoxyCodeLine{01151\ \textcolor{keyword}{extern}\ DOUBLE\ PD\_MATRIX\_y;}
+\DoxyCodeLine{01152\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ Niter,\ Nmeasure,\ iteration\_global;}
+\DoxyCodeLine{01153\ \textcolor{keyword}{extern}\ DOUBLE\ Rpar,\ Apar,\ Bpar,\ Cpar,\ Dpar,\ R0par,\ Epar,\ Ipar,\ Kpar,\ Mpar,\ alpha\_R,\ alpha\_latt,\ alpha\_Jastrow,\ beta\_latt,\ gamma\_latt,\ beta\_z;}
+\DoxyCodeLine{01154\ \textcolor{keyword}{extern}\ DOUBLE\ Rpar11,\ Rpar12,\ Apar12,\ Bpar12,\ Cpar12;}
+\DoxyCodeLine{01155\ \textcolor{keyword}{extern}\ DOUBLE\ alpha\_x,\ alpha\_x2,\ two\_alpha\_x,\ alpha\_Rx;}
+\DoxyCodeLine{01156\ \textcolor{keyword}{extern}\ DOUBLE\ alpha\_y,\ alpha\_y2,\ two\_alpha\_y,\ alpha\_Ry;}
+\DoxyCodeLine{01157\ \textcolor{keyword}{extern}\ DOUBLE\ alpha\_z,\ alpha\_z2,\ two\_alpha\_z,\ alpha\_Rz;}
+\DoxyCodeLine{01158\ \textcolor{keyword}{extern}\ DOUBLE\ omega\_x,\ omega\_y,\ omega\_z;}
+\DoxyCodeLine{01159\ \textcolor{keyword}{extern}\ DOUBLE\ omega\_x2,\ omega\_y2,\ omega\_z2;}
+\DoxyCodeLine{01160\ \textcolor{keyword}{extern}\ DOUBLE\ n,\ a,\ a2,\ b,\ lambda,\ lambda2,\ lambda4;}
+\DoxyCodeLine{01161\ }
+\DoxyCodeLine{01162\ \textcolor{keyword}{extern}\ DOUBLE\ dt,\ dt\_vmc,\ dt\_one,\ dt\_all,\ acceptance\_rate,\ beta;}
+\DoxyCodeLine{01163\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ N,\ Nimp,\ Ndens,\ NCrystal,\ Nspin;}
+\DoxyCodeLine{01164\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Nwalkers,\ NwalkersMax,\ Nwalkers\_pure;}
+\DoxyCodeLine{01165\ \textcolor{keyword}{extern}\ DOUBLE\ Nwalkersw,\ Nwalkers\_weight\_killed;}
+\DoxyCodeLine{01166\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Npop,\ Npop\_max,\ Npop\_min,\ Npop\_virtual;}
+\DoxyCodeLine{01167\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ blck,\ blck\_heating;}
+\DoxyCodeLine{01168\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ McMillan\_points;}
+\DoxyCodeLine{01169\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ McMillanTBDM\_points;}
+\DoxyCodeLine{01170\ }
+\DoxyCodeLine{01171\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{char}\ file\_particles[],\ file\_energy[],\ file\_wf[],\ file\_wf1b[];}
+\DoxyCodeLine{01172\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{char}\ file\_OBDM[],\ file\_OBDM\_MATRIX[],\ \ file\_PDz[],\ file\_RD[],\ file\_RDz[];}
+\DoxyCodeLine{01173\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{char}\ file\_R2[],\ file\_z2[],\ file\_R2\_pure[],\ file\_z2\_pure[];}
+\DoxyCodeLine{01174\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{char}\ file\_PD[],\ file\_PD\_pure[],\ file\_RD\_pure[],\ file\_RDz\_pure[];}
+\DoxyCodeLine{01175\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{char}\ file\_Sk[],\ file\_Sk\_pure[],\ file\_SD[];}
+\DoxyCodeLine{01176\ }
+\DoxyCodeLine{01177\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_energy;}
+\DoxyCodeLine{01178\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_OBDM;}
+\DoxyCodeLine{01179\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_TBDM;}
+\DoxyCodeLine{01180\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_OBDM\_MATRIX;}
+\DoxyCodeLine{01181\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_SD;}
+\DoxyCodeLine{01182\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_RadDistr;}
+\DoxyCodeLine{01183\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_RadDistr\_pure;}
+\DoxyCodeLine{01184\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_RadDistrMATRIX;}
+\DoxyCodeLine{01185\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_PairDistr;}
+\DoxyCodeLine{01186\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_PairDistrMATRIX;}
+\DoxyCodeLine{01187\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_PairDistr\_R2;}
+\DoxyCodeLine{01188\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_R2;}
+\DoxyCodeLine{01189\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_Sk;}
+\DoxyCodeLine{01190\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_OP;}
+\DoxyCodeLine{01191\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_RDz;}
+\DoxyCodeLine{01192\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_g3;}
+\DoxyCodeLine{01193\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_effective\_potential;}
+\DoxyCodeLine{01194\ }
+\DoxyCodeLine{01195\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ video;}
+\DoxyCodeLine{01196\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ branchng\_present;}
+\DoxyCodeLine{01197\ }
+\DoxyCodeLine{01198\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ verbosity;}
+\DoxyCodeLine{01199\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ accepted,\ rejected;}
+\DoxyCodeLine{01200\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ accepted\_one,\ rejected\_one;}
+\DoxyCodeLine{01201\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ accepted\_all,\ rejected\_all;}
+\DoxyCodeLine{01202\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ overlaped;}
+\DoxyCodeLine{01203\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ generate\_new\_coordinates,\ generate\_new\_coordinates\_from\_lattice;}
+\DoxyCodeLine{01204\ }
+\DoxyCodeLine{01205\ \textcolor{keyword}{extern}\ DOUBLE\ *u\_mi,\ *u\_ij;}
+\DoxyCodeLine{01206\ \textcolor{keyword}{extern}\ DOUBLE\ *u\_tbdm\_i,\ **u\_tbdm\_ij,\ *u\_tbdm\_mcmillan\_i,\ **u\_tbdm\_mcmillan\_ij;}
+\DoxyCodeLine{01207\ \textcolor{keyword}{extern}\ DOUBLE\ *order;}
+\DoxyCodeLine{01208\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *sign\_u\_mi,\ *sign\_u\_ij;}
+\DoxyCodeLine{01209\ \textcolor{keyword}{extern}\ DOUBLE\ *mu\_k,\ *mu\_p\_k,\ *mu\_pp\_k;}
+\DoxyCodeLine{01210\ }
+\DoxyCodeLine{01211\ \textcolor{keyword}{extern}\ DOUBLE\ E,\ EFF,\ Eo,\ Ekin,\ Epot,\ Elat,\ Evar,\ Eck,\ Edamping,\ Eint,\ Eext;}
+\DoxyCodeLine{01212\ \textcolor{keyword}{extern}\ DOUBLE\ xR2,\ zR2;}
+\DoxyCodeLine{01213\ \textcolor{keyword}{extern}\ DOUBLE\ Srecoil,\ Syrecoil;\ }
+\DoxyCodeLine{01214\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Nlattice,\ Nlattice3;}
+\DoxyCodeLine{01215\ }
+\DoxyCodeLine{01216\ \textcolor{keyword}{extern}\ clock\_t\ time\_start;}
+\DoxyCodeLine{01217\ \textcolor{keyword}{extern}\ clock\_t\ time\_simulating;}
+\DoxyCodeLine{01218\ \textcolor{keyword}{extern}\ clock\_t\ time\_measuring;}
+\DoxyCodeLine{01219\ \textcolor{keyword}{extern}\ clock\_t\ time\_communicating;}
+\DoxyCodeLine{01220\ }
+\DoxyCodeLine{01221\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *dead\_walkers\_storage;}
+\DoxyCodeLine{01222\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *walkers\_storage;}
+\DoxyCodeLine{01223\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *killed\_walkers\_storage;}
+\DoxyCodeLine{01224\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Ndead\_walkers;}
+\DoxyCodeLine{01225\ \textcolor{keyword}{extern}\ DOUBLE\ reduce,\ amplify;}
+\DoxyCodeLine{01226\ \textcolor{keyword}{extern}\ DOUBLE\ *branching\_weight;\ \textcolor{comment}{//\ [NwalkersMax]}}
+\DoxyCodeLine{01227\ \textcolor{keyword}{extern}\ DOUBLE\ *branching\_xi;}
+\DoxyCodeLine{01228\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *branching\_multiplicity;}
+\DoxyCodeLine{01229\ }
+\DoxyCodeLine{01230\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ overlaped;}
+\DoxyCodeLine{01231\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ tried,\ Nmeasured;}
+\DoxyCodeLine{01232\ \textcolor{keyword}{extern}\ DOUBLE\ D;}
+\DoxyCodeLine{01233\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ square\_box;}
+\DoxyCodeLine{01234\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_Lind;}
+\DoxyCodeLine{01235\ \textcolor{keyword}{extern}\ DOUBLE\ lattice\_length;}
+\DoxyCodeLine{01236\ }
+\DoxyCodeLine{01237\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Nscal;}
+\DoxyCodeLine{01238\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Ncells;}
+\DoxyCodeLine{01239\ \textcolor{keyword}{extern}\ DOUBLE\ Lcell;}
+\DoxyCodeLine{01240\ }
+\DoxyCodeLine{01241\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_Nk\_pure;}
+\DoxyCodeLine{01242\ }
+\DoxyCodeLine{01243\ \textcolor{keyword}{extern}\ DOUBLE\ Rzigzag;}
+\DoxyCodeLine{01244\ \textcolor{keyword}{extern}\ DOUBLE\ T;}
+\DoxyCodeLine{01245\ \textcolor{keyword}{extern}\ DOUBLE\ Tannealing;}
+\DoxyCodeLine{01246\ }
+\DoxyCodeLine{01247\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ R2times\_measured;}
+\DoxyCodeLine{01248\ \textcolor{keyword}{extern}\ DOUBLE\ sum\_over\_images\_cut\_off\_num;}
+\DoxyCodeLine{01249\ \textcolor{keyword}{extern}\ DOUBLE\ Rc\_smooth\_cutoff;}
+\DoxyCodeLine{01250\ \textcolor{keyword}{extern}\ DOUBLE\ NkMaxTrap;}
+\DoxyCodeLine{01251\ }
+\DoxyCodeLine{01252\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ file\_particles\_append;}
+\DoxyCodeLine{01253\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_energy\_barrier;}
+\DoxyCodeLine{01254\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ file\_append;}
+\DoxyCodeLine{01255\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ optimization;}
+\DoxyCodeLine{01256\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Niter\_store;}
+\DoxyCodeLine{01257\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_SkMATRIX;}
+\DoxyCodeLine{01258\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_FormFactor;}
+\DoxyCodeLine{01259\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_Lindemann\_Lozovik;}
+\DoxyCodeLine{01260\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ generate\_crystal\_coordinates;}
+\DoxyCodeLine{01261\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_wavefunction\_projection;}
+\DoxyCodeLine{01262\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_pure\_coordinates;}
+\DoxyCodeLine{01263\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_tVMC;}
+\DoxyCodeLine{01264\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ R2\_subtract\_CM;}
+\DoxyCodeLine{01265\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ OBDM\_subtract\_CM;}
+\DoxyCodeLine{01266\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ measure\_Hessian\_matrix;}
+\DoxyCodeLine{01267\ }
+\DoxyCodeLine{01268\ \textcolor{keyword}{extern}\ DOUBLE\ inwf\_power;}
+\DoxyCodeLine{01269\ \textcolor{keyword}{extern}\ DOUBLE\ Vo,\ Ro;}
+\DoxyCodeLine{01270\ \textcolor{keyword}{extern}\ DOUBLE\ delta\_tilde;}
+\DoxyCodeLine{01271\ }
+\DoxyCodeLine{01272\ \textcolor{keyword}{extern}\ DOUBLE\ solitonV2,\ solitonXi,\ solitonk,\ soliton\_fixed\_phase\_V2,\ soliton\_fixed\_phase\_Xi;}
+\DoxyCodeLine{01273\ \textcolor{keyword}{extern}\ DOUBLE\ R3;\ \textcolor{comment}{//\ hyperradius}}
+\DoxyCodeLine{01274\ \textcolor{keyword}{extern}\ DOUBLE\ bilayer\_width,\ bilayer\_width2;}
+\DoxyCodeLine{01275\ \textcolor{keyword}{extern}\ DOUBLE\ t\_tunneling;}
+\DoxyCodeLine{01276\ \textcolor{keyword}{extern}\ DOUBLE\ Uo;}
+\DoxyCodeLine{01277\ \textcolor{keyword}{extern}\ DOUBLE\ gaussian\_alpha;}
+\DoxyCodeLine{01278\ \textcolor{keyword}{extern}\ DOUBLE\ gaussian\_beta;}
+\DoxyCodeLine{01279\ \textcolor{keyword}{extern}\ DOUBLE\ RoSW;}
+\DoxyCodeLine{01280\ \textcolor{keyword}{extern}\ DOUBLE\ Epotcutoff;}
+\DoxyCodeLine{01281\ \textcolor{keyword}{extern}\ DOUBLE\ cR[10],\ cI[10],\ tvmcNpar,\ tvmcNobs;}
+\DoxyCodeLine{01282\ \textcolor{keyword}{extern}\ DOUBLE\ Kpar11,\ Kpar12,\ aA;}
+\DoxyCodeLine{01283\ \textcolor{keyword}{extern}\ DOUBLE\ CMseparation;}
+\DoxyCodeLine{01284\ \textcolor{keyword}{extern}\ DOUBLE\ hard\_core\_diameter;}
+\DoxyCodeLine{01285\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Kurbakov\_BC;}
+\DoxyCodeLine{01286\ \textcolor{keyword}{extern}\ DOUBLE\ Kurbakov\_softcore;}
+\DoxyCodeLine{01287\ \textcolor{keyword}{extern}\ DOUBLE\ m\_mu;}
+\DoxyCodeLine{01288\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ check\_kinetic\_energy;}
+\DoxyCodeLine{01289\ \textcolor{keyword}{extern}\ DOUBLE\ one\_body\_momentum\_i;}
+\DoxyCodeLine{01290\ \textcolor{keyword}{extern}\ DOUBLE\ one\_body\_momentum\_k;}
+\DoxyCodeLine{01291\ \textcolor{keyword}{extern}\ DOUBLE\ E\_from\_growth\_estimator;}
+\DoxyCodeLine{01292\ \textcolor{keyword}{extern}\ DOUBLE\ Rsphere;}
+\DoxyCodeLine{01293\ \textcolor{keyword}{extern}\ DOUBLE\ Rnow;}
+\DoxyCodeLine{01294\ \textcolor{keyword}{extern}\ DOUBLE\ sum\_of\_two\_wavefunctions\_parameter1,\ sum\_of\_two\_wavefunctions\_parameter2,\ sum\_of\_two\_wavefunctions\_alpha;}
+\DoxyCodeLine{01295\ \textcolor{keyword}{extern}\ DOUBLE\ numeric\_derivative\_dr;}
+\DoxyCodeLine{01296\ }
+\DoxyCodeLine{01297\ \textcolor{keywordtype}{void}\ Measure(\textcolor{keywordtype}{int},\ \textcolor{keywordtype}{int});}
+\DoxyCodeLine{01298\ }
+\DoxyCodeLine{01299\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

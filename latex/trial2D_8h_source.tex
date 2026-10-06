@@ -1,0 +1,31 @@
+\doxysection{trial2\+D.\+h}
+\hypertarget{trial2D_8h_source}{}\label{trial2D_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*trial2D.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_\_TRIAL2D\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_\_TRIAL2D\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structGrid2D}{Grid2D}}\ \{}
+\DoxyCodeLine{00009\ \ \ \textcolor{keywordtype}{int}\ sizex1,\ sizex2;\ \ \ \ \ \ \ \ \textcolor{comment}{//\ number\ of\ elements\ in\ the\ grid\ }}
+\DoxyCodeLine{00010\ \ \ DOUBLE\ stepx1,\ stepx2;\ \ \ \ \ \textcolor{comment}{//\ grid\ spacing\ dx}}
+\DoxyCodeLine{00011\ \ \ DOUBLE\ I\_stepx1,\ I\_stepx2;\ \textcolor{comment}{//\ 1/dx}}
+\DoxyCodeLine{00012\ \ \ DOUBLE\ minx1,\ minx2;\ \ \ \ \ \ \ \textcolor{comment}{//\ min}}
+\DoxyCodeLine{00013\ \ \ DOUBLE\ maxx1,\ maxx2;\ \ \ \ \ \ \ \textcolor{comment}{//\ max}}
+\DoxyCodeLine{00014\ \ \ DOUBLE\ maxx12,\ maxx22;\ \ \ \ \ \textcolor{comment}{//\ max2}}
+\DoxyCodeLine{00015\ \ \ DOUBLE\ *x1,\ *x2;\ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ axis}}
+\DoxyCodeLine{00016\ \ \ DOUBLE\ **fp;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ f'/f\ \ }}
+\DoxyCodeLine{00017\ \ \ DOUBLE\ **lnf;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ ln(f)\ }}
+\DoxyCodeLine{00018\ \ \ DOUBLE\ **E;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ (f"{}+2f'/r)/f\ -\/\ (f'/f)\string^2}}
+\DoxyCodeLine{00019\ \};}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{keyword}{extern}\ DOUBLE\ Uwell;\ \textcolor{comment}{//\ depth\ of\ the\ well}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{keywordtype}{void}\ LoadTrialWaveFunction2D(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid2D}{Grid2D}}\ *G);}
+\DoxyCodeLine{00024\ DOUBLE\ Interpolate2DU(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid2D}{Grid2D}}\ *\mbox{\hyperlink{structGrid2D}{Grid2D}},\ DOUBLE\ x1,\ DOUBLE\ x2);}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

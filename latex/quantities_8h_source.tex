@@ -1,0 +1,186 @@
+\doxysection{quantities.\+h}
+\hypertarget{quantities_8h_source}{}\label{quantities_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*quantities.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_QUANTITIES\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_QUANTITIES\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#ifdef\ INTERACTION\_LENNARD\_JONES}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{comment}{//\ T\_lj\ =\ h\string^2/2m\ A\string^2}}
+\DoxyCodeLine{00011\ \textcolor{comment}{//\ U\_lj\ =\ 4\ eps\_lj\ /\ T\_lj\ }}
+\DoxyCodeLine{00012\ \textcolor{comment}{//\ H2}}
+\DoxyCodeLine{00013\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00014\ \textcolor{comment}{\#\ \ define\ eps\_lj\ 10.7\ //=\ 42.8/4}}
+\DoxyCodeLine{00015\ \textcolor{comment}{\#\ \ define\ sigma\_lj\ 2.97}}
+\DoxyCodeLine{00016\ \textcolor{comment}{\#\ \ define\ T\_lj\ 24.0668}}
+\DoxyCodeLine{00017\ \textcolor{comment}{\#\ \ define\ U\_lj\ 1.77839\ */}}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \textcolor{comment}{//4He}}
+\DoxyCodeLine{00020\ \textcolor{comment}{//\#\ \ define\ eps\_lj\ 10.22}}
+\DoxyCodeLine{00021\ \textcolor{comment}{//\#\ \ define\ sigma\_lj\ 2.556}}
+\DoxyCodeLine{00022\ \textcolor{comment}{//\#\ \ define\ T\_lj\ 12.115922801724114\ //\ (2*6.0599278)}}
+\DoxyCodeLine{00023\ \textcolor{comment}{//\#\ \ define\ U\_lj\ 3.374072340093048\ //\ (4*eps\_lj/T\_lj)}}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ \textcolor{comment}{//\ LJ\ units}}
+\DoxyCodeLine{00026\ \textcolor{preprocessor}{\#\ \ define\ eps\_lj\ 1.}}
+\DoxyCodeLine{00027\ \textcolor{preprocessor}{\#\ \ define\ sigma\_lj\ 1.}}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\#\ \ define\ T\_lj\ 1.}}
+\DoxyCodeLine{00029\ \textcolor{comment}{//\#\ \ define\ U\_lj\ 4.}}
+\DoxyCodeLine{00030\ \textcolor{preprocessor}{\#\ \ define\ U\_lj\ 1.}}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \textcolor{comment}{//\#\ \ define\ energy\_unit\ T\_lj}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00034\ }
+\DoxyCodeLine{00035\ DOUBLE\ Energy(DOUBLE\ *Epot,\ DOUBLE\ *Ekin,\ DOUBLE\ *Eff,\ DOUBLE\ *Edamping,\ DOUBLE\ *Eint,\ DOUBLE\ *Eext);}
+\DoxyCodeLine{00036\ DOUBLE\ WalkerEnergy(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *walker,\ DOUBLE\ *Epot,\ DOUBLE\ *Ekin,\ DOUBLE\ *EFF,\ DOUBLE\ *Edamping,\ DOUBLE\ *Eint,\ DOUBLE\ *Eext);}
+\DoxyCodeLine{00037\ DOUBLE\ WalkerEnergy0(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00038\ DOUBLE\ Vext(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);}
+\DoxyCodeLine{00039\ DOUBLE\ VextTilde(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);\ \textcolor{comment}{//\ [V,\ [T,\ V]]\ ,\ needed\ for\ quartic\ order}}
+\DoxyCodeLine{00040\ DOUBLE\ InteractionEnergy(DOUBLE\ r);}
+\DoxyCodeLine{00041\ DOUBLE\ InteractionEnergy\_ij(DOUBLE\ r,\ \textcolor{keywordtype}{int}\ spin1,\ \textcolor{keywordtype}{int}\ spin2);\ \textcolor{comment}{//\ taking\ in\ account\ spin}}
+\DoxyCodeLine{00042\ DOUBLE\ InteractionEnergyWithImages\_ij(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);}
+\DoxyCodeLine{00043\ DOUBLE\ InteractionEnergyTilde(DOUBLE\ r);\ \ \textcolor{comment}{//\ [V,\ [T,\ V]]\ ,\ needed\ for\ quartic\ order}}
+\DoxyCodeLine{00044\ DOUBLE\ InteractionEnergySumOverImages(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);}
+\DoxyCodeLine{00045\ DOUBLE\ InteractionDamping(DOUBLE\ r);}
+\DoxyCodeLine{00046\ DOUBLE\ WalkerPotentialEnergy(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00047\ DOUBLE\ WalkerPotentialEnergyTilde(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00048\ \textcolor{keywordtype}{void}\ MeasureHessianMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ \textcolor{keywordtype}{int}\ PermutationParity(DOUBLE\ *r);}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \textcolor{keywordtype}{int}\ MeasureOBDM(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00053\ \textcolor{keywordtype}{int}\ MeasureOBDMpure(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00054\ \textcolor{keywordtype}{int}\ MeasureOBDMShortRange(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00055\ \textcolor{keywordtype}{void}\ MeasureOBDMMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00056\ \textcolor{keywordtype}{int}\ MeasureTBDM(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00057\ \textcolor{keywordtype}{int}\ MeasureTBDMpure(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00058\ \textcolor{keywordtype}{void}\ MeasureSuperfluidDensity(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00059\ \textcolor{keywordtype}{void}\ MeasurePairDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00060\ \textcolor{keywordtype}{void}\ MeasureRadialDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00061\ \textcolor{keywordtype}{void}\ MeasureRadialDistributionWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00062\ \textcolor{keywordtype}{void}\ EmptyDistributionArrays(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00063\ \textcolor{keywordtype}{void}\ MeasureStaticStructureFactor(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00064\ \textcolor{keywordtype}{void}\ MeasureOrderParameter(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00065\ \textcolor{keywordtype}{void}\ MeasureLindemannRatio(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00066\ \textcolor{keywordtype}{void}\ InitializeFormFactor(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00067\ \textcolor{keywordtype}{void}\ MeasureFormFactor(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00068\ \textcolor{keywordtype}{int}\ MeasureOBDMorbital(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00069\ \textcolor{keywordtype}{void}\ MeasureWaveFunctionProjection(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00070\ \textcolor{keywordtype}{void}\ MeasureHyperRadius(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00071\ \textcolor{keywordtype}{void}\ MeasureEffectivePotential(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00072\ \textcolor{keywordtype}{void}\ MeasurePurePotentialEnergy(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00073\ DOUBLE\ MeasureKineticEnergyNumerically(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *walker);}
+\DoxyCodeLine{00074\ DOUBLE\ SpinPolarization(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00075\ \textcolor{keywordtype}{int}\ MeasureOBDMfromU(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00076\ \textcolor{keywordtype}{int}\ MeasureOBDMfromUWalker(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00077\ \textcolor{keywordtype}{int}\ MeasureTBDMfromU(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00078\ \textcolor{keywordtype}{int}\ MeasureTBDMfromUWalker(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsOBDM}{sOBDM}}\ \{}
+\DoxyCodeLine{00081\ \ \ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{00082\ \ \ DOUBLE\ step;}
+\DoxyCodeLine{00083\ \ \ DOUBLE\ min;}
+\DoxyCodeLine{00084\ \ \ DOUBLE\ max;}
+\DoxyCodeLine{00085\ \ \ DOUBLE\ *f;}
+\DoxyCodeLine{00086\ \ \ DOUBLE\ *N;}
+\DoxyCodeLine{00087\ \ \ \textcolor{keywordtype}{int}\ Nksize;\ \textcolor{comment}{//\ parameters\ of\ momentum\ distribution\ are\ stored\ here}}
+\DoxyCodeLine{00088\ \ \ DOUBLE\ kmin;\ }
+\DoxyCodeLine{00089\ \ \ DOUBLE\ kmax;\ }
+\DoxyCodeLine{00090\ \ \ DOUBLE\ *k;\ \ \textcolor{comment}{//\ grid\ for\ nk}}
+\DoxyCodeLine{00091\ \ \ DOUBLE\ *Nk;\ \textcolor{comment}{//\ Nk}}
+\DoxyCodeLine{00092\ \ \ \textcolor{keywordtype}{int}\ times\_measured;\ \textcolor{comment}{//\ needed\ for\ Nk}}
+\DoxyCodeLine{00093\ \ \ \textcolor{keywordtype}{int}\ Nktimes\_measured;\ \textcolor{comment}{//\ needed\ for\ Nk}}
+\DoxyCodeLine{00094\ \ \ DOUBLE\ CF;\ \textcolor{comment}{//\ condensate\ fraction\ calculated\ from\ projection\ to\ an\ external\ orbital}}
+\DoxyCodeLine{00095\ \ \ \textcolor{keywordtype}{int}\ CFN;}
+\DoxyCodeLine{00096\ \};}
+\DoxyCodeLine{00097\ }
+\DoxyCodeLine{00098\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsMATRIX}{sMATRIX}}\ \{}
+\DoxyCodeLine{00099\ \ \ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{00100\ \ \ DOUBLE\ step;}
+\DoxyCodeLine{00101\ \ \ DOUBLE\ step\_x;}
+\DoxyCodeLine{00102\ \ \ DOUBLE\ step\_y;}
+\DoxyCodeLine{00103\ \ \ DOUBLE\ min;}
+\DoxyCodeLine{00104\ \ \ DOUBLE\ max;}
+\DoxyCodeLine{00105\ \ \ DOUBLE\ maxx;}
+\DoxyCodeLine{00106\ \ \ DOUBLE\ maxy;}
+\DoxyCodeLine{00107\ \ \ DOUBLE\ **f;}
+\DoxyCodeLine{00108\ \ \ \textcolor{keywordtype}{int}\ **N;}
+\DoxyCodeLine{00109\ \ \ DOUBLE\ Norma;}
+\DoxyCodeLine{00110\ \ \ \textcolor{keywordtype}{int}\ times\_measured;}
+\DoxyCodeLine{00111\ \};}
+\DoxyCodeLine{00112\ }
+\DoxyCodeLine{00113\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsSk}{sSk}}\ \{}
+\DoxyCodeLine{00114\ \ \ \textcolor{keywordtype}{int}\ size;\ \textcolor{comment}{//\ length\ of\ input\ array}}
+\DoxyCodeLine{00115\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ *N;\ \ \ \ \ \ \ \ \textcolor{comment}{//\ times\ measured}}
+\DoxyCodeLine{00116\ \ \ DOUBLE\ *k;\ \ \ \ \ \textcolor{comment}{//\ k\string^2\ =\ kx\string^2+ky\string^2+kz\string^2}}
+\DoxyCodeLine{00117\ \ \ DOUBLE\ *kx;}
+\DoxyCodeLine{00118\ \ \ DOUBLE\ *ky;}
+\DoxyCodeLine{00119\ \ \ DOUBLE\ *kz;}
+\DoxyCodeLine{00120\ \ \ \textcolor{keywordtype}{int}\ *index;\ \ \ \ \textcolor{comment}{//\ number\ of\ non-\/degenerate\ values\ of\ momenta}}
+\DoxyCodeLine{00121\ \ \ DOUBLE\ *f;\ \ \ \ \ \textcolor{comment}{//\ same\ spin}}
+\DoxyCodeLine{00122\ \ \ DOUBLE\ L;\ \ \ \ \ \ \textcolor{comment}{//\ maximal\ distance}}
+\DoxyCodeLine{00123\ \ \ DOUBLE\ *cos,\ *sin;\ \textcolor{comment}{//\ <cos(kr)>;\ <sin(kr)>,\ important\ for\ optical\ lattice}}
+\DoxyCodeLine{00124\ \ \ \textcolor{keywordtype}{int}\ *degeneracy;\ \textcolor{comment}{//\ 1-\/no\ degeneracy,\ set\ d>1\ for\ the\ first\ degerate\ momentum\ and\ d=0\ to\ other\ }}
+\DoxyCodeLine{00125\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ times\_measured;}
+\DoxyCodeLine{00126\ \};}
+\DoxyCodeLine{00127\ }
+\DoxyCodeLine{00128\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structDistribution}{Distribution}}\ \{}
+\DoxyCodeLine{00129\ \ \ \textcolor{keywordtype}{int}\ *N;}
+\DoxyCodeLine{00130\ \ \ DOUBLE\ *f;\ \textcolor{comment}{//\ ready\ to\ be\ plotted\ !}}
+\DoxyCodeLine{00131\ \ \ \textcolor{comment}{//double\ times\_measured;}}
+\DoxyCodeLine{00132\ \ \ \textcolor{keywordtype}{int}\ times\_measured;}
+\DoxyCodeLine{00133\ \ \ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{00134\ \ \ DOUBLE\ step;}
+\DoxyCodeLine{00135\ \ \ DOUBLE\ min;}
+\DoxyCodeLine{00136\ \ \ DOUBLE\ max;}
+\DoxyCodeLine{00137\ \ \ DOUBLE\ r2;}
+\DoxyCodeLine{00138\ \ \ DOUBLE\ r2recent;}
+\DoxyCodeLine{00139\ \ \ DOUBLE\ r4;}
+\DoxyCodeLine{00140\ \ \ DOUBLE\ width;}
+\DoxyCodeLine{00141\ \ \ \textcolor{keywordtype}{int}\ g3;}
+\DoxyCodeLine{00142\ \textcolor{preprocessor}{\#ifdef\ SPINFULL}}
+\DoxyCodeLine{00143\ \ \ \ \textcolor{keywordtype}{int}\ **PDSpin;}
+\DoxyCodeLine{00144\ \textcolor{preprocessor}{\#endif\ }}
+\DoxyCodeLine{00145\ \};}
+\DoxyCodeLine{00146\ }
+\DoxyCodeLine{00147\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsSD}{sSD}}\ \{}
+\DoxyCodeLine{00148\ \ \ DOUBLE\ *CM2;}
+\DoxyCodeLine{00149\ \ \ \textcolor{keywordtype}{int}\ *N;}
+\DoxyCodeLine{00150\ \ \ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{00151\ \ \ \textcolor{keywordtype}{int}\ spacing;}
+\DoxyCodeLine{00152\ \ \ \textcolor{keywordtype}{int}\ times\_measured;}
+\DoxyCodeLine{00153\ \};}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00155\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsOrderParameter}{sOrderParameter}}\ \{}
+\DoxyCodeLine{00156\ \ \ DOUBLE\ cos;}
+\DoxyCodeLine{00157\ \ \ DOUBLE\ sin;}
+\DoxyCodeLine{00158\ \ \ \textcolor{keywordtype}{int}\ times\_measured;}
+\DoxyCodeLine{00159\ \ \ DOUBLE\ cos\_pure;}
+\DoxyCodeLine{00160\ \ \ DOUBLE\ sin\_pure;}
+\DoxyCodeLine{00161\ \ \ \textcolor{keywordtype}{int}\ times\_measured\_pure;}
+\DoxyCodeLine{00162\ \};}
+\DoxyCodeLine{00163\ }
+\DoxyCodeLine{00164\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsLindemannRatio}{sLindemannRatio}}\ \{}
+\DoxyCodeLine{00165\ \ \ \textcolor{keywordtype}{int}\ N;\ \ \ \ \textcolor{comment}{//\ times\ measured}}
+\DoxyCodeLine{00166\ \ \ DOUBLE\ F;\ \textcolor{comment}{//\ quantity\ measured\ (mixed)}}
+\DoxyCodeLine{00167\ \ \ \textcolor{keywordtype}{int}\ *Npure;\ \textcolor{comment}{//\ length\ grid\_pure\_block}}
+\DoxyCodeLine{00168\ \ \ DOUBLE\ *Fpure;}
+\DoxyCodeLine{00169\ \};}
+\DoxyCodeLine{00170\ }
+\DoxyCodeLine{00171\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structsPureEstimator}{sPureEstimator}}\ \{}
+\DoxyCodeLine{00172\ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{00173\ \ \ DOUBLE\ step;}
+\DoxyCodeLine{00174\ \ \ DOUBLE\ min;}
+\DoxyCodeLine{00175\ \ \ DOUBLE\ max;}
+\DoxyCodeLine{00176\ \ \ DOUBLE\ *f;}
+\DoxyCodeLine{00177\ \ \ DOUBLE\ *x;}
+\DoxyCodeLine{00178\ \ \ \textcolor{keywordtype}{int}\ times\_measured;}
+\DoxyCodeLine{00179\ \};}
+\DoxyCodeLine{00180\ }
+\DoxyCodeLine{00181\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

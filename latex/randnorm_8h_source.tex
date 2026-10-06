@@ -1,0 +1,70 @@
+\doxysection{randnorm.\+h}
+\hypertarget{randnorm_8h_source}{}\label{randnorm_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*randnorm.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_\_RANDOM\_NORMAL\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_\_RANDOM\_NORMAL\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <stdlib.h>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#define\ USE\_RAN2\_GENERATOR\ }\textcolor{comment}{//\ else\ use\ system\ random\ generator}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{comment}{/*\#ifdef\ \_\_alpha}}
+\DoxyCodeLine{00012\ \textcolor{comment}{\#\ define\ MAXR\ \ 2147483647}}
+\DoxyCodeLine{00013\ \textcolor{comment}{\#else}}
+\DoxyCodeLine{00014\ \textcolor{comment}{\#\ define\ MAXR\ RAND\_MAX}}
+\DoxyCodeLine{00015\ \textcolor{comment}{\#endif*/}}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#ifndef\ RAN2\_SEED}}
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#\ define\ RAN2\_SEED\ 1023}}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{comment}{//\#define\ Random()\ ran2(RAN2\_SEED)}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#define\ Randomize()\ srand((unsigned)time(NULL))}}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#define\ RandomSys()\ ((DOUBLE)\ rand()\ /\ (DOUBLE)\ RAND\_MAX)}}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{void}\ RandomNormal(DOUBLE\ *x1,\ DOUBLE\ *x2,\ \textcolor{keyword}{const}\ DOUBLE\ mu,\ \textcolor{keyword}{const}\ DOUBLE\ sigma);}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{void}\ RandomNormal3(DOUBLE\ *x1,\ DOUBLE\ *x2,\ DOUBLE\ *x3,\ \textcolor{keyword}{const}\ DOUBLE\ mu,\ \textcolor{keyword}{const}\ DOUBLE\ sigma);}
+\DoxyCodeLine{00028\ \textcolor{keywordtype}{void}\ RandomNormal3slow(DOUBLE\ *x1,\ DOUBLE\ *x2,\ DOUBLE\ *x3,\ \textcolor{keyword}{const}\ DOUBLE\ mu,\ \textcolor{keyword}{const}\ DOUBLE\ sigma);}
+\DoxyCodeLine{00029\ DOUBLE\ ran2(\textcolor{keywordtype}{long}\ *idum);}
+\DoxyCodeLine{00030\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ rand\_seed;}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \textcolor{preprocessor}{\#define\ max(a,b)\ (((a)\ >\ (b))\ ?\ (a)\ :\ (b))}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#define\ min(a,b)\ (((a)\ <\ (b))\ ?\ (a)\ :\ (b))}}
+\DoxyCodeLine{00034\ \textcolor{preprocessor}{\#define\ ON\ 1}}
+\DoxyCodeLine{00035\ \textcolor{preprocessor}{\#define\ OFF\ 0}}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \textcolor{keywordtype}{void}\ RandInit(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00038\ \textcolor{preprocessor}{\#ifdef\ \_OPENMP}}
+\DoxyCodeLine{00039\ \textcolor{preprocessor}{\#include\ "{}parallel.h"{}}}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ rand\_seed\_parallel\_length;}
+\DoxyCodeLine{00042\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{int}\ rand\_seed\_parallel[];}
+\DoxyCodeLine{00043\ \textcolor{comment}{//long\ int\ rand\_seed\_parallel[OPENMP\_MAX\_NPROC];}}
+\DoxyCodeLine{00044\ DOUBLE\ ran2parallel(\textcolor{keywordtype}{long}\ *idum);}
+\DoxyCodeLine{00045\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ }
+\DoxyCodeLine{00048\ \textcolor{comment}{//\ define\ Random()}}
+\DoxyCodeLine{00049\ \textcolor{preprocessor}{\#ifdef\ \_OPENMP}}
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\#\ \ define\ Random()\ ran2parallel(\&rand\_seed\_parallel[omp\_get\_thread\_num()])}}
+\DoxyCodeLine{00051\ \textcolor{comment}{//\#\ \ define\ Random()\ RandomCritical()}}
+\DoxyCodeLine{00052\ \textcolor{comment}{//\#\ \ define\ Random()\ ran2(\&rand\_seed)}}
+\DoxyCodeLine{00053\ \textcolor{preprocessor}{\#else\ }\textcolor{comment}{//\ not\ defined\ \_OPENMP}}
+\DoxyCodeLine{00054\ \textcolor{preprocessor}{\#ifdef\ USE\_RAN2\_GENERATOR}}
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#\ \ define\ Random()\ ran2(\&rand\_seed)}}
+\DoxyCodeLine{00056\ \ \ DOUBLE\ ran2(\textcolor{keywordtype}{long}\ *idum);}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00058\ \textcolor{comment}{//\#\ \ define\ Random()\ RandomSys()}}
+\DoxyCodeLine{00059\ \ \ \textcolor{keywordtype}{double}\ genrand(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00060\ \textcolor{preprocessor}{\#\ \ define\ Random()\ genrand()}}
+\DoxyCodeLine{00061\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00065\ }
+
+\end{DoxyCode}

@@ -1,0 +1,46 @@
+\doxysection{mymath.\+h}
+\hypertarget{mymath_8h_source}{}\label{mymath_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*mymath.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_\_MYMATH\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_\_MYMATH\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ DOUBLE\ K0opt(DOUBLE\ r);}
+\DoxyCodeLine{00009\ DOUBLE\ K1opt(DOUBLE\ r);}
+\DoxyCodeLine{00010\ DOUBLE\ K2opt(DOUBLE\ r);}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ K0(r)\ K0opt(4./((r)*(r)))}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#define\ K1(r)\ K1opt(4./((r)*(r)))}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#define\ K2(r)\ K2opt(4./((r)*(r)))}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ DOUBLE\ BesselI0(DOUBLE\ x);}
+\DoxyCodeLine{00016\ DOUBLE\ BesselI1(DOUBLE\ x);}
+\DoxyCodeLine{00017\ DOUBLE\ BesselIN(\textcolor{keywordtype}{int}\ N,\ DOUBLE\ x);}
+\DoxyCodeLine{00018\ DOUBLE\ BesselJ0(DOUBLE\ x);}
+\DoxyCodeLine{00019\ DOUBLE\ BesselJ1(DOUBLE\ x);}
+\DoxyCodeLine{00020\ DOUBLE\ BesselY0(DOUBLE\ x);}
+\DoxyCodeLine{00021\ DOUBLE\ BesselY1(DOUBLE\ x);}
+\DoxyCodeLine{00022\ DOUBLE\ BesselK0(DOUBLE\ x);}
+\DoxyCodeLine{00023\ DOUBLE\ BesselK1(DOUBLE\ x);}
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#define\ BesselK2(r)\ K2opt(4./((r)*(r)))}}
+\DoxyCodeLine{00025\ \textcolor{keywordtype}{double}\ digamma(\textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{double}\ erf\_my(\textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{double}\ erfc\_my(\textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{keywordtype}{double}\ E1(\textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00030\ \textcolor{keywordtype}{double}\ \ \ \ \ \ Exponential\_Integral\_Ei(\textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ xExponential\_Integral\_Ei(\textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00032\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ Continued\_Fraction\_Ei(\textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00033\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ Power\_Series\_Ei(\textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00034\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ Argument\_Addition\_Series\_Ei(\textcolor{keywordtype}{long}\ \textcolor{keywordtype}{double}\ x);}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ DOUBLE\ Erfcx(DOUBLE\ x);}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{int}\ compare\_double(\textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *a,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{void}\ *b);}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00041\ }
+
+\end{DoxyCode}
