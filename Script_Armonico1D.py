@@ -36,6 +36,7 @@
 #        de error estándar.
 
 import os
+import re
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -169,5 +170,57 @@ plt.legend()
 plt.grid(True)
 plt.savefig(os.path.join(resultados_dir, 'residuo_armonico_1D.png'),
             dpi=300, bbox_inches='tight')
+
+## Número de beads del cálculo actual, leído de la misma configuración que usa MC.
+with open('MC.cfg', 'r', encoding='utf-8') as configuracion:
+    configuracion_mc = configuracion.read()
+coincidencia_npop = re.search(r'\bNpop=\s*(\d+)', configuracion_mc)
+if coincidencia_npop is None:
+    raise ValueError('No se pudo leer Npop de MC.cfg')
+n_beads_actual = int(coincidencia_npop.group(1))
+
+## Este análisis corresponde únicamente a la ejecución actual.
+estudio = [(n_beads_actual, r2_sim, e_pimc)]
+
+## Ordenar por 1/N para mostrar la extrapolación hacia el límite continuo.
+estudio.sort(key=lambda fila: 1.0 / fila[0])
+n_estudio = np.array([fila[0] for fila in estudio], dtype=int)
+inverso_n = 1.0 / n_estudio
+r2_estudio = np.array([fila[1] for fila in estudio])
+energia_estudio = np.array([fila[2] for fila in estudio])
+
+## Guardar los valores medidos y sus referencias analíticas para facilitar su uso posterior.
+tabla_estudio = np.column_stack((
+    n_estudio, inverso_n, r2_estudio, np.full(len(estudio), r2_teo),
+    energia_estudio, np.full(len(estudio), e_teo),
+))
+np.savetxt(
+    os.path.join(resultados_dir, 'convergencia_beads_1D.csv'),
+    tabla_estudio,
+    delimiter=',',
+    header='N_beads,1/N,x2_PIMC,x2_analitico,E_PIMC,E_analitica',
+    comments='',
+    fmt=['%d', '%.8g', '%.10g', '%.10g', '%.10g', '%.10g'],
+)
+
+## Comparar <x^2> y la energía con sus valores exactos frente a 1/N.
+figura, ejes = plt.subplots(1, 2, figsize=(11, 4.5))
+ejes[0].plot(inverso_n, r2_estudio, 'o-', label=r'PIMC $\langle x^2 \rangle$')
+ejes[0].axhline(r2_teo, color='black', linestyle='--', label='Analítico')
+ejes[0].set_xlabel(r'$1/N_{beads}$')
+ejes[0].set_ylabel(r'$\langle x^2 \rangle$')
+ejes[0].set_title(r'Convergencia de $\langle x^2 \rangle$')
+ejes[0].legend()
+ejes[0].grid(True)
+ejes[1].plot(inverso_n, energia_estudio, 's-', color='tab:orange', label='PIMC')
+ejes[1].axhline(e_teo, color='black', linestyle='--', label='Analítica')
+ejes[1].set_xlabel(r'$1/N_{beads}$')
+ejes[1].set_ylabel('Energía total')
+ejes[1].set_title('Convergencia de la energía')
+ejes[1].legend()
+ejes[1].grid(True)
+figura.tight_layout()
+figura.savefig(os.path.join(resultados_dir, 'convergencia_beads_1D.png'),
+               dpi=300, bbox_inches='tight')
 
 plt.show()
