@@ -1,0 +1,10 @@
+Ekin simulacion = 0.342070
+Epot simulacion = 0.342070
+E total simulacion = 0.684140
+E total PIMC directo = 0.825308 +/- 0.251280
+Ekin teoria = 0.540988
+Epot teoria = 0.540988
+E total teoria = 1.081977
+<x^2> simulacion = 0.684140
+<x^2> teoria = 1.081977
+Residuo RMS = 0.044773
