@@ -318,6 +318,15 @@ int main(int argn, char **argv) {
 
   LoadParameters();
 
+  if(MC == PIMC) {
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+    if(N == 1) Message("  PIMC move: exact harmonic normal modes (whole path)\n");
+    else Message("  PIMC move: bead-by-bead Metropolis (normal modes require N=1)\n");
+#else
+    Message("  PIMC move: bead-by-bead Metropolis\n");
+#endif
+  }
+
   Message("\n\n  particles move in ");
   CaseX(Message("X ");)
   CaseY(Message("Y ");)
