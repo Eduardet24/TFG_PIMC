@@ -10,6 +10,7 @@ import numpy as np
 PROJECT_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = PROJECT_DIR / 'MC.cfg'
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
+CAMPAIGN_NAME = 'lote_blck1000'
 
 
 def config_value(config_text, key):
@@ -19,21 +20,50 @@ def config_value(config_text, key):
 	return float(match.group(1))
 
 
-def read_pimc_potential(energy_file, samples_per_block):
+def read_pimc_potential(energy_file):
 	energy_data = np.loadtxt(energy_file, comments='#', ndmin=2)
 	if energy_data.shape[1] < 3:
 		return None
+	run_config = (energy_file.parent / 'MC.cfg').read_text(encoding='utf-8')
+	niter = int(config_value(run_config, 'Niter'))
+	nmeasure = int(config_value(run_config, 'Nmeasure'))
+	if nmeasure <= 0 or niter % nmeasure != 0:
+		raise ValueError(f'Niter/Nmeasure no válido en {energy_file.parent / "MC.cfg"}')
+	samples_per_block = niter // nmeasure
 	values = energy_data[:, 1]
 	complete_blocks = values.size // samples_per_block
-	if complete_blocks <= 11:
-		raise ValueError(f'{energy_file} no tiene suficientes bloques tras termalizar')
+	if complete_blocks < 2 or values.size % samples_per_block:
+		raise ValueError(f'{energy_file} no contiene bloques de producción completos')
 	block_means = values[:complete_blocks * samples_per_block].reshape(
 		complete_blocks, samples_per_block
 	).mean(axis=1)
-	production_blocks = block_means[10:]
-	mean = float(np.mean(production_blocks))
-	error = float(np.std(production_blocks, ddof=1) / np.sqrt(production_blocks.size))
+	mean = float(np.mean(block_means))
+	error = float(np.std(block_means, ddof=1) / np.sqrt(block_means.size))
 	return mean, error
+
+
+def choose_bead_count(runs_by_temperature):
+	available_beads = sorted({
+		beads for runs in runs_by_temperature.values() for beads in runs
+	})
+	print('N_beads disponibles:')
+	for beads in available_beads:
+		temperatures = [
+			temperature for temperature, runs in sorted(runs_by_temperature.items())
+			if beads in runs
+		]
+		print(f'  {beads}: T={", ".join(f"{value:g}" for value in temperatures)}')
+
+	while True:
+		answer = input(f'Elige N_beads ({"/".join(map(str, available_beads))}): ').strip()
+		try:
+			selected = int(answer)
+		except ValueError:
+			print('Introduce uno de los números de beads disponibles.')
+			continue
+		if selected in available_beads:
+			return selected
+		print(f'N={selected} no está disponible. Opciones: {available_beads}')
 
 
 def main():
@@ -43,19 +73,16 @@ def main():
 
 	config_text = CONFIG_FILE.read_text(encoding='utf-8')
 	acceptance_rate = config_value(config_text, 'acceptance_rate')
-	niter = int(config_value(config_text, 'Niter'))
-	nmeasure = int(config_value(config_text, 'Nmeasure'))
-	if nmeasure <= 0 or niter % nmeasure != 0:
-		raise ValueError('Niter debe ser divisible por Nmeasure para estimar bloques')
-	samples_per_block = niter // nmeasure
-	series_dir = RESULTS_DIR / f'AR{acceptance_rate:g}'
+	series_dir = RESULTS_DIR / f'AR{acceptance_rate:g}' / CAMPAIGN_NAME
 	runs_by_temperature = {}
 	for energy_file in sorted(series_dir.glob('Temp*/N*/oute.dat')):
 		temperature_match = re.fullmatch(r'Temp([0-9.eE+-]+)', energy_file.parent.parent.name)
 		beads_match = re.fullmatch(r'N(\d+)', energy_file.parent.name)
-		if temperature_match is None or beads_match is None:
+		if (temperature_match is None or beads_match is None or
+				 not (energy_file.parent / '.complete').is_file()):
+			print(f'Se omite corrida incompleta o mal nombrada: {energy_file.parent}')
 			continue
-		estimate = read_pimc_potential(energy_file, samples_per_block)
+		estimate = read_pimc_potential(energy_file)
 		if estimate is None:
 			print(f'Se omite {energy_file}: no contiene Epot/Ekin (formato antiguo).')
 			continue
@@ -63,15 +90,17 @@ def main():
 		beads = int(beads_match.group(1))
 		runs_by_temperature.setdefault(measured_temperature, {})[beads] = estimate
 	if not runs_by_temperature:
-		raise FileNotFoundError(f'No hay archivos oute.dat compatibles en {series_dir}/Temp*/N*/')
+		raise FileNotFoundError(f'No hay archivos oute.dat completos en {series_dir}/Temp*/N*/')
 
-	common_beads = set.intersection(*(set(runs) for runs in runs_by_temperature.values()))
-	if not common_beads:
-		raise ValueError('No hay un N_beads común a todas las temperaturas para compararlas')
-	selected_beads = max(common_beads)
+	selected_beads = choose_bead_count(runs_by_temperature)
+	missing_temperatures = [
+		temperature for temperature, runs in runs_by_temperature.items()
+		if selected_beads not in runs
+	]
 	runs = [
 		(temperature_value, *runs_by_temperature[temperature_value][selected_beads])
 		for temperature_value in sorted(runs_by_temperature)
+		if selected_beads in runs_by_temperature[temperature_value]
 	]
 
 	figure, axis = plt.subplots(figsize=(8, 6))
@@ -93,9 +122,12 @@ def main():
 	figure.tight_layout()
 	output_file = series_dir / 'energia_potencial_vs_temperatura.png'
 	figure.savefig(output_file, dpi=300, bbox_inches='tight')
-	print(f'N común seleccionado: {selected_beads}')
+	print(f'N seleccionado: {selected_beads}')
 	for measured_temperature, potential_mean, potential_error in runs:
 		print(f'T={measured_temperature:g}: Epot={potential_mean:.6f} +/- {potential_error:.6f}')
+	if missing_temperatures:
+		missing = ', '.join(f'{value:g}' for value in sorted(missing_temperatures))
+		print(f'Sin datos completos para N={selected_beads} en T={missing}')
 	print(f'Figura guardada en {output_file}')
 	plt.show()
 

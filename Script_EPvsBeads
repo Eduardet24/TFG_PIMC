@@ -11,7 +11,7 @@ from scipy.stats import linregress
 PROJECT_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
 OUTPUT_NAME = 'convergencia_energia_potencialvsBeads.png'
-THERMALIZATION_BLOCKS = 10
+CAMPAIGN_NAME = 'lote_blck1000'
 
 
 def config_value(config_text, key):
@@ -21,43 +21,45 @@ def config_value(config_text, key):
     return float(match.group(1))
 
 
-def read_pimc_potential(energy_file, samples_per_block):
-    """Estimate Epot and its error from post-equilibration Monte Carlo block means."""
+def read_pimc_potential(energy_file):
+    """Estimate Epot and its error from production-block means in one run."""
     data = np.loadtxt(energy_file, comments='#', ndmin=2)
     if data.shape[1] < 3:
         return None
 
+    run_config = (energy_file.parent / 'MC.cfg').read_text(encoding='utf-8')
+    niter = int(config_value(run_config, 'Niter'))
+    nmeasure = int(config_value(run_config, 'Nmeasure'))
+    if nmeasure <= 0 or niter % nmeasure != 0:
+        raise ValueError(f'Niter/Nmeasure no válido en {energy_file.parent / "MC.cfg"}')
+    samples_per_block = niter // nmeasure
     values = data[:, 1]
     complete_blocks = values.size // samples_per_block
-    if complete_blocks <= THERMALIZATION_BLOCKS + 1:
-        raise ValueError(f'{energy_file} no tiene suficientes bloques tras termalizar')
+    if complete_blocks < 2 or values.size % samples_per_block:
+        raise ValueError(f'{energy_file} no contiene bloques de producción completos')
 
     block_means = values[:complete_blocks * samples_per_block].reshape(
         complete_blocks, samples_per_block
     ).mean(axis=1)
-    production_blocks = block_means[THERMALIZATION_BLOCKS:]
-    mean = float(np.mean(production_blocks))
-    error = float(np.std(production_blocks, ddof=1) / np.sqrt(production_blocks.size))
-    return mean, error
+    mean = float(np.mean(block_means))
+    error = float(np.std(block_means, ddof=1) / np.sqrt(block_means.size))
+    return mean, error, complete_blocks
 
 
 def main():
     config_text = (PROJECT_DIR / 'MC.cfg').read_text(encoding='utf-8')
     acceptance_rate = config_value(config_text, 'acceptance_rate')
     temperature = config_value(config_text, 'T')
-    niter = int(config_value(config_text, 'Niter'))
-    nmeasure = int(config_value(config_text, 'Nmeasure'))
-    if nmeasure <= 0 or niter % nmeasure != 0:
-        raise ValueError('Niter debe ser divisible por Nmeasure para estimar bloques')
-    samples_per_block = niter // nmeasure
     runs = {}
 
-    series_dir = RESULTS_DIR / f'AR{acceptance_rate:g}' / f'Temp{temperature:g}'
+    series_dir = (RESULTS_DIR / f'AR{acceptance_rate:g}' / CAMPAIGN_NAME /
+                  f'Temp{temperature:g}')
     for energy_file in series_dir.glob('N*/oute.dat'):
         match = re.fullmatch(r'N(\d+)', energy_file.parent.name)
-        if match is None:
+        if match is None or not (energy_file.parent / '.complete').is_file():
+            print(f'Se omite corrida incompleta: {energy_file.parent}')
             continue
-        estimate = read_pimc_potential(energy_file, samples_per_block)
+        estimate = read_pimc_potential(energy_file)
         if estimate is None:
             print(f'Se omite {energy_file}: solo contiene energía total (formato antiguo).')
             continue
@@ -111,7 +113,7 @@ def main():
     output_file = series_dir / OUTPUT_NAME
     figure.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f'N_beads incluidos: {n_beads.tolist()}')
-    print(f'Bloques de termalización descartados por corrida: {THERMALIZATION_BLOCKS}')
+    print(f'Bloques completos por corrida: {[runs[n][2] for n in n_beads]}')
     print(f'Figura guardada en {output_file}')
     plt.show()
 
