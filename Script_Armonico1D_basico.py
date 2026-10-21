@@ -105,12 +105,18 @@ e_kin_sim = r2_sim / 2.0
 ## Energía total estimada, suma de cinética y potencial.
 e_sim = e_kin_sim + e_pot_sim
 
-## Energía total medida directamente por el estimador de PIMC en `oute.dat`.
-energy_data = np.loadtxt('oute.dat', ndmin=1)
+## `oute.dat` contiene Etot, Epot y Ekin en PIMC; los archivos antiguos solo Etot.
+energy_data = np.loadtxt('oute.dat', comments='#', ndmin=2)
 ## Se descarta la primera mitad para reducir el efecto del equilibrio inicial.
-equilibrio_inicio = energy_data.size // 2
-e_pimc = np.mean(energy_data[equilibrio_inicio:])
-e_pimc_std = np.std(energy_data[equilibrio_inicio:], ddof=1)
+equilibrio_inicio = energy_data.shape[0] // 2
+energy_measurements = energy_data[equilibrio_inicio:]
+e_pimc = np.mean(energy_measurements[:, 0])
+e_pimc_std = np.std(energy_measurements[:, 0], ddof=1)
+if energy_data.shape[1] >= 3:
+    e_pot_pimc = np.mean(energy_measurements[:, 1])
+    e_pot_pimc_std = np.std(energy_measurements[:, 1], ddof=1)
+    e_kin_pimc = np.mean(energy_measurements[:, 2])
+    e_kin_pimc_std = np.std(energy_measurements[:, 2], ddof=1)
 
 ## Residuo entre la densidad simulada y la solución teórica en los mismos bins.
 n_teo_sim = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(
@@ -132,6 +138,9 @@ with open(resultados_txt, 'w', encoding='utf-8') as resultados:
     print(f'Epot simulacion = {e_pot_sim:.6f}', file=resultados)
     print(f'E total simulacion = {e_sim:.6f}', file=resultados)
     print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}', file=resultados)
+    if energy_data.shape[1] >= 3:
+        print(f'Epot PIMC directo = {e_pot_pimc:.6f} +/- {e_pot_pimc_std:.6f}', file=resultados)
+        print(f'Ekin PIMC directo = {e_kin_pimc:.6f} +/- {e_kin_pimc_std:.6f}', file=resultados)
     print(f'Ekin teoria = {e_kin_teo:.6f}', file=resultados)
     print(f'Epot teoria = {e_pot_teo:.6f}', file=resultados)
     print(f'E total teoria = {e_teo:.6f}', file=resultados)

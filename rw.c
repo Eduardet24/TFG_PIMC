@@ -946,6 +946,53 @@ int SaveEnergyCls(DOUBLE E) {
   return 0;
 }
 
+/******************************** Save Energy PIMC **************************/
+int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin) {
+  FILE *out;
+  static int first_time = ON;
+  char header[128];
+  const char *header_text = "# Etot Epot Ekin";
+
+  if(first_time && file_append) out = fopen(file_energy, "a+");
+  else out = fopen(file_energy, (first_time) ? "w" : "a");
+  if(out == NULL) {
+    perror("\nError:");
+    Warning("can't write to energy file %s\n", file_energy);
+    return 1;
+  }
+
+  if(first_time) {
+    if(file_append) {
+      if(fseek(out, 0, SEEK_END) != 0) {
+        fclose(out);
+        Warning("can't seek energy file %s\n", file_energy);
+        return 1;
+      }
+      if(ftell(out) == 0) {
+        fprintf(out, "%s\n", header_text);
+      }
+      else {
+        rewind(out);
+        if(fgets(header, sizeof(header), out) == NULL ||
+           strncmp(header, header_text, strlen(header_text)) != 0) {
+          fclose(out);
+          Warning("can't append PIMC columns to incompatible energy file %s\n", file_energy);
+          return 1;
+        }
+      }
+    }
+    else {
+      fprintf(out, "%s\n", header_text);
+    }
+    first_time = OFF;
+  }
+
+  fprintf(out, "%.15" LE " %.15" LE " %.15" LE "\n",
+          E*energy_unit, Epot*energy_unit, Ekin*energy_unit);
+  fclose(out);
+  return 0;
+}
+
 /******************************** Save Energy DMC ************************/
 int SaveEnergyDMC(DOUBLE E) {
   FILE *out;

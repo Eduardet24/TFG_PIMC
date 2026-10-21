@@ -1497,7 +1497,15 @@ void Measure(int block, int iter) {
     Eo = E = Energy(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
 
     if(measure_energy && iter % Nmeasure == 0) {
-      SaveEnergyCls(E); 
+      SaveEnergyPIMC(E, Epot, Ekin);
+      Evar += E;
+      Evar2 += E*E;
+      EFFvar += EFF;
+      EFFvar2 += EFF*EFF;
+      Epotvar += Epot;
+      Epotvar2 += Epot*Epot;
+      Ekinvar += Ekin;
+      Ekinvar2 += Ekin*Ekin;
     }
   }
 
