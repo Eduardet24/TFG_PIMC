@@ -293,6 +293,9 @@
 /* define if trap potential is present */
 #define TRAP_POTENTIAL
 
+/* Exact Fourier-mode sampling for the single-particle 1D harmonic PIMC model. */
+#define PIMC_HARMONIC_NORMAL_MODES
+
 /* if trap one-body terms are present in the trial w.f., enable ONE_BODY_TRIAL_TERMS*/
 //#define ONE_BODY_TRIAL_TERMS
 //#define ONE_BODY_TRIAL_TRAP // alpha_x * x*x + alpha_y * y*y + alpha_z * z*z;
@@ -331,6 +334,15 @@
 //#define VEXT_TRAP_DOUBLE_WELL // (0.5*z*z + alpha_latt*Exp(-0.5*z*z) - (Log(alpha_latt)+1))
 
 //#define SPECKLES // define for applying speckle potential
+
+#if defined(PIMC_HARMONIC_NORMAL_MODES) && \
+  (!defined(TRIAL_1D) || !defined(TRAP_POTENTIAL) || !defined(BC_ABSENT) || \
+   defined(SPECKLES) || defined(VEXT_SPLINE_1D) || defined(VEXT_COS2) || \
+   defined(VEXT_SOLITON_FIXED_PHASE) || defined(EXTERNAL_POTENTIAL_Uo_R2) || \
+   defined(VEXT_IMPURITY_3DSW) || defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) || \
+   defined(VEXT_GAUSSIAN) || defined(VEXT_TRAP_DOUBLE_WELL))
+#  error PIMC_HARMONIC_NORMAL_MODES requires an unmodified 1D harmonic trap
+#endif
 
 // Choose one type of interpolation method
 //#define SPLINES_2D // 2D interpolation: use 2D splines 

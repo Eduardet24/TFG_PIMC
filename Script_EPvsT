@@ -10,7 +10,7 @@ import numpy as np
 PROJECT_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = PROJECT_DIR / 'MC.cfg'
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
-CAMPAIGN_NAME = 'lote_blck1000'
+CAMPAIGN_NAME = 'lote_modos_normales_blck1000'
 
 
 def config_value(config_text, key):

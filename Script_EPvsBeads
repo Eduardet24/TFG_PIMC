@@ -11,7 +11,7 @@ from scipy.stats import linregress
 PROJECT_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
 OUTPUT_NAME = 'convergencia_energia_potencialvsBeads.png'
-CAMPAIGN_NAME = 'lote_blck1000'
+CAMPAIGN_NAME = 'lote_modos_normales_blck1000'
 
 
 def config_value(config_text, key):

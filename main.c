@@ -1190,6 +1190,13 @@ int main(int argn, char **argv) {
 #endif
       iteration_global++;
 
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+  if(MC == PIMC && N == 1) {
+    PIMCMoveHarmonicNormalModes();
+  }
+  else
+#endif
+  {
 #pragma omp parallel for
       for(w=0; w<Nwalkers+Nwalkers_pure; w++) {
         if(MC == VARIATIONAL) { // Variational Monte Carlo
@@ -1251,6 +1258,7 @@ int main(int argn, char **argv) {
           //dt_vmc /= Tannealing;
         }
       } // OMP for pragma
+      }
 //#pragma omp single
 
       if(MC == DIFFUSION) { // Branching
@@ -1296,7 +1304,7 @@ int main(int argn, char **argv) {
     time(&time_era_end);
     MessageTimeElapsed((int)(time_era_end-time_era_begin));
 
-    if(acceptance_rate != 0. && (MC != DIFFUSION)) {
+    if(acceptance_rate != 0. && (MC != DIFFUSION) && (accepted+rejected > 0)) {
       Message("dt= %.2g ", dt_vmc);
       if(accepted) // adjust the timestep
         dt_vmc *= (DOUBLE) accepted/((DOUBLE) (accepted+rejected)*acceptance_rate);

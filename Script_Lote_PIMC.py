@@ -14,8 +14,8 @@ DEFAULT_RUN_MATRIX = (
     (0.5, DEFAULT_BEAD_COUNTS),
     (1.0, DEFAULT_BEAD_COUNTS),
     (2.0, (5, 10, 15, 20)),
-    (3.0, (5)),
-    (4.0, (5)),
+    (3.0, (5,)),
+    (4.0, (5,)),
 )
 INPUT_FILE_KEYS = ('file_particles', 'file_wf', 'file_wf1b')
 
@@ -98,7 +98,7 @@ def main():
                         help='temperaturas separadas por comas; requiere --beads')
     parser.add_argument('--beads',
                         help='números de beads separados por comas; requiere --temperatures')
-    parser.add_argument('--campaign', default='lote_blck1000',
+    parser.add_argument('--campaign', default='lote_modos_normales_blck1000',
                         help='nombre del subdirectorio para guardar esta campaña')
     args = parser.parse_args()
 

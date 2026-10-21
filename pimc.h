@@ -7,6 +7,9 @@
 // one component
 void PIMCMoveOneByOne(int w);
 void PIMCPseudopotentialMoveOneByOne(int w);
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+void PIMCMoveHarmonicNormalModes(void);
+#endif
 
 struct Worm {
   DOUBLE x_ira;

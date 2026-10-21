@@ -14,7 +14,71 @@
 #include "mymath.h"
 #include "pimc.h"
 #include "pigs.h"
+#include "utils.h"
 #include MATHINCLUDE
+
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+/******************* Exact Harmonic PIMC Normal-Mode Draw ******************/
+void PIMCMoveHarmonicNormalModes(void) {
+  int bead, mode;
+  int beads = Nwalkers;
+  DOUBLE tau, omega2, eigenvalue;
+  DOUBLE dx, dy, dz;
+  DOUBLE q0, q_cos, q_sin;
+  DOUBLE amplitude, angle, step, cosine, sine;
+  DOUBLE step_cosine, step_sine;
+
+  if(N != 1 || beads < 1 || T <= 0. || omega_z2 <= 0.) {
+    Error("Harmonic normal-mode sampling requires N=1, T>0, and omega_z>0\n");
+  }
+
+  tau = 1. / (T * (DOUBLE)beads);
+  omega2 = omega_z2;
+  for(bead=0; bead<beads; bead++) {
+    W[bead].x[0] = 0.;
+    W[bead].y[0] = 0.;
+    W[bead].z[0] = 0.;
+  }
+
+  // Eigenvalues of the primitive cyclic action's quadratic form.
+  eigenvalue = tau * omega2;
+  RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+  q0 = dz;
+  amplitude = q0 / Sqrt((DOUBLE)beads);
+  for(bead=0; bead<beads; bead++) W[bead].z[0] += amplitude;
+
+  for(mode=1; mode<=(beads-1)/2; mode++) {
+    step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
+    step_cosine = Cos(step);
+    step_sine = Sin(step);
+    eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega2;
+    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+    q_cos = dz;
+    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+    q_sin = dz;
+
+    cosine = 1.;
+    sine = 0.;
+    amplitude = Sqrt(2. / (DOUBLE)beads);
+    for(bead=0; bead<beads; bead++) {
+      W[bead].z[0] += amplitude * (q_cos * cosine + q_sin * sine);
+      angle = cosine * step_cosine - sine * step_sine;
+      sine = sine * step_cosine + cosine * step_sine;
+      cosine = angle;
+    }
+  }
+
+  if(beads % 2 == 0) {
+    mode = beads / 2;
+    eigenvalue = 4. / tau + tau * omega2;
+    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+    q_cos = dz / Sqrt((DOUBLE)beads);
+    for(bead=0; bead<beads; bead++) {
+      W[bead].z[0] += (bead % 2 == 0) ? q_cos : -q_cos;
+    }
+  }
+}
+#endif
 
 /************************** PIMC Move One By One ****************************/
 /** @brief Perform a single PIMC move for one bead.
