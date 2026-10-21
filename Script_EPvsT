@@ -1,0 +1,104 @@
+"""Compare theoretical oscillator energies with the current PIMC measurement."""
+
+import re
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+PROJECT_DIR = Path(__file__).resolve().parent
+CONFIG_FILE = PROJECT_DIR / 'MC.cfg'
+RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
+
+
+def config_value(config_text, key):
+	match = re.search(rf'\b{re.escape(key)}\s*=\s*([0-9.eE+-]+)', config_text)
+	if match is None:
+		raise ValueError(f'No se pudo leer {key} de MC.cfg')
+	return float(match.group(1))
+
+
+def read_pimc_potential(energy_file, samples_per_block):
+	energy_data = np.loadtxt(energy_file, comments='#', ndmin=2)
+	if energy_data.shape[1] < 3:
+		return None
+	values = energy_data[:, 1]
+	complete_blocks = values.size // samples_per_block
+	if complete_blocks <= 11:
+		raise ValueError(f'{energy_file} no tiene suficientes bloques tras termalizar')
+	block_means = values[:complete_blocks * samples_per_block].reshape(
+		complete_blocks, samples_per_block
+	).mean(axis=1)
+	production_blocks = block_means[10:]
+	mean = float(np.mean(production_blocks))
+	error = float(np.std(production_blocks, ddof=1) / np.sqrt(production_blocks.size))
+	return mean, error
+
+
+def main():
+	temperature = np.linspace(0.01, 5.0, 500)
+	energy_potential_classical = temperature / 2.0
+	energy_potential_quantum = 0.25 / np.tanh(1.0 / (2.0 * temperature))
+
+	config_text = CONFIG_FILE.read_text(encoding='utf-8')
+	acceptance_rate = config_value(config_text, 'acceptance_rate')
+	niter = int(config_value(config_text, 'Niter'))
+	nmeasure = int(config_value(config_text, 'Nmeasure'))
+	if nmeasure <= 0 or niter % nmeasure != 0:
+		raise ValueError('Niter debe ser divisible por Nmeasure para estimar bloques')
+	samples_per_block = niter // nmeasure
+	series_dir = RESULTS_DIR / f'AR{acceptance_rate:g}'
+	runs_by_temperature = {}
+	for energy_file in sorted(series_dir.glob('Temp*/N*/oute.dat')):
+		temperature_match = re.fullmatch(r'Temp([0-9.eE+-]+)', energy_file.parent.parent.name)
+		beads_match = re.fullmatch(r'N(\d+)', energy_file.parent.name)
+		if temperature_match is None or beads_match is None:
+			continue
+		estimate = read_pimc_potential(energy_file, samples_per_block)
+		if estimate is None:
+			print(f'Se omite {energy_file}: no contiene Epot/Ekin (formato antiguo).')
+			continue
+		measured_temperature = float(temperature_match.group(1))
+		beads = int(beads_match.group(1))
+		runs_by_temperature.setdefault(measured_temperature, {})[beads] = estimate
+	if not runs_by_temperature:
+		raise FileNotFoundError(f'No hay archivos oute.dat compatibles en {series_dir}/Temp*/N*/')
+
+	common_beads = set.intersection(*(set(runs) for runs in runs_by_temperature.values()))
+	if not common_beads:
+		raise ValueError('No hay un N_beads común a todas las temperaturas para compararlas')
+	selected_beads = max(common_beads)
+	runs = [
+		(temperature_value, *runs_by_temperature[temperature_value][selected_beads])
+		for temperature_value in sorted(runs_by_temperature)
+	]
+
+	figure, axis = plt.subplots(figsize=(8, 6))
+	axis.plot(temperature, energy_potential_classical, 'k--', linewidth=2,
+			  label='Modelo clásico: $E_{pot}=T/2$')
+	axis.plot(temperature, energy_potential_quantum, 'r-', linewidth=2.5,
+			  label='Modelo cuántico analítico')
+	axis.errorbar([run[0] for run in runs], [run[1] for run in runs],
+			  yerr=[run[2] for run in runs], fmt='o', capsize=4,
+			  markersize=7, color='tab:blue',
+			  label=f'PIMC N={selected_beads}')
+
+	axis.set_title('Energía potencial vs temperatura (oscilador armónico 1D)')
+	axis.set_xlabel('Temperatura $T$')
+	axis.set_ylabel(r'Energía potencial $\langle U \rangle$')
+	axis.set_xlim(0.01, max(5.0, max(run[0] for run in runs) * 1.05))
+	axis.grid(True, linestyle=':', alpha=0.7)
+	axis.legend()
+	figure.tight_layout()
+	output_file = series_dir / 'energia_potencial_vs_temperatura.png'
+	figure.savefig(output_file, dpi=300, bbox_inches='tight')
+	print(f'N común seleccionado: {selected_beads}')
+	for measured_temperature, potential_mean, potential_error in runs:
+		print(f'T={measured_temperature:g}: Epot={potential_mean:.6f} +/- {potential_error:.6f}')
+	print(f'Figura guardada en {output_file}')
+	plt.show()
+
+
+if __name__ == '__main__':
+	main()

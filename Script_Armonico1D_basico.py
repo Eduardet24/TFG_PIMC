@@ -74,6 +74,9 @@ if not all(np.allclose(bloque[:, 0], x_sim) for bloque in bloques[1:]):
 
 ## Densidades de cada bloque, usadas para calcular el promedio y su error.
 n_bloques = np.array([bloque[:, 1] for bloque in bloques])
+##Descartar la primera mitad de bloques (termalización)
+inicio_valido = len(n_bloques) // 2
+n_bloques_utiles = n_bloques[inicio_valido:]
 ## Densidad simulada promedio sobre todos los bloques.
 n_sim = np.mean(n_bloques, axis=0)
 ## Error estándar del promedio en cada centro de bin.
