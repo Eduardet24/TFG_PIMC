@@ -96,7 +96,7 @@ void PIMCMoveOneByOne(int w) {
   DOUBLE xm,ym,zm; // position of the middle point
   DOUBLE r2;
   DOUBLE tau;
-  //DOUBLE sigma;
+  DOUBLE sigma;
 
   w1 = w-1; // previous bead number
   w2 = w+1; // next bead number
@@ -104,7 +104,7 @@ void PIMCMoveOneByOne(int w) {
   if(w2==Nwalkers) w2 = 0;
 
   tau = 1./(T*(DOUBLE)Nwalkers); // inverse temperature on a single bead (epsilon)
-  //sigma = 0.5*tau;
+  sigma = 0.5*tau;
 
   // Move particle i of the bead
   for(i=0; i<N; i++) { // loop over particles
@@ -161,16 +161,14 @@ void PIMCMoveOneByOne(int w) {
     dr[2] = zp - zm;
 
     r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    //du -= r2/(2.*sigma);
-    du -= r2/(2.*tau);
+    du -= r2/(2.*sigma);
 
     // old kinetic energy
     dr[0] = x - xm;
     dr[1] = y - ym;
     dr[2] = z - zm;
     r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    //du += r2/(2.*sigma);
-    du += r2/(2.*tau);
+    du += r2/(2.*sigma);
 
     for(j=0; j<N; j++) {
       if(j != i) { // calculate new interaction energy
