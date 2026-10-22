@@ -1,13 +1,5 @@
-"""Plot PIMC potential-energy convergence vs 1/N^2 from archived oute.dat files.
+"""Plot PIMC potential-energy convergence from archived oute.dat files."""
 
-Allows analyzing:
-  - Direct / primitive potential energy estimator: Epot = <V> (column 1)
-  - Virial theorem potential energy estimator: Epot = <Ekin_virial> (column 2)
-  - Virial theorem potential energy estimator: Epot = <Etot_virial>/2 (column 0 / 2)
-  - Both estimators together for direct convergence comparison
-"""
-
-import argparse
 import re
 from pathlib import Path
 
@@ -18,6 +10,7 @@ from scipy.stats import linregress
 
 PROJECT_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
+OUTPUT_NAME = 'convergencia_energia_potencialvsBeads.png'
 CAMPAIGN_NAME = 'lote_modos_normales_blck1000'
 
 
@@ -28,8 +21,8 @@ def config_value(config_text, key):
     return float(match.group(1))
 
 
-def read_pimc_observable(energy_file, column=1):
-    """Estimate observable mean and standard error from production-block means."""
+def read_pimc_potential(energy_file):
+    """Estimate Epot and its error from production-block means in one run."""
     data = np.loadtxt(energy_file, comments='#', ndmin=2)
     if data.shape[1] < 3:
         return None
@@ -40,12 +33,7 @@ def read_pimc_observable(energy_file, column=1):
     if nmeasure <= 0 or niter % nmeasure != 0:
         raise ValueError(f'Niter/Nmeasure no válido en {energy_file.parent / "MC.cfg"}')
     samples_per_block = niter // nmeasure
-
-    if column == 'etot_half':
-        values = 0.5 * data[:, 0]
-    else:
-        values = data[:, column]
-
+    values = data[:, 1]
     complete_blocks = values.size // samples_per_block
     if complete_blocks < 2 or values.size % samples_per_block:
         raise ValueError(f'{energy_file} no contiene bloques de producción completos')
@@ -58,154 +46,75 @@ def read_pimc_observable(energy_file, column=1):
     return mean, error, complete_blocks
 
 
-def fit_and_plot(axis, n_beads, inverse_n2, values, errors, label_name, color, marker='o'):
-    axis.errorbar(inverse_n2, values, yerr=errors, fmt=marker, capsize=4,
-                  markersize=7, color=color, label=label_name)
-    for beads, x_val, y_val in zip(n_beads, inverse_n2, values):
-        axis.annotate(f'N={beads}', (x_val, y_val), xytext=(5, 6),
-                      textcoords='offset points', fontsize=8, color=color)
-
-    if n_beads.size >= 2:
-        fit = linregress(inverse_n2, values)
-        fit_x = np.linspace(0.0, inverse_n2.max() * 1.05, 200)
-        fit_y = fit.intercept + fit.slope * fit_x
-        fit_lbl = f'Ajuste {label_name} (N→∞: {fit.intercept:.5f})'
-        axis.plot(fit_x, fit_y, linestyle='--', color=color, alpha=0.85, label=fit_lbl)
-        axis.scatter([0.0], [fit.intercept], marker='X', s=90, color=color, zorder=5)
-        return fit
-    return None
-
-
 def main():
-    parser = argparse.ArgumentParser(
-        description='Estudio de convergencia en 1/N^2 de la energía potencial en PIMC.'
-    )
-    parser.add_argument(
-        '--estimator', choices=['direct', 'virial', 'etot_half', 'both'],
-        default='both',
-        help='Estimador a graficar: "direct" (V directo, col 1), "virial" (Ekin virial, col 2), '
-             '"etot_half" (Etot/2, col 0 / 2) o "both" (comparar directo y virial juntos). '
-             'Por defecto: both'
-    )
-    parser.add_argument(
-        '--campaign', default=CAMPAIGN_NAME,
-        help=f'Nombre de la campaña dentro de Resultados/1DArmonico/AR... (por defecto: {CAMPAIGN_NAME})'
-    )
-    parser.add_argument(
-        '--temperature', type=float, default=None,
-        help='Temperatura T a analizar (por defecto la indicada en MC.cfg)'
-    )
-    args = parser.parse_args()
-
     config_text = (PROJECT_DIR / 'MC.cfg').read_text(encoding='utf-8')
     acceptance_rate = config_value(config_text, 'acceptance_rate')
-    temperature = args.temperature if args.temperature is not None else config_value(config_text, 'T')
+    temperature = config_value(config_text, 'T')
+    runs = {}
 
-    series_dir = (RESULTS_DIR / f'AR{acceptance_rate:g}' / args.campaign /
+    series_dir = (RESULTS_DIR / f'AR{acceptance_rate:g}' / CAMPAIGN_NAME /
                   f'Temp{temperature:g}')
-
-    if not series_dir.is_dir():
-        raise FileNotFoundError(f'No se encontró el directorio de la serie: {series_dir}')
-
-    # Cargar datos disponibles
-    runs_direct = {}
-    runs_virial = {}
-    runs_etot_half = {}
-
-    for energy_file in sorted(series_dir.glob('N*/oute.dat')):
+    for energy_file in series_dir.glob('N*/oute.dat'):
         match = re.fullmatch(r'N(\d+)', energy_file.parent.name)
         if match is None or not (energy_file.parent / '.complete').is_file():
             print(f'Se omite corrida incompleta: {energy_file.parent}')
             continue
-        beads = int(match.group(1))
-
-        est_dir = read_pimc_observable(energy_file, column=1)
-        est_vir = read_pimc_observable(energy_file, column=2)
-        est_tot = read_pimc_observable(energy_file, column='etot_half')
-
-        if est_dir is None or est_vir is None:
-            print(f'Se omite {energy_file}: formato incompatible (< 3 columnas).')
+        estimate = read_pimc_potential(energy_file)
+        if estimate is None:
+            print(f'Se omite {energy_file}: solo contiene energía total (formato antiguo).')
             continue
+        runs[int(match.group(1))] = estimate
 
-        runs_direct[beads] = est_dir
-        runs_virial[beads] = est_vir
-        runs_etot_half[beads] = est_tot
+    if not runs:
+        raise FileNotFoundError(f'No hay archivos oute.dat compatibles en {series_dir}/N*/')
 
-    if not runs_direct:
-        raise FileNotFoundError(f'No hay corridas completas en {series_dir}/N*/')
-
-    n_beads = np.array(sorted(runs_direct), dtype=int)
+    n_beads = np.array(sorted(runs), dtype=int)
     inverse_n2 = 1.0 / n_beads**2
-    energy_exact = 0.25 / np.tanh(1.0 / (2.0 * temperature))
+    energies = np.array([runs[n][0] for n in n_beads])
+    errors = np.array([runs[n][1] for n in n_beads])
 
-    figure, axis = plt.subplots(figsize=(9, 6.5))
+    figure, axis = plt.subplots(figsize=(8, 6))
+    point_label = ('Epot PIMC' if n_beads.size >= 2
+                   else 'Epot PIMC (un N; sin ajuste)')
+    axis.errorbar(inverse_n2, energies, yerr=errors, fmt='o', capsize=4,
+                  markersize=7, label=point_label)
+    for beads, x_value, energy in zip(n_beads, inverse_n2, energies):
+        axis.annotate(f'N={beads}', (x_value, energy), xytext=(5, 7),
+                      textcoords='offset points')
 
-    # Graficar según la opción seleccionada
-    print(f'=== Estudio de convergencia en 1/N² (T={temperature:g}, AR={acceptance_rate:g}%) ===')
-    print(f'Referencia analítica cuántica Epot(T={temperature:g}) = {energy_exact:.8f}')
-    print(f'N_beads disponibles: {n_beads.tolist()}\n')
+    if n_beads.size >= 2:
+        fit = linregress(inverse_n2, energies)
+        fit_x = np.linspace(0.0, inverse_n2.max() * 1.05, 200)
+        fit_y = fit.intercept + fit.slope * fit_x
+        energy_exact = 0.25 / np.tanh(1.0 / (2.0 * temperature))
+        fit_label = 'Ajuste lineal en $1/N^2$' if n_beads.size >= 3 else 'Ajuste orientativo en $1/N^2$ (solo 2 N)'
+        axis.plot(fit_x, fit_y, 'r--', label=fit_label)
+        axis.axhline(energy_exact, color='black', linestyle=':',
+                     label=f'Analítico a T={temperature:g}: {energy_exact:.4f}')
+        axis.scatter([0.0], [fit.intercept], marker='X', s=100, color='tab:red',
+                     label=f'Extrapolación N→∞: {fit.intercept:.4f}')
+        print(f'Pendiente dEpot/d(1/N²) = {fit.slope:.8f}')
+        print(f'Extrapolación Epot(N→∞) = {fit.intercept:.8f}')
+        print(f'Referencia analítica Epot(T={temperature:g}) = {energy_exact:.8f}')
+        if n_beads.size == 2:
+            print('Aviso: con solo dos N y errores solapados, la tendencia no es concluyente.')
+    else:
+        print('Solo hay una corrida con Epot directa; no se realiza ajuste.')
 
-    fits = {}
-
-    if args.estimator in ('direct', 'both'):
-        vals = np.array([runs_direct[n][0] for n in n_beads])
-        errs = np.array([runs_direct[n][1] for n in n_beads])
-        fit = fit_and_plot(axis, n_beads, inverse_n2, vals, errs,
-                           label_name='Epot directo ⟨V⟩', color='tab:blue', marker='o')
-        if fit:
-            fits['Directo ⟨V⟩'] = fit
-            print(f'[Epot directo ⟨V⟩]      Pendiente = {fit.slope:+.8f}, Intercepto (N→∞) = {fit.intercept:.8f}, '
-                  f'Diferencia = {fit.intercept - energy_exact:+.8f}')
-
-    if args.estimator in ('virial', 'both'):
-        vals = np.array([runs_virial[n][0] for n in n_beads])
-        errs = np.array([runs_virial[n][1] for n in n_beads])
-        fit = fit_and_plot(axis, n_beads, inverse_n2, vals, errs,
-                           label_name='Epot virial (⟨Ekin⟩)', color='tab:green', marker='s')
-        if fit:
-            fits['Virial (⟨Ekin⟩)'] = fit
-            print(f'[Epot virial (⟨Ekin⟩)]   Pendiente = {fit.slope:+.8f}, Intercepto (N→∞) = {fit.intercept:.8f}, '
-                  f'Diferencia = {fit.intercept - energy_exact:+.8f}')
-
-    if args.estimator == 'etot_half':
-        vals = np.array([runs_etot_half[n][0] for n in n_beads])
-        errs = np.array([runs_etot_half[n][1] for n in n_beads])
-        fit = fit_and_plot(axis, n_beads, inverse_n2, vals, errs,
-                           label_name='Epot virial (⟨Etot⟩/2)', color='tab:purple', marker='^')
-        if fit:
-            fits['Virial (⟨Etot⟩/2)'] = fit
-            print(f'[Epot virial (⟨Etot⟩/2)] Pendiente = {fit.slope:+.8f}, Intercepto (N→∞) = {fit.intercept:.8f}, '
-                  f'Diferencia = {fit.intercept - energy_exact:+.8f}')
-
-    # Línea analítica exacta
-    axis.axhline(energy_exact, color='black', linestyle=':', linewidth=1.8,
-                 label=f'Analítico exacto: {energy_exact:.5f}')
-
-    title_est = {
-        'direct': 'Epot directo ⟨V⟩',
-        'virial': 'Epot vía Virial (⟨Ekin⟩)',
-        'etot_half': 'Epot vía Virial (⟨Etot⟩/2)',
-        'both': 'Comparación Epot directo vs Virial'
-    }[args.estimator]
-
-    axis.set_title(f'Convergencia vs 1/N²: {title_est}\n(T={temperature:g}, AR={acceptance_rate:g}%, Campaña: {args.campaign})')
-    axis.set_xlabel(r'$1/N_{\mathrm{beads}}^2$', fontsize=11)
-    axis.set_ylabel(r'Energía potencial $E_{\mathrm{pot}}$', fontsize=11)
+    axis.set_title(
+        f'Convergencia de Epot (AR={acceptance_rate:g}, T={temperature:g})'
+    )
+    axis.set_xlabel(r'$1/N_{beads}^2$')
+    axis.set_ylabel(r'$E_{pot}$')
     axis.set_xlim(0.0, inverse_n2.max() * 1.15)
     axis.grid(True, linestyle=':', alpha=0.7)
-    axis.legend(loc='best', frameon=True)
+    axis.legend()
     figure.tight_layout()
-
-    out_name = {
-        'direct': 'convergencia_Epot_directo_vs_Beads.png',
-        'virial': 'convergencia_Epot_virial_vs_Beads.png',
-        'etot_half': 'convergencia_Epot_Etot_half_vs_Beads.png',
-        'both': 'convergencia_energia_potencialvsBeads.png'
-    }[args.estimator]
-
-    output_file = series_dir / out_name
+    output_file = series_dir / OUTPUT_NAME
     figure.savefig(output_file, dpi=300, bbox_inches='tight')
-    print(f'\nFigura guardada en: {output_file}')
+    print(f'N_beads incluidos: {n_beads.tolist()}')
+    print(f'Bloques completos por corrida: {[runs[n][2] for n in n_beads]}')
+    print(f'Figura guardada en {output_file}')
     plt.show()
 
 
