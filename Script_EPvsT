@@ -21,8 +21,14 @@ def config_value(config_text, key):
 
 
 def read_pimc_potential(energy_file):
+	"""Read Epot_virial from oute.dat.
+
+	Column layout (4 columns):
+	    0: Etot  1: Epot_virial  2: Ekin  3: Epot_prim
+	Column 1 is the centroid-virial estimator, faster-converging with N_beads.
+	"""
 	energy_data = np.loadtxt(energy_file, comments='#', ndmin=2)
-	if energy_data.shape[1] < 3:
+	if energy_data.shape[1] < 4:
 		return None
 	run_config = (energy_file.parent / 'MC.cfg').read_text(encoding='utf-8')
 	niter = int(config_value(run_config, 'Niter'))
@@ -84,7 +90,7 @@ def main():
 			continue
 		estimate = read_pimc_potential(energy_file)
 		if estimate is None:
-			print(f'Se omite {energy_file}: no contiene Epot/Ekin (formato antiguo).')
+			print(f'Se omite {energy_file}: no contiene Epot_virial (formato antiguo, < 4 columnas).')
 			continue
 		measured_temperature = float(temperature_match.group(1))
 		beads = int(beads_match.group(1))

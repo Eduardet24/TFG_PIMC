@@ -1514,7 +1514,7 @@ void Measure(int block, int iter) {
     Eo = E = Energy(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
 
     if(measure_energy && iter % Nmeasure == 0) {
-      SaveEnergyPIMC(E, Epot, Ekin);
+      SaveEnergyPIMC(E, Epot, Ekin, Eext);
       Evar += E;
       Evar2 += E*E;
       EFFvar += EFF;

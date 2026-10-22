@@ -947,11 +947,11 @@ int SaveEnergyCls(DOUBLE E) {
 }
 
 /******************************** Save Energy PIMC **************************/
-int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin) {
+int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin, DOUBLE Epot_virial) {
   FILE *out;
   static int first_time = ON;
   char header[128];
-  const char *header_text = "# Etot Epot Ekin";
+  const char *header_text = "# Etot Epot_virial Ekin Epot_prim";
 
   if(first_time && file_append) out = fopen(file_energy, "a+");
   else out = fopen(file_energy, (first_time) ? "w" : "a");
@@ -987,8 +987,8 @@ int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin) {
     first_time = OFF;
   }
 
-  fprintf(out, "%.15" LE " %.15" LE " %.15" LE "\n",
-          E*energy_unit, Epot*energy_unit, Ekin*energy_unit);
+  fprintf(out, "%.15" LE " %.15" LE " %.15" LE " %.15" LE "\n",
+          E*energy_unit, Epot_virial*energy_unit, Ekin*energy_unit, Epot*energy_unit);
   fclose(out);
   return 0;
 }
