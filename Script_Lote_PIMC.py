@@ -70,7 +70,7 @@ def valid_output(run_dir, required_rows):
     with energy_file.open('r', encoding='utf-8') as energy_data:
         header = energy_data.readline().strip()
         rows = sum(1 for line in energy_data if line.strip())
-    return header == '# Etot Epot Ekin' and rows >= required_rows
+    return (header in ('# Etot Epot Ekin', '# Etot Epot Ekin Ekin_prim')) and rows >= required_rows
 
 
 def completed_run(run_dir, required_rows):

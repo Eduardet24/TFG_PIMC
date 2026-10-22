@@ -33,6 +33,7 @@
 #endif
 
 DOUBLE Energy(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext);
+extern DOUBLE Ekin_prim; // Primitive kinetic energy estimator (Feynman-Barker formula)
 DOUBLE WalkerEnergy(struct Walker *walker, DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *EFF, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext);
 DOUBLE WalkerEnergy0(struct Walker *W);
 DOUBLE Vext(DOUBLE x, DOUBLE y, DOUBLE z);

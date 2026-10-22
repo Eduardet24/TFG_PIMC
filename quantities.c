@@ -20,6 +20,8 @@
 #include "mymath.h"
 #include MATHINCLUDE
 
+DOUBLE Ekin_prim = 0.; // Primitive kinetic energy estimator
+
 /********************************* Energy ************************************/
 /** @brief Calculate the energy of the system.
  *  @param Epot Pointer to the potential energy.
@@ -97,20 +99,22 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   *Eint = interaction / ((DOUBLE) terms * N); // average interaction energy per particle
   *Epot = *Eext + *Eint; // total potential energy per particle
   centroid_z /= (DOUBLE) terms; // average z-coordinate of the centroid
+  // Primitive kinetic energy estimator (Feynman-Barker formula requested by professor):
+  Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
 #ifdef TRIAL_1D
-  if(N == 1) { // if there is only one particle, calculate the kinetic energy using the virial estimator
+  if(N == 1) { // Virial kinetic energy estimator for single-particle harmonic trap
     for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
       if(W[bead].status == ALIVE) {
         virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0]; // virial term for harmonic potential
       }
     }
-    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle
+    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle (virial)
   }
   else {
-    *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N); // kinetic energy per particle using the spring term
+    *Ekin = Ekin_prim;
   }
 #else
-  *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N); // kinetic energy per particle using the spring term
+  *Ekin = Ekin_prim;
 #endif
   *Eff = *Edamping = 0.;
   potential = *Epot + *Ekin;

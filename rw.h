@@ -15,7 +15,7 @@ int SaveCoordinates(char *file_particles);
 int SaveEnergyVMC(DOUBLE E, DOUBLE EFF);
 int SaveEnergyDMC(DOUBLE E);
 int SaveEnergyCls(DOUBLE E);
-int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin);
+int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin, DOUBLE Ekin_prim);
 int SaveOBDM(void);
 int SaveOBDMpure(void);
 int SaveTBDM(void);

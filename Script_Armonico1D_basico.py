@@ -120,6 +120,9 @@ if energy_data.shape[1] >= 3:
     e_pot_pimc_std = np.std(energy_measurements[:, 1], ddof=1)
     e_kin_pimc = np.mean(energy_measurements[:, 2])
     e_kin_pimc_std = np.std(energy_measurements[:, 2], ddof=1)
+if energy_data.shape[1] >= 4:
+    e_kin_prim_pimc = np.mean(energy_measurements[:, 3])
+    e_kin_prim_pimc_std = np.std(energy_measurements[:, 3], ddof=1)
 
 ## Residuo entre la densidad simulada y la solución teórica en los mismos bins.
 n_teo_sim = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(
@@ -143,7 +146,9 @@ with open(resultados_txt, 'w', encoding='utf-8') as resultados:
     print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}', file=resultados)
     if energy_data.shape[1] >= 3:
         print(f'Epot PIMC directo = {e_pot_pimc:.6f} +/- {e_pot_pimc_std:.6f}', file=resultados)
-        print(f'Ekin PIMC directo = {e_kin_pimc:.6f} +/- {e_kin_pimc_std:.6f}', file=resultados)
+        print(f'Ekin (virial) PIMC = {e_kin_pimc:.6f} +/- {e_kin_pimc_std:.6f}', file=resultados)
+    if energy_data.shape[1] >= 4:
+        print(f'Ekin (primitivo) PIMC = {e_kin_prim_pimc:.6f} +/- {e_kin_prim_pimc_std:.6f}', file=resultados)
     print(f'Ekin teoria = {e_kin_teo:.6f}', file=resultados)
     print(f'Epot teoria = {e_pot_teo:.6f}', file=resultados)
     print(f'E total teoria = {e_teo:.6f}', file=resultados)
