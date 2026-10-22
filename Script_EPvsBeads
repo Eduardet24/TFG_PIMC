@@ -69,31 +69,31 @@ def main():
         raise FileNotFoundError(f'No hay archivos oute.dat compatibles en {series_dir}/N*/')
 
     n_beads = np.array(sorted(runs), dtype=int)
-    inverse_n = 1.0 / n_beads
+    inverse_n2 = 1.0 / n_beads**2
     energies = np.array([runs[n][0] for n in n_beads])
     errors = np.array([runs[n][1] for n in n_beads])
 
     figure, axis = plt.subplots(figsize=(8, 6))
     point_label = ('Epot PIMC' if n_beads.size >= 2
                    else 'Epot PIMC (un N; sin ajuste)')
-    axis.errorbar(inverse_n, energies, yerr=errors, fmt='o', capsize=4,
+    axis.errorbar(inverse_n2, energies, yerr=errors, fmt='o', capsize=4,
                   markersize=7, label=point_label)
-    for beads, x_value, energy in zip(n_beads, inverse_n, energies):
+    for beads, x_value, energy in zip(n_beads, inverse_n2, energies):
         axis.annotate(f'N={beads}', (x_value, energy), xytext=(5, 7),
                       textcoords='offset points')
 
     if n_beads.size >= 2:
-        fit = linregress(inverse_n, energies)
-        fit_x = np.linspace(0.0, inverse_n.max() * 1.05, 200)
+        fit = linregress(inverse_n2, energies)
+        fit_x = np.linspace(0.0, inverse_n2.max() * 1.05, 200)
         fit_y = fit.intercept + fit.slope * fit_x
         energy_exact = 0.25 / np.tanh(1.0 / (2.0 * temperature))
-        fit_label = 'Ajuste lineal' if n_beads.size >= 3 else 'Ajuste orientativo (solo 2 N)'
+        fit_label = 'Ajuste lineal en $1/N^2$' if n_beads.size >= 3 else 'Ajuste orientativo en $1/N^2$ (solo 2 N)'
         axis.plot(fit_x, fit_y, 'r--', label=fit_label)
         axis.axhline(energy_exact, color='black', linestyle=':',
                      label=f'Analítico a T={temperature:g}: {energy_exact:.4f}')
         axis.scatter([0.0], [fit.intercept], marker='X', s=100, color='tab:red',
                      label=f'Extrapolación N→∞: {fit.intercept:.4f}')
-        print(f'Pendiente dEpot/d(1/N) = {fit.slope:.8f}')
+        print(f'Pendiente dEpot/d(1/N²) = {fit.slope:.8f}')
         print(f'Extrapolación Epot(N→∞) = {fit.intercept:.8f}')
         print(f'Referencia analítica Epot(T={temperature:g}) = {energy_exact:.8f}')
         if n_beads.size == 2:
@@ -104,9 +104,9 @@ def main():
     axis.set_title(
         f'Convergencia de Epot (AR={acceptance_rate:g}, T={temperature:g})'
     )
-    axis.set_xlabel(r'$1/N_{beads}$')
+    axis.set_xlabel(r'$1/N_{beads}^2$')
     axis.set_ylabel(r'$E_{pot}$')
-    axis.set_xlim(0.0, inverse_n.max() * 1.15)
+    axis.set_xlim(0.0, inverse_n2.max() * 1.15)
     axis.grid(True, linestyle=':', alpha=0.7)
     axis.legend()
     figure.tight_layout()
