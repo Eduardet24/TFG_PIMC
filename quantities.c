@@ -39,7 +39,6 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   DOUBLE external = 0.;
   DOUBLE interaction = 0.;
   DOUBLE tau = 1. / (T * (DOUBLE) Nwalkers);
-  DOUBLE virial_grad_ext = 0.; /* sum_k (z_k - z_c) * dV/dz(z_k): virial Epot estimator */
   int bead;
   int next_bead;
   int particle;
@@ -105,16 +104,7 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
         virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0]; // virial term for harmonic potential
       }
     }
-    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle (centroid virial estimator)
-    /* Centroid virial estimator for the potential energy:
-     *   E_pot^virial = <V> + (1/2N) * sum_k (r_k - r_c) . grad V(r_k)
-     * For a harmonic trap V = 0.5*omega_z^2*z^2:
-     *   grad_z V = omega_z^2 * z
-     * The virial sum (z_k - z_c)*omega_z^2*z_k is already accumulated in 'virial'.
-     * This estimator has smaller Trotter-error prefactor than the primitive <V>,
-     * giving faster convergence with N_beads. */
-    virial_grad_ext = virial; /* reuse the same sum for harmonic trap */
-    *Epot = *Eext + virial_grad_ext / (2. * (DOUBLE) terms * N); // potential energy (virial estimator)
+    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle
   }
   else {
     *Ekin = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N); // kinetic energy per particle using the spring term
