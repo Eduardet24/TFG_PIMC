@@ -26,6 +26,7 @@ OMEGA = 1.0
 DEFAULT_BEADS = 64
 DEFAULT_T_HIGH = 3.0
 DEFAULT_T_LOW = 0.2
+DEFAULT_INTERMEDIATE_TEMPERATURES = (1.0, 0.5)
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR
 OUTPUT_DIR = PROJECT_DIR / 'Resultados' / '2DArmonico'
@@ -119,13 +120,15 @@ def compute_path_observables(path, beta):
 
 
 def plot_paths(samples, output_file, n_beads, omega=OMEGA):
-    """Genera la figura comparativa en 2D con curvas de nivel del potencial."""
+    """Genera caminos representativos en 2D sobre el potencial armónico."""
     extent = max(np.abs(path).max() for _, _, path in samples) * 1.30
     extent = max(extent, 2.8)  # margen mínimo para apreciar el pozo
 
-    figure, axes = plt.subplots(1, len(samples), figsize=(12, 5.5), sharex=True, sharey=True)
-    if len(samples) == 1:
-        axes = [axes]
+    n_columns = 2
+    n_rows = (len(samples) + n_columns - 1) // n_columns
+    figure, axes = plt.subplots(n_rows, n_columns, figsize=(12, 5.2 * n_rows),
+                                sharex=True, sharey=True, squeeze=False)
+    axes = axes.ravel()
 
     cmap = plt.get_cmap('plasma')
 
@@ -161,12 +164,15 @@ def plot_paths(samples, output_file, n_beads, omega=OMEGA):
                      edgecolor='yellow', linewidth=0.8, zorder=7, label=r'Centroide $\mathbf{r}_c$')
 
         # 7. Formato y leyendas
-        if temp >= 1.0:
-            regimen = f'Régimen Clásico / Alta T (T = {temp:g})'
-            desc = 'Polímero contraído (colapso a partícula puntual clásica)'
+        if temp / omega >= 2.0:
+            regimen = f'Alta T (T/ω = {temp / omega:g})'
+            desc = 'Camino compacto alrededor del centroide'
+        elif temp / omega <= 0.5:
+            regimen = f'Baja T (T/ω = {temp / omega:g})'
+            desc = 'Fluctuaciones cuánticas internas más amplias'
         else:
-            regimen = f'Régimen Cuántico / Baja T (T = {temp:g})'
-            desc = 'Polímero expandido y deslocalizado (fluctuaciones de vacío)'
+            regimen = f'Zona de cruce (T/ω = {temp / omega:g})'
+            desc = 'Contribuyen efectos térmicos y cuánticos'
 
         axis.set_title(f'{regimen}\n{desc}', fontsize=10.5, pad=8)
         axis.set_xlabel('x', fontsize=11)
@@ -179,24 +185,57 @@ def plot_paths(samples, output_file, n_beads, omega=OMEGA):
         info_text = (
             f'$\\beta = 1/T = {beta:.2f}$\n'
             f'$\\lambda_{{\\mathrm{{th}}}} = {lambda_th:.2f}$\n'
-            f'$R_{{\\mathrm{{gyr}}}} = {r_gyr:.2f}$\n'
-            f'$\\sqrt{{\\langle r^2 \\rangle}} = {r_mean:.2f}$'
+            f'$R_{{\\mathrm{{gyr}}}}$ (camino) $= {r_gyr:.2f}$\n'
+            f'$|\\mathbf{{r}}_c| = {np.linalg.norm(centroid):.2f}$\n'
+            f'$\\sqrt{{\\langle r^2 \\rangle}}$ (camino) $= {r_mean:.2f}$'
         )
         axis.text(0.04, 0.05, info_text, transform=axis.transAxes, fontsize=8.5,
                   verticalalignment='bottom', bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.85, edgecolor='gray'))
 
-    axes[0].set_ylabel('y', fontsize=11)
-    figure.suptitle('Caminos en Tiempo Imaginario en Oscilador Armónico 2D (Simulación PIMC en C)',
-                    fontsize=12.5, fontweight='bold', y=0.97)
+    for axis in axes[len(samples):]:
+        axis.set_visible(False)
+    for axis in axes[:len(samples)]:
+        axis.set_ylabel('y', fontsize=11)
+    figure.suptitle('Caminos representativos en tiempo imaginario: oscilador armónico 2D',
+                    fontsize=13, fontweight='bold')
 
-    figure.subplots_adjust(top=0.87, right=0.88)
-    cbar_ax = figure.add_axes([0.90, 0.15, 0.02, 0.70])
-    colorbar = figure.colorbar(collection, cax=cbar_ax)
+    figure.text(0.5, 0.015,
+                'Una trayectoria por temperatura. El centroide también fluctúa; '
+                'las magnitudes indicadas no son promedios de conjunto.',
+                ha='center', fontsize=9)
+    figure.tight_layout(rect=(0.02, 0.05, 0.88, 0.95))
+    colorbar = figure.colorbar(collection, ax=axes[:len(samples)], fraction=0.035, pad=0.03)
     colorbar.set_label(r'Tiempo imaginario relativo $\tau / \beta$', fontsize=10)
 
     figure.savefig(output_file, dpi=300, bbox_inches='tight')
     plt.close(figure)
     print(f'Figura guardada exitosamente en:\n  {output_file}')
+
+
+def plot_centroid_fluctuations(samples, output_file):
+    """Compara la distancia interna al centroide a lo largo del camino."""
+    figure, axis = plt.subplots(figsize=(8, 4.8))
+    colors = plt.get_cmap('viridis')(np.linspace(0.08, 0.92, len(samples)))
+
+    for color, (temperature, beta, path) in zip(colors, samples):
+        centroid = np.mean(path, axis=0)
+        radius = np.linalg.norm(path - centroid, axis=1)
+        tau_fraction = np.arange(len(path)) / len(path)
+        r_gyr = np.sqrt(np.mean(radius**2))
+        axis.plot(tau_fraction, radius, color=color, linewidth=1.2,
+                  label=f'T={temperature:g}; $R_{{gyr}}$={r_gyr:.2f}')
+        axis.axhline(r_gyr, color=color, linestyle=':', linewidth=1.0, alpha=0.8)
+
+    axis.set_title('Fluctuación interna a lo largo del tiempo imaginario')
+    axis.set_xlabel(r'Tiempo imaginario relativo $\tau / \beta$')
+    axis.set_ylabel(r'$|\mathbf{r}(\tau)-\mathbf{r}_c|$')
+    axis.set_xlim(0.0, 1.0)
+    axis.grid(True, alpha=0.3)
+    axis.legend(title='Una trayectoria por T', ncol=2)
+    figure.tight_layout()
+    figure.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close(figure)
+    print(f'Figura de fluctuaciones guardada en:\n  {output_file}')
 
 
 def main():
@@ -207,6 +246,9 @@ def main():
                         help=f'Temperatura alta (por defecto: {DEFAULT_T_HIGH})')
     parser.add_argument('--t-low', type=float, default=DEFAULT_T_LOW,
                         help=f'Temperatura baja (por defecto: {DEFAULT_T_LOW})')
+    parser.add_argument('--intermediate-temperatures', type=float, nargs='*',
+                        default=DEFAULT_INTERMEDIATE_TEMPERATURES,
+                        help='Temperaturas intermedias (por defecto: 1.0 0.5)')
     parser.add_argument('--beads', type=int, default=DEFAULT_BEADS,
                         help=f'Número de cuentas/beads (por defecto: {DEFAULT_BEADS})')
     parser.add_argument('--heating', type=int, default=25,
@@ -220,7 +262,11 @@ def main():
     args = parser.parse_args()
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    temperatures = (args.t_high, args.t_low)
+    temperatures = sorted(
+        set((args.t_high, *args.intermediate_temperatures, args.t_low)), reverse=True
+    )
+    if any(temperature <= 0.0 for temperature in temperatures):
+        parser.error('Todas las temperaturas deben ser positivas.')
     samples = []
 
     for temp in temperatures:
@@ -256,6 +302,9 @@ def main():
 
     output_file = OUTPUT_DIR / 'caminos_armonico_2D.png'
     plot_paths(samples, output_file, args.beads)
+    plot_centroid_fluctuations(
+        samples, OUTPUT_DIR / 'fluctuaciones_centroide_2D.png'
+    )
 
 
 if __name__ == '__main__':
