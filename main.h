@@ -293,7 +293,7 @@
 /* define if trap potential is present */
 #define TRAP_POTENTIAL
 
-/* Exact Fourier-mode sampling for the single-particle 1D harmonic PIMC model. */
+/* Exact Fourier-mode sampling for noninteracting particles in a harmonic trap. */
 #define PIMC_HARMONIC_NORMAL_MODES
 
 /* if trap one-body terms are present in the trial w.f., enable ONE_BODY_TRIAL_TERMS*/
@@ -342,6 +342,10 @@
    defined(VEXT_IMPURITY_3DSW) || defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) || \
    defined(VEXT_GAUSSIAN) || defined(VEXT_TRAP_DOUBLE_WELL))
 #  error PIMC_HARMONIC_NORMAL_MODES requires an unmodified harmonic trap
+#endif
+
+#if defined(PIMC_HARMONIC_NORMAL_MODES) && !defined(INTERACTION_ABSENT)
+#  error PIMC_HARMONIC_NORMAL_MODES requires INTERACTION_ABSENT
 #endif
 
 // Choose one type of interpolation method

@@ -1,6 +1,6 @@
-# Simulación PIMC del Oscilador Armónico 1D
+# Simulación PIMC de Osciladores Armónicos 1D y 2D
 
-Este repositorio contiene la implementación y el entorno de trabajo para simulaciones de **Monte Carlo Cuántico** (Quantum Monte Carlo, QMC), enfocado específicamente en **Path Integral Monte Carlo (PIMC)** para el estudio termodinámico y cuántico del oscilador armónico unidimensional (1D). El código base en C está desarrollado originalmente por G. E. Astrakharchik (2001–2017) y ha sido configurado y complementado con herramientas de automatización y análisis para el Trabajo de Fin de Grado (TFG).
+Este repositorio contiene la implementación y el entorno de trabajo para simulaciones de **Monte Carlo Cuántico** (Quantum Monte Carlo, QMC), principalmente **Path Integral Monte Carlo (PIMC)** para osciladores armónicos 1D y 2D. Incluye un benchmark 2D de partículas ideales con `N > 1`; el muestreador actual conserva caminos etiquetados y aún no incluye permutaciones bosónicas. El código base en C está desarrollado originalmente por G. E. Astrakharchik (2001–2017) y ha sido configurado y complementado para el Trabajo de Fin de Grado (TFG).
 
 ---
 
@@ -19,6 +19,7 @@ Este repositorio contiene la implementación y el entorno de trabajo para simula
   - [6.3 Energía Potencial vs Temperatura (`Script_EPvsT`)](#63-energía-potencial-vs-temperatura-script_epvst)
   - [6.4 Ajustes Cuadráticos (`Script_Convergencia_AR0.py`)](#64-ajustes-cuadráticos-script_convergencia_ar0py)
   - [6.5 Script Gnuplot (`scritpt_Rdz_grigori`)](#65-script-gnuplot-scritpt_rdz_grigori)
+  - [6.6 Benchmark de N partículas en 2D](#66-benchmark-de-n-partículas-en-2d)
 - [7. Organización de Resultados (`Resultados/`)](#7-organización-de-resultados-resultados)
 - [8. Modelos Físicos y Referencias Analíticas](#8-modelos-físicos-y-referencias-analíticas)
 
@@ -39,6 +40,7 @@ Grigori_codigo/
 ├── Script_EPvsBeads             # Estudio de convergencia Epot vs 1/N_beads
 ├── Script_EPvsT                 # Comparación Epot vs T (analítico, clásico y PIMC)
 ├── Script_Convergencia_AR0.py   # Extrapolaciones parabólicas de convergencia
+├── Script_Comparacion_N_Particulas_2D.py # Benchmark N>1 y referencias ideales 2D
 ├── scritpt_Rdz_grigori          # Script de graficación rápida con gnuplot
 │
 ├── Resultados/
@@ -163,6 +165,16 @@ python3 Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,
 - Comprueba la validez y número de filas de `oute.dat` antes de marcar la corrida con `.complete`.
 - Si una corrida ya fue completada exitosamente, la omite automáticamente.
 
+### 5.3 Benchmark de partículas ideales en 2D
+
+El benchmark usa `INTERACTION_ABSENT`, una trampa armónica 2D y el muestreador exacto de modos normales para cada camino. Se ejecuta con `N > 1`, pero sin intercambios: representa partículas distinguibles. Las curvas analíticas distinguible y Bose canónica permiten comprobar la energía y el perfil de densidad antes de implementar el Worm Algorithm.
+
+```bash
+python3 Script_Comparacion_N_Particulas_2D.py --run --particles 5
+```
+
+Con `--run`, el script compila los fuentes C actuales en un directorio temporal y usa ese ejecutable para las simulaciones, evitando depender del `MC` precompilado del repositorio. Los datos se guardan bajo `Resultados/NParticulas2D/`. Para evaluar convergencia de discretización, repetir la corrida con distintos valores de `--beads`; las referencias analíticas corresponden al límite continuo.
+
 ---
 
 ## 6. Scripts de Análisis y Gráficas
@@ -210,6 +222,10 @@ python3 Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,
   ```bash
   gnuplot scritpt_Rdz_grigori
   ```
+
+### 6.6 Benchmark de N partículas en 2D
+
+`Script_Comparacion_N_Particulas_2D.py` compara energía por partícula y densidad areal radial con las soluciones ideales distinguible y Bose canónica a N fijo. Promedia las últimas mitades de las medidas y estima incertidumbres agrupando las energías por bloques y la densidad por bloques guardados. La rama PIMC actual no muestrea permutaciones, así que el resultado numérico debe contrastarse con la curva distinguible; la curva Bose es el objetivo de la futura implementación Worm, no una predicción de la simulación actual.
 
 ---
 
