@@ -29,138 +29,148 @@ void PIMCMoveHarmonicNormalModes(void) {
   DOUBLE step_cosine, step_sine;
 
 #ifdef TRIAL_1D
-  if(N != 1 || beads < 1 || T <= 0. || omega_z2 <= 0.) {
-    Error("Harmonic normal-mode sampling requires N=1, T>0, and omega_z>0\n");
+  int particle;
+  if(N < 1 || beads < 1 || T <= 0. || omega_z2 <= 0.) {
+    Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_z>0\n");
   }
 
   tau = 1. / (T * (DOUBLE)beads);
   omega2 = omega_z2;
   for(bead=0; bead<beads; bead++) {
-    W[bead].x[0] = 0.;
-    W[bead].y[0] = 0.;
-    W[bead].z[0] = 0.;
-  }
-
-  // Eigenvalues of the primitive cyclic action's quadratic form.
-  eigenvalue = tau * omega2;
-  RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-  q0 = dz;
-  amplitude = q0 / Sqrt((DOUBLE)beads);
-  for(bead=0; bead<beads; bead++) W[bead].z[0] += amplitude;
-
-  for(mode=1; mode<=(beads-1)/2; mode++) {
-    step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
-    step_cosine = Cos(step);
-    step_sine = Sin(step);
-    eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = dz;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_sin = dz;
-
-    cosine = 1.;
-    sine = 0.;
-    amplitude = Sqrt(2. / (DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) {
-      W[bead].z[0] += amplitude * (q_cos * cosine + q_sin * sine);
-      angle = cosine * step_cosine - sine * step_sine;
-      sine = sine * step_cosine + cosine * step_sine;
-      cosine = angle;
+    for(particle=0; particle<N; particle++) {
+      W[bead].x[particle] = 0.;
+      W[bead].y[particle] = 0.;
+      W[bead].z[particle] = 0.;
     }
   }
 
-  if(beads % 2 == 0) {
-    mode = beads / 2;
-    eigenvalue = 4. / tau + tau * omega2;
+  for(particle=0; particle<N; particle++) {
+    // Eigenvalues of the primitive cyclic action's quadratic form.
+    eigenvalue = tau * omega2;
     RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = dz / Sqrt((DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) {
-      W[bead].z[0] += (bead % 2 == 0) ? q_cos : -q_cos;
+    q0 = dz;
+    amplitude = q0 / Sqrt((DOUBLE)beads);
+    for(bead=0; bead<beads; bead++) W[bead].z[particle] += amplitude;
+
+    for(mode=1; mode<=(beads-1)/2; mode++) {
+      step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
+      step_cosine = Cos(step);
+      step_sine = Sin(step);
+      eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega2;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_cos = dz;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_sin = dz;
+
+      cosine = 1.;
+      sine = 0.;
+      amplitude = Sqrt(2. / (DOUBLE)beads);
+      for(bead=0; bead<beads; bead++) {
+        W[bead].z[particle] += amplitude * (q_cos * cosine + q_sin * sine);
+        angle = cosine * step_cosine - sine * step_sine;
+        sine = sine * step_cosine + cosine * step_sine;
+        cosine = angle;
+      }
+    }
+
+    if(beads % 2 == 0) {
+      mode = beads / 2;
+      eigenvalue = 4. / tau + tau * omega2;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_cos = dz / Sqrt((DOUBLE)beads);
+      for(bead=0; bead<beads; bead++) {
+        W[bead].z[particle] += (bead % 2 == 0) ? q_cos : -q_cos;
+      }
     }
   }
 #elif defined(TRIAL_2D)
-  if(N != 1 || beads < 1 || T <= 0. || omega_x2 <= 0. || omega_y2 <= 0.) {
-    Error("Harmonic normal-mode sampling requires N=1, T>0, and omega_x>0, omega_y>0\n");
+  int particle;
+  if(N < 1 || beads < 1 || T <= 0. || omega_x2 <= 0. || omega_y2 <= 0.) {
+    Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_x>0, omega_y>0\n");
   }
 
   tau = 1. / (T * (DOUBLE)beads);
   for(bead=0; bead<beads; bead++) {
-    W[bead].x[0] = 0.;
-    W[bead].y[0] = 0.;
-    W[bead].z[0] = 0.;
-  }
-
-  // --- Muestreo X ---
-  eigenvalue = tau * omega_x2;
-  RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-  q0 = dx;
-  amplitude = q0 / Sqrt((DOUBLE)beads);
-  for(bead=0; bead<beads; bead++) W[bead].x[0] += amplitude;
-
-  for(mode=1; mode<=(beads-1)/2; mode++) {
-    step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
-    step_cosine = Cos(step);
-    step_sine = Sin(step);
-    eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_x2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = dx;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_sin = dx;
-
-    cosine = 1.;
-    sine = 0.;
-    amplitude = Sqrt(2. / (DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) {
-      W[bead].x[0] += amplitude * (q_cos * cosine + q_sin * sine);
-      angle = cosine * step_cosine - sine * step_sine;
-      sine = sine * step_cosine + cosine * step_sine;
-      cosine = angle;
+    for(particle=0; particle<N; particle++) {
+      W[bead].x[particle] = 0.;
+      W[bead].y[particle] = 0.;
+      W[bead].z[particle] = 0.;
     }
   }
 
-  if(beads % 2 == 0) {
-    eigenvalue = 4. / tau + tau * omega_x2;
+  for(particle=0; particle<N; particle++) {
+    // --- Muestreo X ---
+    eigenvalue = tau * omega_x2;
     RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = dx / Sqrt((DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) {
-      W[bead].x[0] += (bead % 2 == 0) ? q_cos : -q_cos;
+    q0 = dx;
+    amplitude = q0 / Sqrt((DOUBLE)beads);
+    for(bead=0; bead<beads; bead++) W[bead].x[particle] += amplitude;
+
+    for(mode=1; mode<=(beads-1)/2; mode++) {
+      step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
+      step_cosine = Cos(step);
+      step_sine = Sin(step);
+      eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_x2;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_cos = dx;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_sin = dx;
+
+      cosine = 1.;
+      sine = 0.;
+      amplitude = Sqrt(2. / (DOUBLE)beads);
+      for(bead=0; bead<beads; bead++) {
+        W[bead].x[particle] += amplitude * (q_cos * cosine + q_sin * sine);
+        angle = cosine * step_cosine - sine * step_sine;
+        sine = sine * step_cosine + cosine * step_sine;
+        cosine = angle;
+      }
     }
-  }
 
-  // --- Muestreo Y ---
-  eigenvalue = tau * omega_y2;
-  RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-  q0 = dy;
-  amplitude = q0 / Sqrt((DOUBLE)beads);
-  for(bead=0; bead<beads; bead++) W[bead].y[0] += amplitude;
-
-  for(mode=1; mode<=(beads-1)/2; mode++) {
-    step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
-    step_cosine = Cos(step);
-    step_sine = Sin(step);
-    eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_y2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = dy;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_sin = dy;
-
-    cosine = 1.;
-    sine = 0.;
-    amplitude = Sqrt(2. / (DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) {
-      W[bead].y[0] += amplitude * (q_cos * cosine + q_sin * sine);
-      angle = cosine * step_cosine - sine * step_sine;
-      sine = sine * step_cosine + cosine * step_sine;
-      cosine = angle;
+    if(beads % 2 == 0) {
+      eigenvalue = 4. / tau + tau * omega_x2;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_cos = dx / Sqrt((DOUBLE)beads);
+      for(bead=0; bead<beads; bead++) {
+        W[bead].x[particle] += (bead % 2 == 0) ? q_cos : -q_cos;
+      }
     }
-  }
 
-  if(beads % 2 == 0) {
-    eigenvalue = 4. / tau + tau * omega_y2;
+    // --- Muestreo Y ---
+    eigenvalue = tau * omega_y2;
     RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = dy / Sqrt((DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) {
-      W[bead].y[0] += (bead % 2 == 0) ? q_cos : -q_cos;
+    q0 = dy;
+    amplitude = q0 / Sqrt((DOUBLE)beads);
+    for(bead=0; bead<beads; bead++) W[bead].y[particle] += amplitude;
+
+    for(mode=1; mode<=(beads-1)/2; mode++) {
+      step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
+      step_cosine = Cos(step);
+      step_sine = Sin(step);
+      eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_y2;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_cos = dy;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_sin = dy;
+
+      cosine = 1.;
+      sine = 0.;
+      amplitude = Sqrt(2. / (DOUBLE)beads);
+      for(bead=0; bead<beads; bead++) {
+        W[bead].y[particle] += amplitude * (q_cos * cosine + q_sin * sine);
+        angle = cosine * step_cosine - sine * step_sine;
+        sine = sine * step_cosine + cosine * step_sine;
+        cosine = angle;
+      }
+    }
+
+    if(beads % 2 == 0) {
+      eigenvalue = 4. / tau + tau * omega_y2;
+      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+      q_cos = dy / Sqrt((DOUBLE)beads);
+      for(bead=0; bead<beads; bead++) {
+        W[bead].y[particle] += (bead % 2 == 0) ? q_cos : -q_cos;
+      }
     }
   }
 #endif

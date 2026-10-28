@@ -1200,7 +1200,7 @@ int main(int argn, char **argv) {
       iteration_global++;
 
 #ifdef PIMC_HARMONIC_NORMAL_MODES
-  if(MC == PIMC && N == 1) {
+  if(MC == PIMC) {
     PIMCMoveHarmonicNormalModes();
   }
   else

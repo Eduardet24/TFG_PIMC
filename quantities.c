@@ -106,29 +106,64 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   // Primitive kinetic energy estimator (Feynman-Barker formula requested by professor):
   Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
 #ifdef TRIAL_1D
-  if(N == 1) { // Virial kinetic energy estimator for single-particle harmonic trap
-    for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
-      if(W[bead].status == ALIVE) {
-        virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0]; // virial term for harmonic potential
+  {
+    DOUBLE *cz = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    if(cz != NULL) {
+      for(particle=0; particle<N; particle++) cz[particle] = 0.;
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) cz[particle] += W[bead].z[particle];
       }
+      for(particle=0; particle<N; particle++) cz[particle] /= (DOUBLE) terms;
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) {
+          virial += (W[bead].z[particle] - cz[particle]) * omega_z2 * W[bead].z[particle];
+        }
+      }
+      free(cz);
+      *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
     }
-    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle (virial)
-  }
-  else {
-    *Ekin = Ekin_prim;
+    else {
+      *Ekin = Ekin_prim;
+    }
   }
 #elif defined(TRIAL_2D)
-  if(N == 1) { // Virial kinetic energy estimator for single-particle 2D harmonic trap
-    for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
-      if(W[bead].status == ALIVE) {
-        virial += (W[bead].x[0] - centroid_x) * omega_x2 * W[bead].x[0] +
-                  (W[bead].y[0] - centroid_y) * omega_y2 * W[bead].y[0];
+  {
+    DOUBLE *cx = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    DOUBLE *cy = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    if(cx != NULL && cy != NULL) {
+      for(particle=0; particle<N; particle++) {
+        cx[particle] = 0.;
+        cy[particle] = 0.;
       }
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) {
+          cx[particle] += W[bead].x[particle];
+          cy[particle] += W[bead].y[particle];
+        }
+      }
+      for(particle=0; particle<N; particle++) {
+        cx[particle] /= (DOUBLE) terms;
+        cy[particle] /= (DOUBLE) terms;
+      }
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) {
+          virial += (W[bead].x[particle] - cx[particle]) * omega_x2 * W[bead].x[particle] +
+                    (W[bead].y[particle] - cy[particle]) * omega_y2 * W[bead].y[particle];
+        }
+      }
+      free(cx);
+      free(cy);
+      *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
     }
-    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle (virial)
-  }
-  else {
-    *Ekin = Ekin_prim;
+    else {
+      if(cx) free(cx);
+      if(cy) free(cy);
+      *Ekin = Ekin_prim;
+    }
   }
 #else
   *Ekin = Ekin_prim;
@@ -1426,9 +1461,13 @@ void MeasureRadialDistributionWalker(struct Walker *W) {
 #endif
 
 #ifdef BC_ABSENT // trap
-    if(fabs(W->z[i])< RD.width) {
+#ifdef TRIAL_1D
+    if(fabs(W->z[i]) < RD.width) {
+#else
+    if(r < RD.width) {
+#endif
 #else // hom. system
-    if(r<RD.width) {
+    if(r < RD.width) {
 #endif
       n = (int) (r/RD.step);
       if(n<RD.size) {
