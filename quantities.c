@@ -36,7 +36,7 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
                          DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
   DOUBLE spring = 0.;
   DOUBLE virial = 0.;
-  DOUBLE centroid_z = 0.;
+  DOUBLE centroid_x = 0., centroid_y = 0., centroid_z = 0.;
   DOUBLE potential = 0.;
   DOUBLE external = 0.;
   DOUBLE interaction = 0.;
@@ -54,6 +54,8 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
     next_bead = bead + 1;
     if(next_bead == Nwalkers) next_bead = 0; // cyclic condition
     terms++;
+    centroid_x += W[bead].x[0];
+    centroid_y += W[bead].y[0];
     centroid_z += W[bead].z[0];
 
     for(particle=0; particle<N; particle++) { // loop over all particles
@@ -98,7 +100,9 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   *Eext = external / ((DOUBLE) terms * N); // average external energy per particle
   *Eint = interaction / ((DOUBLE) terms * N); // average interaction energy per particle
   *Epot = *Eext + *Eint; // total potential energy per particle
-  centroid_z /= (DOUBLE) terms; // average z-coordinate of the centroid
+  centroid_x /= (DOUBLE) terms;
+  centroid_y /= (DOUBLE) terms;
+  centroid_z /= (DOUBLE) terms;
   // Primitive kinetic energy estimator (Feynman-Barker formula requested by professor):
   Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
 #ifdef TRIAL_1D
@@ -106,6 +110,19 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
     for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
       if(W[bead].status == ALIVE) {
         virial += (W[bead].z[0] - centroid_z) * omega_z2 * W[bead].z[0]; // virial term for harmonic potential
+      }
+    }
+    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle (virial)
+  }
+  else {
+    *Ekin = Ekin_prim;
+  }
+#elif defined(TRIAL_2D)
+  if(N == 1) { // Virial kinetic energy estimator for single-particle 2D harmonic trap
+    for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
+      if(W[bead].status == ALIVE) {
+        virial += (W[bead].x[0] - centroid_x) * omega_x2 * W[bead].x[0] +
+                  (W[bead].y[0] - centroid_y) * omega_y2 * W[bead].y[0];
       }
     }
     *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N); // kinetic energy per particle (virial)

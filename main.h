@@ -275,8 +275,8 @@
 //#define PAIR_DISTRBUTION_EMPTINESS_FORMATION_PROBABILITY_1D // calculate probability of a gap of size x between in particles in 1D
 
 // select dimensionality
-#define TRIAL_1D
-//#define TRIAL_2D
+//#define TRIAL_1D
+#define TRIAL_2D
 //#define TRIAL_3D
 
 /* define ONLY ONE of following boundary conditions */
@@ -336,12 +336,12 @@
 //#define SPECKLES // define for applying speckle potential
 
 #if defined(PIMC_HARMONIC_NORMAL_MODES) && \
-  (!defined(TRIAL_1D) || !defined(TRAP_POTENTIAL) || !defined(BC_ABSENT) || \
+  ((!defined(TRIAL_1D) && !defined(TRIAL_2D)) || !defined(TRAP_POTENTIAL) || !defined(BC_ABSENT) || \
    defined(SPECKLES) || defined(VEXT_SPLINE_1D) || defined(VEXT_COS2) || \
    defined(VEXT_SOLITON_FIXED_PHASE) || defined(EXTERNAL_POTENTIAL_Uo_R2) || \
    defined(VEXT_IMPURITY_3DSW) || defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) || \
    defined(VEXT_GAUSSIAN) || defined(VEXT_TRAP_DOUBLE_WELL))
-#  error PIMC_HARMONIC_NORMAL_MODES requires an unmodified 1D harmonic trap
+#  error PIMC_HARMONIC_NORMAL_MODES requires an unmodified harmonic trap
 #endif
 
 // Choose one type of interpolation method

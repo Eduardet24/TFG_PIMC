@@ -58,7 +58,7 @@ DOUBLE alpha_z=0., alpha_z2, two_alpha_z, alpha_Rz= -PI;
 DOUBLE omega_x = 1, omega_y = 1, omega_z = 1; // parameters of the trap
 DOUBLE omega_x2, omega_y2, omega_z2;
 DOUBLE alpha_latt = 1, alpha_Jastrow = 1, beta_latt = 1, gamma_latt = 1;
-DOUBLE D = 1, n = 0.01, dt = 1e-3, dt_vmc = 1e-3, dt_one = 1., dt_all = 1e-3, beta = 1.;
+DOUBLE D = DIMENSION, n = 0.01, dt = 1e-3, dt_vmc = 1e-3, dt_one = 1., dt_all = 1e-3, beta = 1.;
 DOUBLE acceptance_rate = 0.;
 int N=16, Nimp=0, NCrystal, Ndens=16, Nspin = 1;
 int Nwalkers=100, NwalkersMax=100;
