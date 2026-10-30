@@ -261,6 +261,9 @@ int LoadParameters(void) {
     CHECK("sum_of_two_wavefunctions_parameter2=", "%" LF "", &sum_of_two_wavefunctions_parameter2);
     CHECK("sum_of_two_wavefunctions_alpha=", "%" LF "", &sum_of_two_wavefunctions_alpha);
     CHECK("numeric_derivative_dr=", "%" LF "", &numeric_derivative_dr);
+#ifdef WORM_ALGORITHM
+    CHECK("worm_C=", "%" LF "", &worm_C);
+#endif
   }
 
   a2 = a*a;

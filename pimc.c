@@ -443,3 +443,156 @@ void PIMCPseudopotentialMoveOneByOne(int w) {
   }
 }
 
+
+#ifdef WORM_ALGORITHM
+/***********************************************************************
+ *  Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose.
+ *
+ *  FASE 2: Movimientos Open y Close (Transiciones Z <-> G)
+ *
+ *  - Enlaces:
+ *    worm_next[w][i]: índice de partícula en el bead (w+1)%Nwalkers.
+ *    worm_prev[w][i]: índice de partícula en el bead (w-1+Nwalkers)%Nwalkers.
+ *    Si el enlace está abierto (Ira o Masha), vale -1.
+ *
+ *  - Sector Z:
+ *    Todos los enlaces están cerrados.
+ *    Se propone Open: se elige un bead w y partícula i al azar,
+ *    se corta el enlace hacia (w+1)%Nwalkers.
+ *    Aceptación: acc = worm_C * exp(+r^2 / (2*tau))
+ *
+ *  - Sector G:
+ *    El gusano está abierto con cabeza Ira en (worm_bead, worm_particle)
+ *    y cola Masha en (worm_bead_masha, worm_particle_masha).
+ *    Se propone Close: se verifica que Ira y Masha sean contiguos en tiempo.
+ *    Aceptación: acc = (1.0 / worm_C) * exp(-r^2 / (2*tau))
+ ***********************************************************************/
+
+void InitWorm(void) {
+  int w, i;
+  if(worm_next != NULL) return;
+
+  worm_next = (int**) malloc(NwalkersMax * sizeof(int*));
+  worm_prev = (int**) malloc(NwalkersMax * sizeof(int*));
+  for(w = 0; w < NwalkersMax; w++) {
+    worm_next[w] = (int*) malloc(N * sizeof(int));
+    worm_prev[w] = (int*) malloc(N * sizeof(int));
+    for(i = 0; i < N; i++) {
+      worm_next[w][i] = i;
+      worm_prev[w][i] = i;
+    }
+  }
+}
+
+static void WormOpenMove(void) {
+  int w_cut, i_cut, j_cut, w_next;
+  DOUBLE dx, dy, r2, tau, acc;
+
+  worm_try_open++;
+
+  /* Elegir aleatoriamente el bead y la partícula del enlace a abrir */
+  w_cut = (int)(Random() * Nwalkers);
+  if(w_cut >= Nwalkers) w_cut = Nwalkers - 1;
+  i_cut = (int)(Random() * N);
+  if(i_cut >= N) i_cut = N - 1;
+
+  w_next = (w_cut + 1) % Nwalkers;
+  j_cut = worm_next[w_cut][i_cut];
+  if(j_cut < 0) return; /* ya abierto */
+
+  /* Distancia espacial en 2D entre los dos extremos del enlace */
+  dx = W[w_next].x[j_cut] - W[w_cut].x[i_cut];
+  dy = W[w_next].y[j_cut] - W[w_cut].y[i_cut];
+  r2 = dx * dx + dy * dy;
+
+  tau = 1.0 / (T * (DOUBLE)Nwalkers);
+
+  /* Metropolis: quitar el resorte cinético da un factor exp(+r^2 / (2*tau)) */
+  acc = worm_C * Exp(r2 / (2.0 * tau));
+
+  if(acc >= 1.0 || Random() < acc) {
+    worm_open = 1;
+    worm_bead = w_cut;
+    worm_particle = i_cut;
+    worm.w = w_cut;
+    worm.i = i_cut;
+    worm.x_ira = W[w_cut].x[i_cut];
+    worm.y_ira = W[w_cut].y[i_cut];
+
+    worm_bead_masha = w_next;
+    worm_particle_masha = j_cut;
+    worm.x_masha = W[w_next].x[j_cut];
+    worm.y_masha = W[w_next].y[j_cut];
+
+    /* Abrir enlace */
+    worm_next[w_cut][i_cut] = -1;
+    worm_prev[w_next][j_cut] = -1;
+
+    worm_acc_open++;
+  }
+}
+
+static void WormCloseMove(void) {
+  int w_masha_expected;
+  DOUBLE dx, dy, r2, tau, acc;
+
+  worm_try_close++;
+
+  /* Condición para cerrar: Ira y Masha deben ser contiguos en tiempo */
+  w_masha_expected = (worm_bead + 1) % Nwalkers;
+  if(worm_bead_masha != w_masha_expected) {
+    return;
+  }
+
+  dx = W[worm_bead_masha].x[worm_particle_masha] - W[worm_bead].x[worm_particle];
+  dy = W[worm_bead_masha].y[worm_particle_masha] - W[worm_bead].y[worm_particle];
+  r2 = dx * dx + dy * dy;
+
+  tau = 1.0 / (T * (DOUBLE)Nwalkers);
+
+  /* Metropolis: añadir el resorte cinético da un factor exp(-r^2 / (2*tau)) */
+  acc = (1.0 / worm_C) * Exp(-r2 / (2.0 * tau));
+
+  if(acc >= 1.0 || Random() < acc) {
+    /* Reconectar enlace y cerrar gusano */
+    worm_next[worm_bead][worm_particle] = worm_particle_masha;
+    worm_prev[worm_bead_masha][worm_particle_masha] = worm_particle;
+
+    worm_open = 0;
+    worm_bead = -1;
+    worm_particle = -1;
+    worm_bead_masha = -1;
+    worm_particle_masha = -1;
+
+    worm_acc_close++;
+  }
+}
+
+void PIMCWormMoves(void) {
+  if(worm_next == NULL) {
+    InitWorm();
+  }
+
+  if(worm_open == 0) {
+    worm_count_Z++;
+    WormOpenMove();
+  } else {
+    worm_count_G++;
+    WormCloseMove();
+  }
+}
+
+void WormDiagnostic(void) {
+  long long total = worm_count_Z + worm_count_G;
+  if(total == 0) total = 1;
+  double frac_G = (double)worm_count_G / (double)total;
+  double rate_open = worm_try_open > 0 ? (double)worm_acc_open / (double)worm_try_open * 100.0 : 0.0;
+  double rate_close = worm_try_close > 0 ? (double)worm_acc_close / (double)worm_try_close * 100.0 : 0.0;
+
+  Message("Worm F2: Z=%lld G=%lld (frac_G=%.3f) | Open: %lld/%lld (%.1f%%) | Close: %lld/%lld (%.1f%%) [C=%.2f]\n",
+          worm_count_Z, worm_count_G, frac_G,
+          worm_acc_open, worm_try_open, rate_open,
+          worm_acc_close, worm_try_close, rate_close,
+          worm_C);
+}
+#endif /* WORM_ALGORITHM */

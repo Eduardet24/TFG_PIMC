@@ -296,6 +296,11 @@
 /* Exact Fourier-mode sampling for noninteracting particles in a harmonic trap. */
 #define PIMC_HARMONIC_NORMAL_MODES
 
+/* Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose-Einstein.
+   Requiere: PIMC + BC_ABSENT + TRAP_POTENTIAL + INTERACTION_ABSENT.
+   Descomentar la siguiente línea para activar el worm. */
+#define WORM_ALGORITHM
+
 /* if trap one-body terms are present in the trial w.f., enable ONE_BODY_TRIAL_TERMS*/
 //#define ONE_BODY_TRIAL_TERMS
 //#define ONE_BODY_TRIAL_TRAP // alpha_x * x*x + alpha_y * y*y + alpha_z * z*z;
@@ -1309,6 +1314,24 @@ extern DOUBLE Rsphere;
 extern DOUBLE Rnow;
 extern DOUBLE sum_of_two_wavefunctions_parameter1, sum_of_two_wavefunctions_parameter2, sum_of_two_wavefunctions_alpha;
 extern DOUBLE numeric_derivative_dr;
+
+/* Variables globales del algoritmo worm */
+#ifdef WORM_ALGORITHM
+extern int worm_open;       /* 0 = sector-Z (anillos cerrados), 1 = sector-G (cadena abierta) */
+extern int worm_bead;       /* índice del bead donde está ira (cabeza del gusano) */
+extern int worm_particle;   /* índice de la partícula del gusano */
+extern int worm_bead_masha; /* índice del bead donde está masha (cola del gusano) */
+extern int worm_particle_masha; /* índice de la partícula donde está masha */
+extern long long worm_count_Z; /* pasos en sector Z */
+extern long long worm_count_G; /* pasos en sector G */
+extern long long worm_try_open;
+extern long long worm_acc_open;
+extern long long worm_try_close;
+extern long long worm_acc_close;
+extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
+extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
+extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */
+#endif
 
 void Measure(int, int);
 

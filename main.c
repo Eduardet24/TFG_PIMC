@@ -141,6 +141,24 @@ int measure_tVMC = OFF;
 int measure_Hessian_matrix = OFF;
 int check_kinetic_energy = ON;
 
+/* Variables globales del algoritmo worm (Prokof'ev-Svistunov) */
+#ifdef WORM_ALGORITHM
+int worm_open = 0;          /* 0 = sector-Z (anillos cerrados), 1 = sector-G (cadena abierta) */
+int worm_bead = -1;         /* índice del bead donde está ira (cabeza) */
+int worm_particle = -1;     /* índice de la partícula del gusano */
+int worm_bead_masha = -1;   /* índice del bead donde está masha (cola) */
+int worm_particle_masha = -1; /* índice de la partícula donde está masha */
+long long worm_count_Z = 0; /* pasos en sector Z */
+long long worm_count_G = 0; /* pasos en sector G */
+long long worm_try_open = 0;
+long long worm_acc_open = 0;
+long long worm_try_close = 0;
+long long worm_acc_close = 0;
+DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
+int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
+int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
+#endif
+
 struct Walker *W, *Wp;
 struct Grid G; // Jastrow terms of w.f.
 struct Grid G1; // One=body terms of w.f.
@@ -1200,7 +1218,15 @@ int main(int argn, char **argv) {
 
 #ifdef PIMC_HARMONIC_NORMAL_MODES
   if(MC == PIMC) {
+#ifdef WORM_ALGORITHM
+    /* Muestrear modos normales solo cuando los caminos son cerrados (sector Z) */
+    if(worm_open == 0) {
+      PIMCMoveHarmonicNormalModes();
+    }
+    PIMCWormMoves(); /* actualización del algoritmo worm */
+#else
     PIMCMoveHarmonicNormalModes();
+#endif
   }
   else
 #endif
@@ -1299,10 +1325,17 @@ int main(int argn, char **argv) {
       //if(Niter_store && block>=0 && iter % Niter_store == 0) SaveCoordinatesOptimization();
 
       if(block >= 0 && iter % Nmeasure == 0) {
-        time_simulating += clock() - time_begin;
-        Measure(block, iter);
-        time_begin = clock();
-        if(video) Picture();
+#ifdef WORM_ALGORITHM
+        /* Las medidas canónicas (E, n(r)) se realizan estrictamente en el sector Z */
+        if(worm_open == 0) {
+#endif
+          time_simulating += clock() - time_begin;
+          Measure(block, iter);
+          time_begin = clock();
+          if(video) Picture();
+#ifdef WORM_ALGORITHM
+        }
+#endif
       }
     }
 
@@ -1334,6 +1367,9 @@ int main(int argn, char **argv) {
 #endif
 
     Message("\n");
+#ifdef WORM_ALGORITHM
+    if(MC == PIMC) WormDiagnostic();
+#endif
   }
 
 #ifdef MPI

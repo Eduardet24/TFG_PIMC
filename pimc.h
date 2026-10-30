@@ -22,4 +22,11 @@ struct Worm {
   int i;
 };
 
+extern struct Worm worm;
+
+#ifdef WORM_ALGORITHM
+void PIMCWormMoves(void);
+void WormDiagnostic(void);
+#endif
+
 #endif
