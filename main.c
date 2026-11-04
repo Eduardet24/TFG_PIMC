@@ -154,6 +154,14 @@ long long worm_try_open = 0;
 long long worm_acc_open = 0;
 long long worm_try_close = 0;
 long long worm_acc_close = 0;
+long long worm_try_advance = 0;
+long long worm_acc_advance = 0;
+long long worm_try_recede = 0;
+long long worm_acc_recede = 0;
+long long worm_try_iramove = 0;
+long long worm_acc_iramove = 0;
+int worm_max_gap_observed = 0;
+long long *worm_gap_histogram = NULL;
 DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
 int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
 int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
@@ -1425,6 +1433,10 @@ int main(int argn, char **argv) {
 #ifdef MPI
 
   ParallelStop();
+#endif
+
+#ifdef WORM_ALGORITHM
+  if(MC == PIMC) SaveWormGapHistogram("outworm_gap.dat");
 #endif
 
   Message("done\n");

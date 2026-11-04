@@ -27,6 +27,7 @@ extern struct Worm worm;
 #ifdef WORM_ALGORITHM
 void PIMCWormMoves(void);
 void WormDiagnostic(void);
+void SaveWormGapHistogram(const char *filename);
 #endif
 
 #endif

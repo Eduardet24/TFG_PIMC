@@ -1328,6 +1328,14 @@ extern long long worm_try_open;
 extern long long worm_acc_open;
 extern long long worm_try_close;
 extern long long worm_acc_close;
+extern long long worm_try_advance;
+extern long long worm_acc_advance;
+extern long long worm_try_recede;
+extern long long worm_acc_recede;
+extern long long worm_try_iramove;
+extern long long worm_acc_iramove;
+extern int worm_max_gap_observed;
+extern long long *worm_gap_histogram;
 extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
 extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
 extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */

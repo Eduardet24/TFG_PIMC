@@ -446,26 +446,27 @@ void PIMCPseudopotentialMoveOneByOne(int w) {
 
 #ifdef WORM_ALGORITHM
 /***********************************************************************
- *  Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose.
+ *  Algoritmo Worm (Prokof'ev-Svistunov / Dornheim 2014)
  *
- *  FASE 2: Movimientos Open y Close (Transiciones Z <-> G)
+ *  FASE 3: Movimientos Advance y Recede (Evolución temporal de Ira)
  *
  *  - Enlaces:
  *    worm_next[w][i]: índice de partícula en el bead (w+1)%Nwalkers.
  *    worm_prev[w][i]: índice de partícula en el bead (w-1+Nwalkers)%Nwalkers.
  *    Si el enlace está abierto (Ira o Masha), vale -1.
  *
- *  - Sector Z:
+ *  - Sector Z (worm_open == 0):
  *    Todos los enlaces están cerrados.
- *    Se propone Open: se elige un bead w y partícula i al azar,
- *    se corta el enlace hacia (w+1)%Nwalkers.
- *    Aceptación: acc = worm_C * exp(+r^2 / (2*tau))
+ *    Movimiento: Open (corta un enlace aleatorio, creando Ira y Masha con gap = 1).
  *
- *  - Sector G:
- *    El gusano está abierto con cabeza Ira en (worm_bead, worm_particle)
- *    y cola Masha en (worm_bead_masha, worm_particle_masha).
- *    Se propone Close: se verifica que Ira y Masha sean contiguos en tiempo.
- *    Aceptación: acc = (1.0 / worm_C) * exp(-r^2 / (2*tau))
+ *  - Sector G (worm_open == 1):
+ *    Ira en (worm_bead, worm_particle), Masha en (worm_bead_masha, worm_particle_masha).
+ *    Gap: delta_w = (worm_bead_masha - worm_bead + Nwalkers) % Nwalkers.
+ *    Movimientos:
+ *      1. Advance: Ira avanza en tiempo (delta_w -> delta_w - 1).
+ *      2. Recede: Ira retrocede en tiempo (delta_w -> delta_w + 1).
+ *      3. Close: reconecta Ira con Masha (solo si delta_w == 1).
+ *      4. IraSpatialMove: relaja la posición espacial de la cabeza Ira.
  ***********************************************************************/
 
 void InitWorm(void) {
@@ -482,15 +483,25 @@ void InitWorm(void) {
       worm_prev[w][i] = i;
     }
   }
+
+  worm_gap_histogram = (long long*) calloc(NwalkersMax + 1, sizeof(long long));
+  worm_max_gap_observed = 0;
 }
+
+#define WORM_MAX_GAP 6
+#define WORM_PROB_CLOSE_GAP1 0.60
+#define WORM_PROB_RECEDE_GAP1 0.25
+#define WORM_PROB_SPATIAL_GAP1 0.15
+#define WORM_PROB_ADVANCE_GAP_GT1 0.45
+#define WORM_PROB_RECEDE_GAP_GT1 0.45
+#define WORM_PROB_SPATIAL_GAP_GT1 0.10
 
 static void WormOpenMove(void) {
   int w_cut, i_cut, j_cut, w_next;
-  DOUBLE dx, dy, r2, tau, acc;
+  DOUBLE dx, dy, r2, tau_local, acc;
 
   worm_try_open++;
 
-  /* Elegir aleatoriamente el bead y la partícula del enlace a abrir */
   w_cut = (int)(Random() * Nwalkers);
   if(w_cut >= Nwalkers) w_cut = Nwalkers - 1;
   i_cut = (int)(Random() * N);
@@ -500,15 +511,15 @@ static void WormOpenMove(void) {
   j_cut = worm_next[w_cut][i_cut];
   if(j_cut < 0) return; /* ya abierto */
 
-  /* Distancia espacial en 2D entre los dos extremos del enlace */
   dx = W[w_next].x[j_cut] - W[w_cut].x[i_cut];
   dy = W[w_next].y[j_cut] - W[w_cut].y[i_cut];
   r2 = dx * dx + dy * dy;
 
-  tau = 1.0 / (T * (DOUBLE)Nwalkers);
+  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
 
-  /* Metropolis: quitar el resorte cinético da un factor exp(+r^2 / (2*tau)) */
-  acc = worm_C * Exp(r2 / (2.0 * tau));
+  /* Aceptación Metropolis: ganancia del resorte cinético al cortar */
+    acc = worm_C * Exp(r2 / (2.0 * tau_local))
+      * WORM_PROB_CLOSE_GAP1 * (DOUBLE)Nwalkers * (DOUBLE)N;
 
   if(acc >= 1.0 || Random() < acc) {
     worm_open = 1;
@@ -524,7 +535,6 @@ static void WormOpenMove(void) {
     worm.x_masha = W[w_next].x[j_cut];
     worm.y_masha = W[w_next].y[j_cut];
 
-    /* Abrir enlace */
     worm_next[w_cut][i_cut] = -1;
     worm_prev[w_next][j_cut] = -1;
 
@@ -534,27 +544,26 @@ static void WormOpenMove(void) {
 
 static void WormCloseMove(void) {
   int w_masha_expected;
-  DOUBLE dx, dy, r2, tau, acc;
+  DOUBLE dx, dy, r2, tau_local, acc;
 
   worm_try_close++;
 
-  /* Condición para cerrar: Ira y Masha deben ser contiguos en tiempo */
   w_masha_expected = (worm_bead + 1) % Nwalkers;
   if(worm_bead_masha != w_masha_expected) {
-    return;
+    return; /* solo se puede cerrar si los beads son contiguos (gap == 1) */
   }
 
   dx = W[worm_bead_masha].x[worm_particle_masha] - W[worm_bead].x[worm_particle];
   dy = W[worm_bead_masha].y[worm_particle_masha] - W[worm_bead].y[worm_particle];
   r2 = dx * dx + dy * dy;
 
-  tau = 1.0 / (T * (DOUBLE)Nwalkers);
+  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
 
-  /* Metropolis: añadir el resorte cinético da un factor exp(-r^2 / (2*tau)) */
-  acc = (1.0 / worm_C) * Exp(-r2 / (2.0 * tau));
+  /* Aceptación Metropolis: coste del resorte cinético al reconectar */
+    acc = (1.0 / worm_C) * Exp(-r2 / (2.0 * tau_local))
+      / (WORM_PROB_CLOSE_GAP1 * (DOUBLE)Nwalkers * (DOUBLE)N);
 
   if(acc >= 1.0 || Random() < acc) {
-    /* Reconectar enlace y cerrar gusano */
     worm_next[worm_bead][worm_particle] = worm_particle_masha;
     worm_prev[worm_bead_masha][worm_particle_masha] = worm_particle;
 
@@ -568,17 +577,169 @@ static void WormCloseMove(void) {
   }
 }
 
+static void WormAdvanceMove(void) {
+  int w_curr, w_next, p_idx, gap;
+  DOUBLE dx, dy, dummy_z, x_new, y_new, dV, acc, tau_local, proposal_ratio;
+
+  worm_try_advance++;
+
+  w_curr = worm_bead;
+  p_idx = worm_particle;
+  w_next = (w_curr + 1) % Nwalkers;
+
+  /* No avanzar si ya estamos adyacentes a Masha (eso corresponde a Close) */
+  if(w_next == worm_bead_masha) return;
+
+  gap = (worm_bead_masha - worm_bead + Nwalkers) % Nwalkers;
+
+  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+
+  /* Muestreo gaussiano del propagador cinético libre desde Ira */
+  RandomNormal3(&dx, &dy, &dummy_z, 0., Sqrt(tau_local));
+  x_new = W[w_curr].x[p_idx] + dx;
+  y_new = W[w_curr].y[p_idx] + dy;
+
+  /* Cambio en la acción potencial en el nuevo bead */
+  dV = Vext(x_new, y_new, 0.);
+  proposal_ratio = (gap == 2 ? WORM_PROB_RECEDE_GAP1 : WORM_PROB_RECEDE_GAP_GT1)
+                   / WORM_PROB_ADVANCE_GAP_GT1;
+  acc = Exp(-tau_local * dV) * proposal_ratio;
+
+  if(acc >= 1.0 || Random() < acc) {
+    W[w_next].x[p_idx] = x_new;
+    W[w_next].y[p_idx] = y_new;
+
+    worm_next[w_curr][p_idx] = p_idx;
+    worm_prev[w_next][p_idx] = p_idx;
+
+    worm_bead = w_next;
+    worm.w = w_next;
+    worm.x_ira = x_new;
+    worm.y_ira = y_new;
+
+    worm_next[w_next][p_idx] = -1;
+
+    worm_acc_advance++;
+  }
+}
+
+static void WormRecedeMove(void) {
+  int w_curr, w_prev, p_idx, gap;
+  DOUBLE dV, acc, tau_local, proposal_ratio;
+
+  worm_try_recede++;
+
+  w_curr = worm_bead;
+  p_idx = worm_particle;
+  w_prev = (w_curr - 1 + Nwalkers) % Nwalkers;
+
+  gap = (worm_bead_masha - worm_bead + Nwalkers) % Nwalkers;
+  /* Límite máximo de apertura (M_bar en Dornheim) y protección contra colisión con Masha */
+  if(gap >= WORM_MAX_GAP || w_prev == worm_bead_masha) return;
+
+  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+
+  /* Al borrar el bead de Ira, se elimina su potencial */
+  dV = Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.);
+  proposal_ratio = WORM_PROB_ADVANCE_GAP_GT1
+                   / (gap == 1 ? WORM_PROB_RECEDE_GAP1 : WORM_PROB_RECEDE_GAP_GT1);
+  acc = Exp(+tau_local * dV) * proposal_ratio;
+
+  if(acc >= 1.0 || Random() < acc) {
+    worm_next[w_prev][p_idx] = -1;
+    worm_prev[w_curr][p_idx] = -1;
+
+    worm_bead = w_prev;
+    worm.w = w_prev;
+    worm.x_ira = W[w_prev].x[p_idx];
+    worm.y_ira = W[w_prev].y[p_idx];
+
+    worm_acc_recede++;
+  }
+}
+
+static void WormIraSpatialMove(void) {
+  int w_curr, w_prev, p_idx;
+  DOUBLE dx, dy, dummy_z, x_new, y_new, dV_kin, dV_ext, dS, acc, tau_local;
+  DOUBLE dx_old, dy_old, dx_new, dy_new;
+
+  worm_try_iramove++;
+
+  w_curr = worm_bead;
+  p_idx = worm_particle;
+  w_prev = (w_curr - 1 + Nwalkers) % Nwalkers;
+
+  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+
+  /* Desplazamiento gaussiano local */
+  RandomNormal3(&dx, &dy, &dummy_z, 0., Sqrt(dt_vmc > 0 ? dt_vmc : tau_local));
+  x_new = W[w_curr].x[p_idx] + dx;
+  y_new = W[w_curr].y[p_idx] + dy;
+
+  /* Cambio cinético con el bead anterior */
+  dx_old = W[w_curr].x[p_idx] - W[w_prev].x[p_idx];
+  dy_old = W[w_curr].y[p_idx] - W[w_prev].y[p_idx];
+  dx_new = x_new - W[w_prev].x[p_idx];
+  dy_new = y_new - W[w_prev].y[p_idx];
+
+  dV_kin = ((dx_new*dx_new + dy_new*dy_new) - (dx_old*dx_old + dy_old*dy_old)) / (2.0 * tau_local);
+  dV_ext = tau_local * (Vext(x_new, y_new, 0.) - Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.));
+
+  dS = -(dV_kin + dV_ext);
+  acc = Exp(dS);
+
+  if(acc >= 1.0 || Random() < acc) {
+    W[w_curr].x[p_idx] = x_new;
+    W[w_curr].y[p_idx] = y_new;
+    worm.x_ira = x_new;
+    worm.y_ira = y_new;
+    worm_acc_iramove++;
+  }
+}
+
 void PIMCWormMoves(void) {
+  int sub, gap;
+  DOUBLE r;
+
   if(worm_next == NULL) {
     InitWorm();
   }
 
-  if(worm_open == 0) {
-    worm_count_Z++;
-    WormOpenMove();
-  } else {
-    worm_count_G++;
-    WormCloseMove();
+  /* Realizar varios intentos por iteración para una buena exploración ergódica */
+  for(sub = 0; sub < 5; sub++) {
+    if(worm_open == 0) {
+      worm_count_Z++;
+      WormOpenMove();
+    } else {
+      worm_count_G++;
+
+      gap = (worm_bead_masha - worm_bead + Nwalkers) % Nwalkers;
+      if(gap < NwalkersMax && worm_gap_histogram != NULL) {
+        worm_gap_histogram[gap]++;
+      }
+      if(gap > worm_max_gap_observed) worm_max_gap_observed = gap;
+
+      r = Random();
+      if(gap == 1) {
+        /* Con gap == 1, los extremos están adyacentes: favorecer cierre o retroceso */
+        if(r < WORM_PROB_CLOSE_GAP1) {
+          WormCloseMove();
+        } else if(r < WORM_PROB_CLOSE_GAP1 + WORM_PROB_RECEDE_GAP1) {
+          WormRecedeMove();
+        } else {
+          WormIraSpatialMove();
+        }
+      } else {
+        /* Con gap > 1: avanzar hacia Masha o retroceder explorando */
+        if(r < WORM_PROB_ADVANCE_GAP_GT1) {
+          WormAdvanceMove();
+        } else if(r < WORM_PROB_ADVANCE_GAP_GT1 + WORM_PROB_RECEDE_GAP_GT1) {
+          WormRecedeMove();
+        } else {
+          WormIraSpatialMove();
+        }
+      }
+    }
   }
 }
 
@@ -588,11 +749,26 @@ void WormDiagnostic(void) {
   double frac_G = (double)worm_count_G / (double)total;
   double rate_open = worm_try_open > 0 ? (double)worm_acc_open / (double)worm_try_open * 100.0 : 0.0;
   double rate_close = worm_try_close > 0 ? (double)worm_acc_close / (double)worm_try_close * 100.0 : 0.0;
+  double rate_adv = worm_try_advance > 0 ? (double)worm_acc_advance / (double)worm_try_advance * 100.0 : 0.0;
+  double rate_rec = worm_try_recede > 0 ? (double)worm_acc_recede / (double)worm_try_recede * 100.0 : 0.0;
+  double rate_ira = worm_try_iramove > 0 ? (double)worm_acc_iramove / (double)worm_try_iramove * 100.0 : 0.0;
 
-  Message("Worm F2: Z=%lld G=%lld (frac_G=%.3f) | Open: %lld/%lld (%.1f%%) | Close: %lld/%lld (%.1f%%) [C=%.2f]\n",
+  Message("Worm F3: Z=%lld G=%lld (fG=%.2f) | Op: %.1f%% | Cl: %.1f%% | Adv: %.1f%% | Rec: %.1f%% | Ira: %.1f%% | MaxGap: %d\n",
           worm_count_Z, worm_count_G, frac_G,
-          worm_acc_open, worm_try_open, rate_open,
-          worm_acc_close, worm_try_close, rate_close,
-          worm_C);
+          rate_open, rate_close, rate_adv, rate_rec, rate_ira,
+          worm_max_gap_observed);
+}
+
+void SaveWormGapHistogram(const char *filename) {
+  FILE *f;
+  int g;
+  if(worm_gap_histogram == NULL) return;
+  f = fopen(filename, "w");
+  if(f == NULL) return;
+  fprintf(f, "# gap count\n");
+  for(g = 1; g <= WORM_MAX_GAP && g <= NwalkersMax; g++) {
+    fprintf(f, "%d %lld\n", g, worm_gap_histogram[g]);
+  }
+  fclose(f);
 }
 #endif /* WORM_ALGORITHM */
