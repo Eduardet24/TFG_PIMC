@@ -1,14 +1,13 @@
-"""Benchmark PIMC de N partículas ideales en un oscilador armónico 2D.
+"""Benchmark PIMC Worm de N partículas ideales en un oscilador armónico 2D.
 
-Compara la simulación PIMC en C (cadenas cerradas, partículas distinguibles / boltzmannons)
-con las soluciones analíticas exactas para:
+Compara la simulación PIMC en C, incluyendo permutaciones bosónicas, con las soluciones analíticas exactas para:
   1. Partículas distinguibles en 2D: E/N = coth(beta/2), n(r) gaussiana.
     2. Bosones idénticos en 2D: solución canónica exacta a N fijo.
 
 Genera:
   - Grafica 1: E/N vs Temperatura (PIMC vs Distinguibles vs Bosones + Fraccion condensada).
   - Grafica 2: Perfil de densidad radial n(r) (PIMC vs Distinguibles vs Bosones).
-    - Tabla de discrepancias: el PIMC actual no incluye permutaciones bosónicas.
+    - Tabla de discrepancias de energía y fracciones de ciclos de permutación.
 """
 
 import argparse
@@ -18,6 +17,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +25,9 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR
-RESULTS_BASE = PROJECT_DIR / 'Resultados' / 'NParticulas2D'
+RESULTS_BASE = Path(os.environ.get(
+    'PIMC_RESULTS_BASE', PROJECT_DIR / 'Resultados' / 'NParticulas2D'
+))
 TEMPLATE_CFG = PROJECT_DIR / 'MC.cfg'
 
 DEFAULT_N = 5
@@ -95,6 +97,18 @@ def analytical_bose_energy(n_particles, temp, omega=OMEGA):
     return e_per_particle, ground_state_occupancy / n_particles
 
 
+def analytical_bose_cycle_fractions(n_particles, temp, omega=OMEGA):
+    """Canonical particle fractions belonging to permutation cycles of each length."""
+    partition, _, _ = canonical_bose_partition(n_particles, temp, omega)
+    beta = 1.0 / temp
+    return np.array([
+        cycle_partition * partition[n_particles - cycle]
+        / (n_particles * partition[n_particles])
+        for cycle in range(1, n_particles + 1)
+        for cycle_partition in [1.0 / (1.0 - np.exp(-cycle * beta * omega))**2]
+    ])
+
+
 def analytical_bose_density(r_grid, n_particles, temp, omega=OMEGA):
     """Canonical per-particle 2D density for a fixed number of ideal bosons."""
     partition, _, _ = canonical_bose_partition(n_particles, temp, omega)
@@ -151,18 +165,28 @@ def run_simulation(binary_path, n_particles, temp, beads, run_dir,
     cfg_text = replace_line(cfg_text, 'blck_heating', str(blck_heating))
     cfg_text = replace_line(cfg_text, 'blck', str(blck))
     cfg_text = replace_line(cfg_text, 'Niter', str(niter))
+    cfg_text = replace_line(cfg_text, 'Nmeasure', '1')
+    worm_c = 0.1 / (0.4 * n_particles * beads)
+    cfg_text = replace_line(cfg_text, 'worm_C', f'{worm_c:.6f}')
     cfg_text = replace_line(cfg_text, 'gridRD', '60')
     cfg_text = replace_line(cfg_text, 'RDmax', '3.5')
     cfg_text = replace_line(cfg_text, 'RDwidth', '3.5')
 
     (run_dir / 'MC.cfg').write_text(cfg_text, encoding='utf-8')
 
+    output_files = ('oute.dat', 'outrd.dat', 'outworm_gap.dat', 'outworm_perm.dat',
+                    'outworm_energy_blocks.dat', 'outworm_cycle_blocks.dat')
+    run_started = time.time()
     log_file = run_dir / 'run.log'
     with log_file.open('w', encoding='utf-8') as f_log:
         res = subprocess.run(['./MC'], cwd=run_dir, stdout=f_log, stderr=subprocess.STDOUT, text=True)
 
     if res.returncode != 0:
         raise RuntimeError(f'Error en simulación MC en {run_dir}. Revisa {log_file}')
+    for filename in output_files:
+        output_path = run_dir / filename
+        if not output_path.is_file() or output_path.stat().st_mtime < run_started:
+            raise RuntimeError(f'{output_path} no se generó en esta corrida')
 
 
 def validate_run_output(run_dir):
@@ -172,43 +196,45 @@ def validate_run_output(run_dir):
         raise FileNotFoundError(f'No se encontró {log_file}; ejecuta con --run')
     log = log_file.read_text(encoding='utf-8', errors='ignore')
     expected_mode = 'exact harmonic normal modes (all noninteracting particles)'
-    if expected_mode not in log or 'Interaction potential (not included in Eloc part): ABSENT' not in log:
+    if (expected_mode not in log
+            or 'Interaction potential (not included in Eloc part): ABSENT' not in log
+            or 'Worm F4:' not in log
+            or not log.rstrip().endswith('done')):
         raise RuntimeError(
             f'{run_dir} no contiene una corrida compatible con este benchmark. '
             'Vuelve a ejecutarlo con --run para compilar y simular desde los fuentes actuales.'
         )
+    for filename in ('outworm_energy_blocks.dat', 'outworm_cycle_blocks.dat', 'outworm_perm.dat'):
+        if not (run_dir / filename).is_file():
+            raise FileNotFoundError(f'No se encontró {run_dir / filename}; vuelve a ejecutar con --run')
+
+
+def blocked_ratio_stats(values, counts):
+    """Mean and standard error from fixed-time MC blocks with variable Z counts."""
+    values = np.asarray(values, dtype=float)
+    counts = np.asarray(counts, dtype=float)
+    if len(values) < 2 or np.any(counts < 0) or counts.sum() <= 0:
+        raise ValueError('Se necesitan al menos dos bloques medidos para estimar la incertidumbre')
+    mean = np.average(values, weights=counts)
+    residuals = counts * (values - mean)
+    error = residuals.std(ddof=1) / (np.sqrt(len(residuals)) * counts.mean())
+    return mean, error
 
 
 def read_energy_results(run_dir):
-    """Lee y promedia la energía de oute.dat (# Etot Epot Ekin Ekin_prim)."""
-    energy_file = run_dir / 'oute.dat'
+    """Read energy and block errors from sector-Z MC-block means."""
+    energy_file = run_dir / 'outworm_energy_blocks.dat'
     if not energy_file.is_file():
-        raise FileNotFoundError(f'No se encontró {energy_file}')
+        raise FileNotFoundError(f'No se encontró {energy_file}; vuelve a ejecutar con --run')
 
     data = np.loadtxt(energy_file, skiprows=1)
     if data.ndim == 1:
         data = data[np.newaxis, :]
-
-    useful_start = len(data) // 2
-    useful = data[useful_start:]
-    config = (run_dir / 'MC.cfg').read_text(encoding='utf-8', errors='ignore')
-    niter_match = re.search(r'\bNiter=\s*(\d+)', config)
-    nmeasure_match = re.search(r'\bNmeasure=\s*(\d+)', config)
-    niter = int(niter_match.group(1)) if niter_match else len(data)
-    nmeasure = int(nmeasure_match.group(1)) if nmeasure_match else 1
-    block_size = max(niter // nmeasure, 1)
-    first_full_block = ((useful_start + block_size - 1) // block_size) * block_size
-    block_means = np.array([
-        data[start:start + block_size].mean(axis=0)
-        for start in range(first_full_block, len(data) - block_size + 1, block_size)
-    ])
-
-    e_tot_mean = np.mean(useful[:, 0])
-    block_errors = (np.std(block_means, axis=0, ddof=1) / np.sqrt(len(block_means))
-                    if len(block_means) > 1 else np.full(3, np.nan))
-    e_tot_err, e_pot_err, e_kin_vir_err = block_errors[:3]
-    e_pot_mean = np.mean(useful[:, 1])
-    e_kin_vir_mean = np.mean(useful[:, 2])
+    useful = data[len(data) // 2:]
+    counts = useful[:, 1]
+    e_tot_mean, e_tot_err = blocked_ratio_stats(useful[:, 2], counts)
+    e_pot_mean, e_pot_err = blocked_ratio_stats(useful[:, 3], counts)
+    e_kin_vir_mean, e_kin_vir_err = blocked_ratio_stats(useful[:, 4], counts)
 
     return {
         'etot': e_tot_mean,
@@ -217,6 +243,32 @@ def read_energy_results(run_dir):
         'epot_err': e_pot_err,
         'ekin_vir': e_kin_vir_mean,
         'ekin_vir_err': e_kin_vir_err,
+    }
+
+
+def read_cycle_results(run_dir, n_particles, temp):
+    """Read per-block cycle fractions and their block-based uncertainties."""
+    data = np.loadtxt(run_dir / 'outworm_cycle_blocks.dat', skiprows=1)
+    if data.ndim == 1:
+        data = data[np.newaxis, :]
+    useful = data[len(data) // 2:]
+    counts = useful[:, 1]
+    fractions = []
+    errors = []
+    for cycle in range(n_particles):
+        mean, error = blocked_ratio_stats(useful[:, cycle + 2], counts)
+        fractions.append(mean)
+        errors.append(error)
+    long_mean, long_error = blocked_ratio_stats(useful[:, 4:].sum(axis=1), counts)
+    expected = analytical_bose_cycle_fractions(n_particles, temp)
+    cycle_z = [abs(mean - target) / error for mean, target, error in zip(fractions, expected, errors)
+               if target >= 0.01 and error > 0.0]
+    return {
+        'fractions': np.asarray(fractions),
+        'errors': np.asarray(errors),
+        'long_fraction': long_mean,
+        'long_error': long_error,
+        'max_cycle_z': max(cycle_z, default=0.0),
     }
 
 
@@ -261,7 +313,7 @@ def plot_energy_comparison(n_particles, temps, sim_energies, out_path):
     e_sim_err = [res['etot_err'] for res in sim_energies]
     ax1.errorbar(t_sim, e_sim, yerr=e_sim_err, fmt='o', color='tab:blue', ecolor='tab:blue',
                  elinewidth=1.5, capsize=4, markersize=6.5,
-                 label='PIMC sin permutaciones ($N=%d$)' % n_particles)
+                 label=f'PIMC con Worm Algorithm ($N={n_particles}$)')
 
     ax1.set_ylabel(r'Energía por partícula $E / N$ [$\hbar\omega$]', fontsize=11)
     ax1.set_title(f'Energía vs Temperatura en Oscilador Armónico 2D ($N = {n_particles}$)',
@@ -300,7 +352,7 @@ def plot_density_comparison(n_particles, selected_temp, r_sim, n_sim, n_sim_err,
             label=f'Analítico: Bosones (canónico, $N={n_particles}$)')
     ax.errorbar(r_sim, n_sim, yerr=n_sim_err, fmt='o', color='tab:blue', ecolor='tab:blue',
                 elinewidth=1.0, capsize=2, markersize=4.0, alpha=0.85,
-                label='PIMC sin permutaciones')
+                label='PIMC con Worm Algorithm')
 
     ax.set_xlabel(r'Distancia radial $r = \sqrt{x^2 + y^2}$ [$a_{\mathrm{ho}}$]', fontsize=11)
     ax.set_ylabel(r'Densidad radial por partícula $n(r)$', fontsize=11)
@@ -317,21 +369,32 @@ def plot_density_comparison(n_particles, selected_temp, r_sim, n_sim, n_sim_err,
 
 def print_comparison_table(n_particles, sim_energies):
     """Imprime una tabla detallada comparando los resultados numéricos y analíticos."""
-    print('\n' + '=' * 82)
-    print(f'TABLA COMPARATIVA: $N = {n_particles}$ PARTÍCULAS EN OSCILADOR ARMÓNICO 2D')
-    print('=' * 82)
-    print(f"{'T':>6} | {'E/N PIMC':>14} | {'E/N Disting':>12} | {'E/N Bose':>10} | {'(PIMC-Bose)/Edist':>18} | {'N0/N (Cond)':>10}")
-    print('-' * 82)
+    print('\n' + '=' * 88)
+    print(f'TABLA COMPARATIVA: N = {n_particles} PARTÍCULAS EN OSCILADOR ARMÓNICO 2D (WORM ALGORITHM)')
+    print('=' * 88)
+    print(f"{'T':>6} | {'E/N PIMC':>14} | {'E/N Disting':>12} | {'E/N Bose':>10} | {'Error vs Bose':>14} | {'N0/N (Cond)':>10}")
+    print('-' * 88)
 
     for item in sim_energies:
         temp = item['temp']
         e_pimc = item['etot']
         e_dist = analytical_distinguishable_energy(temp)
         e_bose, n0 = analytical_bose_energy(n_particles, temp)
-        diff_pct = (e_pimc - e_bose) / e_dist * 100.0
-        print(f"{temp:6.2f} | {e_pimc:8.4f} +/- {item['etot_err']:.4f} | {e_dist:12.4f} | {e_bose:10.4f} | {diff_pct:16.2f}% | {n0:10.4f}")
+        diff_pct = abs(e_pimc - e_bose) / e_bose * 100.0
+        print(f"{temp:6.2f} | {e_pimc:8.4f} +/- {item['etot_err']:.4f} | {e_dist:12.4f} | {e_bose:10.4f} | {diff_pct:13.2f}% | {n0:10.4f}")
 
-    print('=' * 82)
+    print('=' * 88)
+
+
+def print_cycle_comparison_table(n_particles, cycle_results):
+    print('\nCOMPARACIÓN DE CICLOS CANÓNICOS: fracción de partículas en ciclos L >= 3')
+    print(f"{'T':>6} | {'PIMC':>10} | {'Bose exacto':>12} | {'Error bloque':>12}")
+    print('-' * 50)
+    for item in cycle_results:
+        expected = analytical_bose_cycle_fractions(n_particles, item['temp'])
+        long_expected = expected[2:].sum()
+        print(f"{item['temp']:6.2f} | {item['long_fraction']:7.4f} +/- {item['long_error']:.4f} | "
+              f"{long_expected:12.4f} | {abs(item['long_fraction'] - long_expected):11.4f}")
 
 
 # ==============================================================================
@@ -348,8 +411,8 @@ def main():
                         help='Temperaturas separadas por comas')
     parser.add_argument('--temp-density', type=float, default=0.5,
                         help='Temperatura seleccionada para la gráfica de densidad n(r) (por defecto: 0.5)')
-    parser.add_argument('--blocks', type=int, default=60, help='Bloques de medida en MC')
-    parser.add_argument('--iterations', type=int, default=200, help='Iteraciones por bloque en MC')
+    parser.add_argument('--blocks', type=int, default=400, help='Bloques de medida en MC')
+    parser.add_argument('--iterations', type=int, default=500, help='Iteraciones por bloque en MC')
     parser.add_argument('--run', action='store_true', help='Compilar el código C actual y ejecutar las simulaciones')
     args = parser.parse_args()
 
@@ -380,6 +443,7 @@ def main():
                 )
 
     sim_energies = []
+    cycle_results = []
     r_density_sample = None
     n_density_sample = None
     n_density_error = None
@@ -390,12 +454,16 @@ def main():
         res = read_energy_results(sim_dir)
         res['temp'] = temp
         sim_energies.append(res)
+        cycle_result = read_cycle_results(sim_dir, args.particles, temp)
+        cycle_result['temp'] = temp
+        cycle_results.append(cycle_result)
 
         if np.isclose(temp, args.temp_density):
             r_density_sample, n_density_sample, n_density_error = read_density_results(sim_dir)
 
     # Imprimir tabla
     print_comparison_table(args.particles, sim_energies)
+    print_cycle_comparison_table(args.particles, cycle_results)
 
     # Guardar figuras
     energy_fig = n_dir / f'energia_vs_T_N{args.particles}.png'
@@ -407,6 +475,19 @@ def main():
             args.particles, args.temp_density, r_density_sample, n_density_sample,
             n_density_error, density_fig
         )
+
+    energy_errors = [
+        abs(item['etot'] - analytical_bose_energy(args.particles, item['temp'])[0])
+        / analytical_bose_energy(args.particles, item['temp'])[0] * 100.0
+        for item in sim_energies
+    ]
+    max_energy_error = max(energy_errors)
+    max_cycle_z = max(item['max_cycle_z'] for item in cycle_results)
+    print(f'\nMáximo error energético en los puntos simulados: {max_energy_error:.2f}%')
+    print(f'Máxima discrepancia de ciclos: {max_cycle_z:.2f} errores estándar')
+    if max_energy_error >= 2.5 or max_cycle_z > 3.0:
+        raise SystemExit('Campaña no concluyente: aumenta bloques/iteraciones y repite.')
+    print('Campaña compatible con las referencias en los puntos térmicos simulados.')
 
 
 if __name__ == '__main__':

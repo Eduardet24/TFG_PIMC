@@ -90,6 +90,132 @@ void PIMCMoveHarmonicNormalModes(void) {
   }
 
   tau = 1. / (T * (DOUBLE)beads);
+
+#ifdef WORM_ALGORITHM
+  if(worm_next != NULL && worm_open == 0) {
+    int *visited = (int*) calloc(N, sizeof(int));
+    int *ring_p = (int*) malloc(N * beads * sizeof(int));
+    int *ring_w = (int*) malloc(N * beads * sizeof(int));
+    DOUBLE *ring_x = (DOUBLE*) malloc(N * beads * sizeof(DOUBLE));
+    DOUBLE *ring_y = (DOUBLE*) malloc(N * beads * sizeof(DOUBLE));
+
+    if(visited != NULL && ring_p != NULL && ring_w != NULL && ring_x != NULL && ring_y != NULL) {
+      for(particle = 0; particle < N; particle++) {
+        if(visited[particle]) continue;
+
+        /* Rastrear el anillo continuo de cuentas a lo largo del ciclo físico */
+        int ring_beads = 0;
+        int curr_p = particle;
+        int curr_w = 0;
+        do {
+          if(curr_w == 0) visited[curr_p] = 1;
+          ring_p[ring_beads] = curr_p;
+          ring_w[ring_beads] = curr_w;
+          ring_x[ring_beads] = 0.;
+          ring_y[ring_beads] = 0.;
+          ring_beads++;
+          if(ring_beads >= N * beads) break;
+          curr_p = worm_next[curr_w][curr_p];
+          curr_w = (curr_w + 1) % beads;
+        } while(!(curr_w == 0 && curr_p == particle));
+
+        /* --- Muestreo X para el anillo de ring_beads --- */
+        eigenvalue = tau * omega_x2;
+        RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+        q0 = dx;
+        amplitude = q0 / Sqrt((DOUBLE)ring_beads);
+        for(int n=0; n<ring_beads; n++) ring_x[n] += amplitude;
+
+        for(mode=1; mode<=(ring_beads-1)/2; mode++) {
+          step = 2. * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
+          step_cosine = Cos(step);
+          step_sine = Sin(step);
+          eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_x2;
+          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+          q_cos = dx;
+          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+          q_sin = dx;
+
+          cosine = 1.;
+          sine = 0.;
+          amplitude = Sqrt(2. / (DOUBLE)ring_beads);
+          for(int n=0; n<ring_beads; n++) {
+            ring_x[n] += amplitude * (q_cos * cosine + q_sin * sine);
+            angle = cosine * step_cosine - sine * step_sine;
+            sine = sine * step_cosine + cosine * step_sine;
+            cosine = angle;
+          }
+        }
+
+        if(ring_beads % 2 == 0) {
+          eigenvalue = 4. / tau + tau * omega_x2;
+          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+          q_cos = dx / Sqrt((DOUBLE)ring_beads);
+          for(int n=0; n<ring_beads; n++) {
+            ring_x[n] += (n % 2 == 0) ? q_cos : -q_cos;
+          }
+        }
+
+        /* --- Muestreo Y para el anillo de ring_beads --- */
+        eigenvalue = tau * omega_y2;
+        RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+        q0 = dy;
+        amplitude = q0 / Sqrt((DOUBLE)ring_beads);
+        for(int n=0; n<ring_beads; n++) ring_y[n] += amplitude;
+
+        for(mode=1; mode<=(ring_beads-1)/2; mode++) {
+          step = 2. * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
+          step_cosine = Cos(step);
+          step_sine = Sin(step);
+          eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_y2;
+          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+          q_cos = dy;
+          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+          q_sin = dy;
+
+          cosine = 1.;
+          sine = 0.;
+          amplitude = Sqrt(2. / (DOUBLE)ring_beads);
+          for(int n=0; n<ring_beads; n++) {
+            ring_y[n] += amplitude * (q_cos * cosine + q_sin * sine);
+            angle = cosine * step_cosine - sine * step_sine;
+            sine = sine * step_cosine + cosine * step_sine;
+            cosine = angle;
+          }
+        }
+
+        if(ring_beads % 2 == 0) {
+          eigenvalue = 4. / tau + tau * omega_y2;
+          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+          q_cos = dy / Sqrt((DOUBLE)ring_beads);
+          for(int n=0; n<ring_beads; n++) {
+            ring_y[n] += (n % 2 == 0) ? q_cos : -q_cos;
+          }
+        }
+
+        /* Asignar las coordenadas calculadas a las cuentas físicas */
+        for(int n=0; n<ring_beads; n++) {
+          W[ring_w[n]].x[ring_p[n]] = ring_x[n];
+          W[ring_w[n]].y[ring_p[n]] = ring_y[n];
+          W[ring_w[n]].z[ring_p[n]] = 0.;
+        }
+      }
+
+      free(visited);
+      free(ring_p);
+      free(ring_w);
+      free(ring_x);
+      free(ring_y);
+      return;
+    }
+    if(visited) free(visited);
+    if(ring_p) free(ring_p);
+    if(ring_w) free(ring_w);
+    if(ring_x) free(ring_x);
+    if(ring_y) free(ring_y);
+  }
+#endif
+
   for(bead=0; bead<beads; bead++) {
     for(particle=0; particle<N; particle++) {
       W[bead].x[particle] = 0.;
@@ -210,9 +336,18 @@ void PIMCMoveOneByOne(int w) {
     x = W[w].x[i];
     y = W[w].y[i];
     z = W[w].z[i];
-    xm = 0.5*(W[w1].x[i]+W[w2].x[i]); // middle point
-    ym = 0.5*(W[w1].y[i]+W[w2].y[i]);
-    zm = 0.5*(W[w1].z[i]+W[w2].z[i]);
+#ifdef WORM_ALGORITHM
+    int prev_p = (worm_prev != NULL) ? worm_prev[w][i] : i;
+    int next_p = (worm_next != NULL) ? worm_next[w][i] : i;
+    if(prev_p < 0) prev_p = i;
+    if(next_p < 0) next_p = i;
+#else
+    int prev_p = i;
+    int next_p = i;
+#endif
+    xm = 0.5*(W[w1].x[prev_p]+W[w2].x[next_p]); // middle point
+    ym = 0.5*(W[w1].y[prev_p]+W[w2].y[next_p]);
+    zm = 0.5*(W[w1].z[prev_p]+W[w2].z[next_p]);
 
     // Wp is the trial position
     RandomNormal3(&dx, &dy, &dz, 0., Sqrt(dt_vmc)); // generate a random number distributed according to Normal distribution
@@ -486,19 +621,26 @@ void InitWorm(void) {
 
   worm_gap_histogram = (long long*) calloc(NwalkersMax + 1, sizeof(long long));
   worm_max_gap_observed = 0;
+
+  worm_cycle_histogram = (long long*) calloc(N + 1, sizeof(long long));
+  worm_cycle_samples = 0;
 }
 
 #define WORM_MAX_GAP 6
-#define WORM_PROB_CLOSE_GAP1 0.60
-#define WORM_PROB_RECEDE_GAP1 0.25
-#define WORM_PROB_SPATIAL_GAP1 0.15
+#define WORM_PROB_CLOSE_GAP1     0.60
+#define WORM_PROB_RECEDE_GAP1    0.25
+#define WORM_PROB_SPATIAL_GAP1   0.15
 #define WORM_PROB_ADVANCE_GAP_GT1 0.45
-#define WORM_PROB_RECEDE_GAP_GT1 0.45
+#define WORM_PROB_RECEDE_GAP_GT1  0.45
 #define WORM_PROB_SPATIAL_GAP_GT1 0.10
+
+#define WORM_PROB_CLOSE_N_GT1    0.40
+#define WORM_PROB_SWAP_N_GT1     0.40
+#define WORM_PROB_SPATIAL_N_GT1  0.20
 
 static void WormOpenMove(void) {
   int w_cut, i_cut, j_cut, w_next;
-  DOUBLE dx, dy, r2, tau_local, acc;
+  DOUBLE dx, dy, r2, tau_local, acc, p_close;
 
   worm_try_open++;
 
@@ -516,10 +658,11 @@ static void WormOpenMove(void) {
   r2 = dx * dx + dy * dy;
 
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+  p_close = (N > 1) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
 
   /* Aceptación Metropolis: ganancia del resorte cinético al cortar */
-    acc = worm_C * Exp(r2 / (2.0 * tau_local))
-      * WORM_PROB_CLOSE_GAP1 * (DOUBLE)Nwalkers * (DOUBLE)N;
+  acc = worm_C * Exp(r2 / (2.0 * tau_local))
+    * p_close * (DOUBLE)Nwalkers * (DOUBLE)N;
 
   if(acc >= 1.0 || Random() < acc) {
     worm_open = 1;
@@ -544,7 +687,7 @@ static void WormOpenMove(void) {
 
 static void WormCloseMove(void) {
   int w_masha_expected;
-  DOUBLE dx, dy, r2, tau_local, acc;
+  DOUBLE dx, dy, r2, tau_local, acc, p_close;
 
   worm_try_close++;
 
@@ -558,10 +701,11 @@ static void WormCloseMove(void) {
   r2 = dx * dx + dy * dy;
 
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+  p_close = (N > 1) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
 
   /* Aceptación Metropolis: coste del resorte cinético al reconectar */
-    acc = (1.0 / worm_C) * Exp(-r2 / (2.0 * tau_local))
-      / (WORM_PROB_CLOSE_GAP1 * (DOUBLE)Nwalkers * (DOUBLE)N);
+  acc = (1.0 / worm_C) * Exp(-r2 / (2.0 * tau_local))
+    / (p_close * (DOUBLE)Nwalkers * (DOUBLE)N);
 
   if(acc >= 1.0 || Random() < acc) {
     worm_next[worm_bead][worm_particle] = worm_particle_masha;
@@ -641,8 +785,7 @@ static void WormRecedeMove(void) {
 
   /* Al borrar el bead de Ira, se elimina su potencial */
   dV = Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.);
-  proposal_ratio = WORM_PROB_ADVANCE_GAP_GT1
-                   / (gap == 1 ? WORM_PROB_RECEDE_GAP1 : WORM_PROB_RECEDE_GAP_GT1);
+  proposal_ratio = WORM_PROB_ADVANCE_GAP_GT1 / WORM_PROB_RECEDE_GAP_GT1;
   acc = Exp(+tau_local * dV) * proposal_ratio;
 
   if(acc >= 1.0 || Random() < acc) {
@@ -656,6 +799,116 @@ static void WormRecedeMove(void) {
 
     worm_acc_recede++;
   }
+}
+
+static void WormSwapMove(void) {
+  int w_curr, w_next, i_ira, k, p_old, cand_count;
+  int *candidates;
+  DOUBLE *weights;
+  DOUBLE sum_weights1, sum_weights2, r, cum, acc;
+  DOUBLE tau_local, d2;
+  int chosen_idx, chosen_k;
+
+  worm_try_swap++;
+
+  if(N < 2) return; /* Se requieren al menos 2 partículas para intercambio */
+
+  w_curr = worm_bead;
+  i_ira = worm_particle;
+  w_next = (w_curr + 1) % Nwalkers;
+  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+
+  candidates = (int*) malloc(N * sizeof(int));
+  weights = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+  if(candidates == NULL || weights == NULL) {
+    if(candidates) free(candidates);
+    if(weights) free(weights);
+    return;
+  }
+
+  /* 1. Candidatos en slice w_next con enlace entrante válido (excluye Masha si está en w_next) */
+  cand_count = 0;
+  for(k = 0; k < N; k++) {
+    if(worm_prev[w_next][k] >= 0) {
+      candidates[cand_count++] = k;
+    }
+  }
+
+  if(cand_count == 0) {
+    free(candidates);
+    free(weights);
+    return;
+  }
+
+  /* 2. Calcular chi_1(k) = exp(-|r_ira - r_{k, next}|^2 / (2*tau)) */
+  sum_weights1 = 0.0;
+  for(int c = 0; c < cand_count; c++) {
+    k = candidates[c];
+    DOUBLE dx = worm.x_ira - W[w_next].x[k];
+    DOUBLE dy = worm.y_ira - W[w_next].y[k];
+    d2 = dx * dx + dy * dy;
+    weights[c] = Exp(-d2 / (2.0 * tau_local));
+    sum_weights1 += weights[c];
+  }
+
+  if(sum_weights1 <= 0.0) {
+    free(candidates);
+    free(weights);
+    return;
+  }
+
+  /* 3. Elegir candidato k con probabilidad P(k) = chi_1(k) / Sigma_1 */
+  r = Random() * sum_weights1;
+  cum = 0.0;
+  chosen_idx = 0;
+  for(int c = 0; c < cand_count; c++) {
+    cum += weights[c];
+    if(r <= cum) {
+      chosen_idx = c;
+      break;
+    }
+  }
+  chosen_k = candidates[chosen_idx];
+  p_old = worm_prev[w_next][chosen_k];
+
+  /* 4. Calcular Sigma_2 para el movimiento inverso desde la nueva cabeza Ira (w_curr, p_old) */
+  sum_weights2 = 0.0;
+  for(int c = 0; c < cand_count; c++) {
+    k = candidates[c];
+    DOUBLE dx = W[w_curr].x[p_old] - W[w_next].x[k];
+    DOUBLE dy = W[w_curr].y[p_old] - W[w_next].y[k];
+    d2 = dx * dx + dy * dy;
+    sum_weights2 += Exp(-d2 / (2.0 * tau_local));
+  }
+
+  if(sum_weights2 <= 0.0) {
+    free(candidates);
+    free(weights);
+    return;
+  }
+
+  /* 5. Aceptación Metropolis: A = min(1, Sigma_1 / Sigma_2) */
+  acc = sum_weights1 / sum_weights2;
+
+  if(acc >= 1.0 || Random() < acc) {
+    /* Reconectar enlaces */
+    worm_next[w_curr][i_ira] = chosen_k;
+    worm_prev[w_next][chosen_k] = i_ira;
+    worm_next[w_curr][p_old] = -1;
+
+    /* Actualizar cabeza Ira */
+    worm_bead = w_curr;
+    worm_particle = p_old;
+    worm.w = w_curr;
+    worm.i = p_old;
+    worm.x_ira = W[w_curr].x[p_old];
+    worm.y_ira = W[w_curr].y[p_old];
+
+    worm_acc_swap++;
+  }
+
+  free(candidates);
+  free(weights);
 }
 
 static void WormIraSpatialMove(void) {
@@ -677,10 +930,11 @@ static void WormIraSpatialMove(void) {
   y_new = W[w_curr].y[p_idx] + dy;
 
   /* Cambio cinético con el bead anterior */
-  dx_old = W[w_curr].x[p_idx] - W[w_prev].x[p_idx];
-  dy_old = W[w_curr].y[p_idx] - W[w_prev].y[p_idx];
-  dx_new = x_new - W[w_prev].x[p_idx];
-  dy_new = y_new - W[w_prev].y[p_idx];
+  int p_in = (worm_prev != NULL && worm_prev[w_curr][p_idx] >= 0) ? worm_prev[w_curr][p_idx] : p_idx;
+  dx_old = W[w_curr].x[p_idx] - W[w_prev].x[p_in];
+  dy_old = W[w_curr].y[p_idx] - W[w_prev].y[p_in];
+  dx_new = x_new - W[w_prev].x[p_in];
+  dy_new = y_new - W[w_prev].y[p_in];
 
   dV_kin = ((dx_new*dx_new + dy_new*dy_new) - (dx_old*dx_old + dy_old*dy_old)) / (2.0 * tau_local);
   dV_ext = tau_local * (Vext(x_new, y_new, 0.) - Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.));
@@ -720,27 +974,91 @@ void PIMCWormMoves(void) {
       if(gap > worm_max_gap_observed) worm_max_gap_observed = gap;
 
       r = Random();
-      if(gap == 1) {
-        /* Con gap == 1, los extremos están adyacentes: favorecer cierre o retroceso */
-        if(r < WORM_PROB_CLOSE_GAP1) {
+      if(N > 1) {
+        /* Para N > 1 (estadística bosónica canónica): Open, Swap, Spatial, Close */
+        if(r < WORM_PROB_CLOSE_N_GT1) {
           WormCloseMove();
-        } else if(r < WORM_PROB_CLOSE_GAP1 + WORM_PROB_RECEDE_GAP1) {
-          WormRecedeMove();
+        } else if(r < WORM_PROB_CLOSE_N_GT1 + WORM_PROB_SWAP_N_GT1) {
+          WormSwapMove();
         } else {
           WormIraSpatialMove();
         }
       } else {
-        /* Con gap > 1: avanzar hacia Masha o retroceder explorando */
-        if(r < WORM_PROB_ADVANCE_GAP_GT1) {
-          WormAdvanceMove();
-        } else if(r < WORM_PROB_ADVANCE_GAP_GT1 + WORM_PROB_RECEDE_GAP_GT1) {
-          WormRecedeMove();
+        /* Para N == 1: Advance, Recede, Spatial, Close */
+        if(gap == 1) {
+          if(r < WORM_PROB_CLOSE_GAP1) {
+            WormCloseMove();
+          } else if(r < WORM_PROB_CLOSE_GAP1 + WORM_PROB_RECEDE_GAP1) {
+            WormRecedeMove();
+          } else {
+            WormIraSpatialMove();
+          }
         } else {
-          WormIraSpatialMove();
+          if(r < WORM_PROB_ADVANCE_GAP_GT1) {
+            WormAdvanceMove();
+          } else if(r < WORM_PROB_ADVANCE_GAP_GT1 + WORM_PROB_RECEDE_GAP_GT1) {
+            WormRecedeMove();
+          } else {
+            WormIraSpatialMove();
+          }
         }
       }
     }
   }
+}
+
+void MeasureWormPermutations(void) {
+  int p, curr_p, curr_w, L;
+  int *visited;
+
+  if(worm_open != 0 || worm_next == NULL) return;
+
+  visited = (int*) calloc(N, sizeof(int));
+  if(visited == NULL) return;
+
+  worm_cycle_samples++;
+
+  for(p = 0; p < N; p++) {
+    if(!visited[p]) {
+      L = 0;
+      curr_p = p;
+      curr_w = 0;
+      do {
+        if(curr_w == 0) {
+          visited[curr_p] = 1;
+          L++;
+        }
+        curr_p = worm_next[curr_w][curr_p];
+        curr_w = (curr_w + 1) % Nwalkers;
+        if(L > N) break;
+      } while(!(curr_w == 0 && curr_p == p));
+
+      if(worm_cycle_histogram != NULL && L <= N) {
+        worm_cycle_histogram[L] += L; /* ponderado por número de partículas en ciclo L */
+      }
+    }
+  }
+
+  free(visited);
+}
+
+void SaveWormPermutations(const char *filename) {
+  FILE *f;
+  int L;
+  DOUBLE total_particles;
+
+  if(worm_cycle_histogram == NULL || worm_cycle_samples == 0) return;
+  f = fopen(filename, "w");
+  if(f == NULL) return;
+
+  total_particles = (DOUBLE)worm_cycle_samples * (DOUBLE)N;
+
+  fprintf(f, "# cycle_length particle_count fraction\n");
+  for(L = 1; L <= N; L++) {
+    DOUBLE frac = total_particles > 0. ? (DOUBLE)worm_cycle_histogram[L] / total_particles : 0.;
+    fprintf(f, "%d %lld %.6f\n", L, worm_cycle_histogram[L], frac);
+  }
+  fclose(f);
 }
 
 void WormDiagnostic(void) {
@@ -751,12 +1069,22 @@ void WormDiagnostic(void) {
   double rate_close = worm_try_close > 0 ? (double)worm_acc_close / (double)worm_try_close * 100.0 : 0.0;
   double rate_adv = worm_try_advance > 0 ? (double)worm_acc_advance / (double)worm_try_advance * 100.0 : 0.0;
   double rate_rec = worm_try_recede > 0 ? (double)worm_acc_recede / (double)worm_try_recede * 100.0 : 0.0;
+  double rate_swap = worm_try_swap > 0 ? (double)worm_acc_swap / (double)worm_try_swap * 100.0 : 0.0;
   double rate_ira = worm_try_iramove > 0 ? (double)worm_acc_iramove / (double)worm_try_iramove * 100.0 : 0.0;
 
-  Message("Worm F3: Z=%lld G=%lld (fG=%.2f) | Op: %.1f%% | Cl: %.1f%% | Adv: %.1f%% | Rec: %.1f%% | Ira: %.1f%% | MaxGap: %d\n",
+  double p1 = 0., p2 = 0.;
+  if(worm_cycle_samples > 0 && worm_cycle_histogram != NULL) {
+    double tot = (double)worm_cycle_samples * (double)N;
+    if(tot > 0.) {
+      p1 = (double)worm_cycle_histogram[1] / tot;
+      if(N >= 2) p2 = (double)worm_cycle_histogram[2] / tot;
+    }
+  }
+
+  Message("Worm F4: Z=%lld G=%lld (fG=%.2f) | Op: %.1f%% | Cl: %.1f%% | Adv: %.1f%% | Rec: %.1f%% | Sw: %.1f%% | Ira: %.1f%% | P(1)=%.2f P(2)=%.2f\n",
           worm_count_Z, worm_count_G, frac_G,
-          rate_open, rate_close, rate_adv, rate_rec, rate_ira,
-          worm_max_gap_observed);
+          rate_open, rate_close, rate_adv, rate_rec, rate_swap, rate_ira,
+          p1, p2);
 }
 
 void SaveWormGapHistogram(const char *filename) {

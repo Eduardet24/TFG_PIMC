@@ -160,8 +160,12 @@ long long worm_try_recede = 0;
 long long worm_acc_recede = 0;
 long long worm_try_iramove = 0;
 long long worm_acc_iramove = 0;
+long long worm_try_swap = 0;
+long long worm_acc_swap = 0;
 int worm_max_gap_observed = 0;
 long long *worm_gap_histogram = NULL;
+long long *worm_cycle_histogram = NULL;
+long long worm_cycle_samples = 0;
 DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
 int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
 int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
@@ -278,6 +282,15 @@ int main(int argn, char **argv) {
   int block, iter;
   unsigned long int measured_blck = 0;
   clock_t time_begin;
+#ifdef WORM_ALGORITHM
+  DOUBLE worm_block_energy_sum[3] = {0., 0., 0.};
+  unsigned long worm_block_energy_samples = 0;
+  long long *worm_cycle_block_start = NULL;
+  long long worm_cycle_samples_block_start = 0;
+  long long worm_cycle_samples_block;
+  int worm_cycle_length;
+  FILE *worm_block_file;
+#endif
 
   time_start = clock();
   time(&time_era_begin);
@@ -1200,6 +1213,26 @@ int main(int argn, char **argv) {
   time_communicating = clock() - time_start;
   dt_Kurbakov=dt;
 
+#ifdef WORM_ALGORITHM
+  if(MC == PIMC) {
+    worm_cycle_block_start = (long long*) calloc(N + 1, sizeof(long long));
+    worm_block_file = fopen("outworm_energy_blocks.dat", "w");
+    if(worm_block_file != NULL) {
+      fprintf(worm_block_file, "# block samples Etot Epot Ekin\n");
+      fclose(worm_block_file);
+    }
+    worm_block_file = fopen("outworm_cycle_blocks.dat", "w");
+    if(worm_block_file != NULL) {
+      fprintf(worm_block_file, "# block samples");
+      for(worm_cycle_length = 1; worm_cycle_length <= N; worm_cycle_length++) {
+        fprintf(worm_block_file, " P%d", worm_cycle_length);
+      }
+      fprintf(worm_block_file, "\n");
+      fclose(worm_block_file);
+    }
+  }
+#endif
+
   for(block=-blck_heating; block<blck; block++) {
     time_begin = clock();
     accepted = accepted_one = accepted_all = 0; // control rate initialization
@@ -1208,6 +1241,18 @@ int main(int argn, char **argv) {
     tried = 0;
     Eblck = 0.;
     measured_blck = 0;
+#ifdef WORM_ALGORITHM
+    worm_block_energy_sum[0] = 0.;
+    worm_block_energy_sum[1] = 0.;
+    worm_block_energy_sum[2] = 0.;
+    worm_block_energy_samples = 0;
+    worm_cycle_samples_block_start = worm_cycle_samples;
+    if(worm_cycle_block_start != NULL && worm_cycle_histogram != NULL) {
+      for(worm_cycle_length = 0; worm_cycle_length <= N; worm_cycle_length++) {
+        worm_cycle_block_start[worm_cycle_length] = worm_cycle_histogram[worm_cycle_length];
+      }
+    }
+#endif
 
     if(block == 0) Message("Starting measurements...\n");
     EmptyDistributionArrays();
@@ -1339,6 +1384,15 @@ int main(int argn, char **argv) {
 #endif
           time_simulating += clock() - time_begin;
           Measure(block, iter);
+#ifdef WORM_ALGORITHM
+          if(MC == PIMC && measure_energy) {
+            worm_block_energy_sum[0] += E;
+            worm_block_energy_sum[1] += Epot;
+            worm_block_energy_sum[2] += Ekin;
+            worm_block_energy_samples++;
+          }
+#endif
+          MeasureWormPermutations();
           time_begin = clock();
           if(video) Picture();
 #ifdef WORM_ALGORITHM
@@ -1346,6 +1400,38 @@ int main(int argn, char **argv) {
 #endif
       }
     }
+
+#ifdef WORM_ALGORITHM
+    if(MC == PIMC && block >= 0) {
+      worm_block_file = fopen("outworm_energy_blocks.dat", "a");
+      if(worm_block_file != NULL) {
+        DOUBLE sample_divisor = worm_block_energy_samples > 0 ? (DOUBLE)worm_block_energy_samples : 1.;
+        fprintf(worm_block_file, "%d %lu %.15" LE " %.15" LE " %.15" LE "\n",
+                block, worm_block_energy_samples,
+                energy_unit * worm_block_energy_sum[0] / sample_divisor,
+                energy_unit * worm_block_energy_sum[1] / sample_divisor,
+                energy_unit * worm_block_energy_sum[2] / sample_divisor);
+        fclose(worm_block_file);
+      }
+
+      if(worm_cycle_block_start != NULL && worm_cycle_histogram != NULL) {
+        worm_cycle_samples_block = worm_cycle_samples - worm_cycle_samples_block_start;
+        worm_block_file = fopen("outworm_cycle_blocks.dat", "a");
+        if(worm_block_file != NULL) {
+          fprintf(worm_block_file, "%d %lld", block, worm_cycle_samples_block);
+          for(worm_cycle_length = 1; worm_cycle_length <= N; worm_cycle_length++) {
+            DOUBLE cycle_fraction = worm_cycle_samples_block > 0
+              ? (DOUBLE)(worm_cycle_histogram[worm_cycle_length] - worm_cycle_block_start[worm_cycle_length])
+                / ((DOUBLE)worm_cycle_samples_block * (DOUBLE)N)
+              : 0.;
+            fprintf(worm_block_file, " %.15g", cycle_fraction);
+          }
+          fprintf(worm_block_file, "\n");
+          fclose(worm_block_file);
+        }
+      }
+    }
+#endif
 
     time_simulating += clock() - time_begin;
 
@@ -1436,7 +1522,11 @@ int main(int argn, char **argv) {
 #endif
 
 #ifdef WORM_ALGORITHM
-  if(MC == PIMC) SaveWormGapHistogram("outworm_gap.dat");
+  if(MC == PIMC) {
+    SaveWormGapHistogram("outworm_gap.dat");
+    SaveWormPermutations("outworm_perm.dat");
+  }
+  free(worm_cycle_block_start);
 #endif
 
   Message("done\n");

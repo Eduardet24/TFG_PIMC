@@ -1334,11 +1334,17 @@ extern long long worm_try_recede;
 extern long long worm_acc_recede;
 extern long long worm_try_iramove;
 extern long long worm_acc_iramove;
+extern long long worm_try_swap;
+extern long long worm_acc_swap;
 extern int worm_max_gap_observed;
 extern long long *worm_gap_histogram;
+extern long long *worm_cycle_histogram;
+extern long long worm_cycle_samples;
 extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
 extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
 extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */
+void MeasureWormPermutations(void);
+void SaveWormPermutations(const char *filename);
 #endif
 
 void Measure(int, int);

@@ -28,6 +28,8 @@ extern struct Worm worm;
 void PIMCWormMoves(void);
 void WormDiagnostic(void);
 void SaveWormGapHistogram(const char *filename);
+void MeasureWormPermutations(void);
+void SaveWormPermutations(const char *filename);
 #endif
 
 #endif

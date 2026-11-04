@@ -1,6 +1,6 @@
 # Simulación PIMC de Osciladores Armónicos 1D y 2D
 
-Este repositorio contiene la implementación y el entorno de trabajo para simulaciones de **Monte Carlo Cuántico** (Quantum Monte Carlo, QMC), principalmente **Path Integral Monte Carlo (PIMC)** para osciladores armónicos 1D y 2D. Incluye un benchmark 2D de partículas ideales con `N > 1`; el muestreador actual conserva caminos etiquetados y aún no incluye permutaciones bosónicas. El código base en C está desarrollado originalmente por G. E. Astrakharchik (2001–2017) y ha sido configurado y complementado para el Trabajo de Fin de Grado (TFG).
+Este repositorio contiene la implementación y el entorno de trabajo para simulaciones de **Monte Carlo Cuántico** (Quantum Monte Carlo, QMC), principalmente **Path Integral Monte Carlo (PIMC)** para osciladores armónicos 1D y 2D. Incluye un algoritmo Worm con muestreo de permutaciones bosónicas y un benchmark canónico 2D de partículas ideales con `N > 1`. El código base en C está desarrollado originalmente por G. E. Astrakharchik (2001–2017) y ha sido configurado y complementado para el Trabajo de Fin de Grado (TFG).
 
 ---
 
@@ -225,7 +225,7 @@ Con `--run`, el script compila los fuentes C actuales en un directorio temporal 
 
 ### 6.6 Benchmark de N partículas en 2D
 
-`Script_Comparacion_N_Particulas_2D.py` compara energía por partícula y densidad areal radial con las soluciones ideales distinguible y Bose canónica a N fijo. Promedia las últimas mitades de las medidas y estima incertidumbres agrupando las energías por bloques y la densidad por bloques guardados. La rama PIMC actual no muestrea permutaciones, así que el resultado numérico debe contrastarse con la curva distinguible; la curva Bose es el objetivo de la futura implementación Worm, no una predicción de la simulación actual.
+`Script_Comparacion_N_Particulas_2D.py` compara la energía por partícula y la densidad radial del PIMC Worm con las soluciones distinguible y Bose canónica a N fijo. La campaña guarda medias por bloque MC en el sector Z para estimar incertidumbres y compara las fracciones de longitudes de ciclo con la distribución canónica exacta. La fracción condensada mostrada es una referencia analítica, no un estimador independiente medido por la simulación.
 
 ---
 
