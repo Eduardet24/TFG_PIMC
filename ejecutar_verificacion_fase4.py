@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import time
+import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -37,6 +38,33 @@ WORM_C = 0.1 / (0.40 * N_PARTICLES * BEADS)
 HEATING_BLOCKS = 30
 MEASURE_BLOCKS = 120
 N_ITER = 500
+
+
+def get_worm_executable():
+    configured_executable = os.environ.get("WORM_FASE4_EXECUTABLE")
+    if configured_executable:
+        return configured_executable
+
+    sources = sorted(glob.glob(os.path.join(SCRIPT_DIR, "*.c")))
+    if not sources:
+        raise RuntimeError(f"No se encontraron fuentes C en {SCRIPT_DIR}")
+
+    executable = os.path.join(SCRIPT_DIR, "MC_snapshots")
+    newest_source = max(os.path.getmtime(source) for source in sources)
+    if not os.path.isfile(executable) or os.path.getmtime(executable) < newest_source:
+        compiler = os.environ.get("CC", "gcc")
+        command = [compiler, "-O2", "-fopenmp", "-std=c99", *sources,
+                   "-lm", "-o", executable]
+        print(f"  -> Compilando ejecutable Worm con snapshots: {compiler}")
+        result = subprocess.run(
+            command, cwd=SCRIPT_DIR, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"No se pudo compilar el ejecutable Worm:\n{result.stdout[-6000:]}")
+        print(f"  -> Ejecutable actualizado: {executable}")
+
+    return executable
 
 print(f"=================================================================")
 print(f"  VERIFICACIÓN FASE 4: MOVIMIENTO SWAP Y PERMUTACIONES BOSÓNICAS  ")
@@ -156,7 +184,9 @@ with open(cfg_path, "w") as f:
 
 try:
     print("[1/4] Ejecutando simulación PIMC con Worm Fase 4 (Swap + Permutaciones) en C...")
-    cmd = [os.environ.get("WORM_FASE4_EXECUTABLE", os.path.join(RUN_DIR, "MC")), "MC.cfg"]
+    executable = get_worm_executable()
+    print(f"  -> Ejecutable: {executable}")
+    cmd = [executable, "MC.cfg"]
     run_started = time.time()
     proc = subprocess.run(cmd, cwd=RUN_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
