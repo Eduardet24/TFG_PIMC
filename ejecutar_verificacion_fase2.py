@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
+from Script_Comparacion_N_Particulas_2D import analytical_bose_density, analytical_bose_energy
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Fase2_Worm")
@@ -110,20 +111,14 @@ epot_err = np.std(epot_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
 ekin_mean = np.mean(ekin_vir_blocks[start_idx:])
 ekin_err = np.std(ekin_vir_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
 
-# Solución analítica exacta (Boltzmannons / Distinguibles):
-# E/N = omega * coth(beta*omega / 2)
-e_analitica_continuo = OMEGA / np.tanh(0.5 * BETA * OMEGA)
-# Corrección por discretización finita en tiempo imaginario (P beads):
-omega_eff = (2.0 / TAU) * np.arcsinh(0.5 * OMEGA * TAU)
-e_analitica_discreta = omega_eff / np.tanh(0.5 * BETA * omega_eff)
+e_analitica_bose = analytical_bose_energy(N_PARTICLES, TEMP, OMEGA)[0]
 
 print(f"  Energía Total PIMC <E>/N   : {etot_mean:.6f} +/- {etot_err:.6f}")
 print(f"  Energía Potencial <Epot>/N : {epot_mean:.6f} +/- {epot_err:.6f}")
 print(f"  Energía Cinética <Ekin>/N  : {ekin_mean:.6f} +/- {ekin_err:.6f}")
 print(f"  Teorema del Virial <Epot>-<Ekin> : {epot_mean - ekin_mean:.6f} (debe ser ~0)")
-print(f"  Analítica (Continuo)       : {e_analitica_continuo:.6f}")
-print(f"  Analítica (Discreta P={BEADS}): {e_analitica_discreta:.6f}")
-diferencia_pct = abs(etot_mean - e_analitica_discreta) / e_analitica_discreta * 100.0
+print(f"  Analítica canónica (Bosones): {e_analitica_bose:.6f}")
+diferencia_pct = abs(etot_mean - e_analitica_bose) / e_analitica_bose * 100.0
 print(f"  Diferencia vs Analítica    : {diferencia_pct:.3f}%")
 
 # 3. Analizar estadísticas del Worm en el log
@@ -167,10 +162,7 @@ if os.path.exists(outrd_file):
     dens_mean = np.mean(dens_profiles, axis=0)
     dens_err = np.std(dens_profiles, axis=0, ddof=1) / np.sqrt(len(bloques_utiles))
 
-    # Analítico: n(r) = (1 / 2*pi*sigma^2) * exp(-r^2 / 2*sigma^2)
-    # con sigma^2 = (1 / 2*omega) * coth(beta*omega / 2)
-    sigma2 = (0.5 / OMEGA) / np.tanh(0.5 * BETA * OMEGA)
-    dens_analitica = (1.0 / (2.0 * np.pi * sigma2)) * np.exp(-r_grid**2 / (2.0 * sigma2))
+    dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
     # Normalizar densidad numérica por la integral radial en 2D: int 2*pi*r*n(r) dr = 1
     # La salida de outrd.dat en el código de Grigori es la distribución por unidad de área o radial.
     # Normalizamos el área bajo 2*pi*r*dr
@@ -198,10 +190,8 @@ ax1.plot(bloques_idx, etot_cum, color="tab:blue", linewidth=2.2, label=f"Etot ac
 ax1.plot(bloques_idx, epot_blocks, color="tab:orange", alpha=0.3, label="Epot (bloque)")
 ax1.plot(bloques_idx, ekin_vir_blocks, color="tab:green", alpha=0.3, label="Ekin virial (bloque)")
 
-ax1.axhline(e_analitica_discreta, color="tab:red", linestyle="--", linewidth=1.8,
-            label=f"Exacta discreta P={BEADS}: {e_analitica_discreta:.4f}")
-ax1.axhline(e_analitica_continuo, color="black", linestyle=":", linewidth=1.5,
-            label=f"Exacta continuo: {e_analitica_continuo:.4f}")
+ax1.axhline(e_analitica_bose, color="tab:red", linestyle="--", linewidth=1.8,
+            label=f"Exacta canónica bosónica: {e_analitica_bose:.4f}")
 
 ax1.set_ylabel(r"Energía por partícula $E/N$ [$\hbar\omega$]", fontsize=11)
 ax1.set_title(f"Fase 2 Worm: Verificación de Energía Canónica (Sector Z)\n"
@@ -232,12 +222,13 @@ print(f"\n[Guardada figura]: {fig_energy_path}")
 # Gráfica 2: Perfil de Densidad Radial
 if r_grid is not None:
     fig, ax = plt.subplots(figsize=(8, 5.5))
-    ax.plot(r_grid, dens_analitica, "k-", linewidth=2.0, label="Analítico Exacto: Gaussiana Térmica")
+    ax.plot(r_grid, dens_analitica, "k-", linewidth=2.0,
+            label=f"Analítico exacto: Bose canónico ($N={N_PARTICLES}$)")
     ax.errorbar(r_grid, dens_mean_norm, yerr=dens_err_norm, fmt="o", color="tab:blue",
                 markersize=4.5, capsize=2.5, elinewidth=1.0, label=f"PIMC Sector Z ($N={N_PARTICLES}$, $P={BEADS}$)")
 
     ax.set_xlabel(r"Radio $r$ [$a_{\mathrm{ho}}$]", fontsize=11)
-    ax.set_ylabel(r"Densidad radial $n(r)$", fontsize=11)
+    ax.set_ylabel(r"Densidad por unidad de área $n(r)$", fontsize=11)
     ax.set_title(f"Fase 2 Worm: Perfil de Densidad en Sector Z\nOscilador Armónico 2D ($T={TEMP}$)",
                  fontsize=12, fontweight="bold")
     ax.grid(True, linestyle=":", alpha=0.6)

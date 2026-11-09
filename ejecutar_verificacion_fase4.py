@@ -268,16 +268,20 @@ for row in perm_data:
     frac = row[2]
     print(f"  {L_val:>10} | {cnt:>14,d} | {frac:>13.2%}")
 
-# 4. Generar gráfico comprensivo de validación
-print("\n[4/4] Generando gráficas de verificación de Fase 4...")
-fig, axs = plt.subplots(2, 2, figsize=(14, 10))
+# 4. Generar cuatro gráficas independientes de verificación
+print("\n[4/4] Generando cuatro gráficas independientes de verificación...")
+plot_counts = data_e[:, 1]
+valid_energy = plot_counts > 0
+plot_blocks = data_e[valid_energy, 0]
+plot_counts = plot_counts[valid_energy]
+plot_etot = etot_blocks[valid_energy]
+plot_epot = epot_blocks[valid_energy]
+plot_ekin = ekin_vir_blocks[valid_energy]
+cum_e = np.cumsum(plot_etot * plot_counts) / np.cumsum(plot_counts)
 
-# Panel (0,0): Convergencia de Energía
-ax = axs[0, 0]
-blocks = np.arange(1, n_use + 1)
-ax.plot(blocks, etot_blocks, color="black", alpha=0.3, label="E(bloque) PIMC")
-cum_e = np.cumsum(etot_blocks) / blocks
-ax.plot(blocks, cum_e, color="blue", linewidth=2.0, label="Media acumulada PIMC")
+fig, ax = plt.subplots(figsize=(8, 5.5))
+ax.plot(plot_blocks, plot_etot, color="black", alpha=0.35, label="E(bloque) PIMC")
+ax.plot(plot_blocks, cum_e, color="blue", linewidth=2.0, label="Media acumulada ponderada")
 ax.axhline(e_bose, color="red", linestyle="--", linewidth=1.8, label=f"Bose Analítico ({e_bose:.4f})")
 ax.axhline(e_dist, color="gray", linestyle=":", linewidth=1.5, label=f"Distinguible ({e_dist:.4f})")
 ax.set_xlabel("Bloque de Medición", fontsize=11)
@@ -285,72 +289,95 @@ ax.set_ylabel(r"$\langle E \rangle / N$", fontsize=11)
 ax.set_title(f"Convergencia de Energía (T={TEMP}, N={N_PARTICLES}, P={BEADS})", fontsize=12, fontweight="bold")
 ax.legend(fontsize=9, loc="best")
 ax.grid(True, alpha=0.3)
+fig.tight_layout()
+plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_convergencia_energia.png")
+fig.savefig(plot_path, dpi=200)
+plt.close(fig)
+print(f"  -> Gráfica guardada: {plot_path}")
 
-# Panel (0,1): Distribución de Ciclos de Permutación P(L)
-ax = axs[0, 1]
+fig, ax = plt.subplots(figsize=(8, 5.5))
 if perm_data is not None and len(perm_data) > 0:
     L_vals = perm_data[:, 0].astype(int)
     fracs = perm_data[:, 2]
     bars = ax.bar(L_vals, fracs, color="teal", edgecolor="black", alpha=0.8, width=0.55)
-    for bar, f in zip(bars, fracs):
+    for bar, fraction in zip(bars, fracs):
         yval = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, yval + 0.02, f"{f * 100:.1f}%", ha="center", va="bottom", fontsize=10)
+        ax.text(bar.get_x() + bar.get_width() / 2.0, yval + 0.02, f"{fraction * 100:.1f}%",
+                ha="center", va="bottom", fontsize=10)
     ax.set_xticks(L_vals)
     ax.set_ylim(0, max(fracs) * 1.25)
 ax.set_xlabel("Longitud del Ciclo de Permutación L", fontsize=11)
 ax.set_ylabel("Fracción de Partículas P(L)", fontsize=11)
-ax.set_title(f"Distribución de Ciclos de Permutación P(L) (Sector Z)", fontsize=12, fontweight="bold")
+ax.set_title("Distribución de Ciclos de Permutación P(L) (Sector Z)", fontsize=12, fontweight="bold")
 ax.grid(True, alpha=0.3, axis="y")
+fig.tight_layout()
+plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_ciclos_permutacion.png")
+fig.savefig(plot_path, dpi=200)
+plt.close(fig)
+print(f"  -> Gráfica guardada: {plot_path}")
 
-# Panel (1,0): Perfil de Densidad Radial n(r)
-ax = axs[1, 0]
+fig, ax = plt.subplots(figsize=(8, 5.5))
 outrd_file = os.path.join(OUTPUT_DIR, "outrd.dat")
 if os.path.exists(outrd_file):
     try:
         data_rd = np.loadtxt(outrd_file)
         if data_rd.ndim == 2 and data_rd.shape[1] >= 2:
-            r_sim = data_rd[:, 0]
-            dens_sim = data_rd[:, 1]
-            # Normalizar densidad de simulación si es necesario
+            rd_splits = np.where(np.diff(data_rd[:, 0]) < 0)[0] + 1
+            rd_blocks = np.split(data_rd, rd_splits)
+            selected_rd_blocks = rd_blocks[len(rd_blocks) // 2:]
+            r_sim = selected_rd_blocks[-1][:, 0]
+            density_profiles = np.stack([block[:, 1] for block in selected_rd_blocks])
+            dens_sim = density_profiles.mean(axis=0)
+            dens_err = (density_profiles.std(axis=0, ddof=1) / np.sqrt(len(density_profiles))
+                        if len(density_profiles) > 1 else np.zeros_like(dens_sim))
             mask = r_sim <= 3.5
             dr = r_sim[1] - r_sim[0]
             integral = 2.0 * np.pi * np.sum(r_sim[mask] * dens_sim[mask]) * dr
             if integral > 0:
-                dens_sim_norm = dens_sim / integral
-            else:
-                dens_sim_norm = dens_sim
-            ax.plot(r_sim[mask], dens_sim_norm[mask], 'o', color='purple', markersize=4, label='PIMC (Worm Swap)', alpha=0.8)
+                dens_sim /= integral
+                dens_err /= integral
+            ax.errorbar(r_sim[mask], dens_sim[mask], yerr=dens_err[mask], fmt='o', color='purple',
+                        markersize=4, capsize=2, label='PIMC (Worm Swap)', alpha=0.8)
 
             r_grid = np.linspace(0, 3.5, 200)
             n_bose = analytical_bose_density(r_grid, N_PARTICLES, TEMP)
             n_dist = analytical_distinguishable_density(r_grid, TEMP)
             ax.plot(r_grid, n_bose, color='red', linewidth=1.8, label='Bose Canónico')
             ax.plot(r_grid, n_dist, color='gray', linestyle='--', linewidth=1.5, label='Distinguible')
+            print(f"  -> Perfil radial promediado sobre {len(selected_rd_blocks)} bloques.")
     except Exception as ex:
         print(f"  [Aviso] No se pudo graficar densidad radial: {ex}")
 ax.set_xlabel("Radio r", fontsize=11)
-ax.set_ylabel("Densidad n(r)", fontsize=11)
+ax.set_ylabel("Densidad por unidad de área n(r)", fontsize=11)
 ax.set_title("Perfil de Densidad Radial n(r)", fontsize=12, fontweight="bold")
 ax.legend(fontsize=9, loc="best")
 ax.grid(True, alpha=0.3)
+fig.tight_layout()
+plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_densidad_radial.png")
+fig.savefig(plot_path, dpi=200)
+plt.close(fig)
+print(f"  -> Gráfica guardada: {plot_path}")
 
-# Panel (1,1): Balance Virial Epot vs Ekin
-ax = axs[1, 1]
-ax.plot(blocks, epot_blocks, color="forestgreen", label=f"Epot = {epot_mean:.4f}")
-ax.plot(blocks, ekin_vir_blocks, color="coral", linestyle="--", label=f"Ekin (Virial) = {ekin_mean:.4f}")
-ax.plot(blocks, epot_blocks - ekin_vir_blocks, color="crimson", linewidth=1.2, label=f"Epot - Ekin = {epot_mean - ekin_mean:.4f}")
+fig, ax = plt.subplots(figsize=(8, 5.5))
+ax.plot(plot_blocks, plot_epot, color="forestgreen", label=f"Epot = {epot_mean:.4f}")
+ax.plot(plot_blocks, plot_ekin, color="coral", linestyle="--", label=f"Ekin (Virial) = {ekin_mean:.4f}")
+ax.plot(plot_blocks, plot_epot - plot_ekin, color="crimson", linewidth=1.2,
+        label=f"Epot - Ekin = {epot_mean - ekin_mean:.4f}")
 ax.axhline(0, color="black", linestyle=":", alpha=0.7)
 ax.set_xlabel("Bloque de Medición", fontsize=11)
 ax.set_ylabel("Energía por Partícula", fontsize=11)
 ax.set_title("Teorema del Virial <Epot> vs <Ekin>", fontsize=12, fontweight="bold")
 ax.legend(fontsize=9, loc="best")
 ax.grid(True, alpha=0.3)
+fig.tight_layout()
+plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_teorema_virial.png")
+fig.savefig(plot_path, dpi=200)
+plt.close(fig)
+print(f"  -> Gráfica guardada: {plot_path}")
 
-plt.tight_layout()
-plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_worm.png")
-plt.savefig(plot_path, dpi=200)
-plt.close()
-print(f"  -> Gráfica guardada en: {plot_path}")
+legacy_plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_worm.png")
+if os.path.exists(legacy_plot_path):
+    os.remove(legacy_plot_path)
 
 print(f"\n=================================================================")
 print(f"  RESULTADO DE LA VERIFICACIÓN DE FASE 4:                       ")
