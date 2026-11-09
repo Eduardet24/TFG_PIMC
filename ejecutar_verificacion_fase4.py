@@ -19,6 +19,7 @@ import time
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
+from worm_config import get_n_particles
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RUN_DIR = os.environ.get("WORM_FASE4_RUN_DIR", SCRIPT_DIR)
@@ -29,7 +30,7 @@ OUTPUT_DIR = os.environ.get(
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Parámetros físicos y de simulación
-N_PARTICLES = int(os.environ.get("WORM_FASE4_PARTICLES", "5"))
+N_PARTICLES = get_n_particles(os.path.join(RUN_DIR, "MC.cfg"), "WORM_FASE4_PARTICLES")
 TEMP = 0.5
 BETA = 1.0 / TEMP
 OMEGA = 1.0
@@ -364,27 +365,35 @@ if os.path.exists(outrd_file):
         if data_rd.ndim == 2 and data_rd.shape[1] >= 2:
             rd_splits = np.where(np.diff(data_rd[:, 0]) < 0)[0] + 1
             rd_blocks = np.split(data_rd, rd_splits)
-            selected_rd_blocks = rd_blocks[len(rd_blocks) // 2:]
+            selected_rd_blocks = (rd_blocks[len(rd_blocks) // 2:]
+                                  if len(rd_blocks) >= 8 else rd_blocks)
             r_sim = selected_rd_blocks[-1][:, 0]
             density_profiles = np.stack([block[:, 1] for block in selected_rd_blocks])
-            dens_sim = density_profiles.mean(axis=0)
-            dens_err = (density_profiles.std(axis=0, ddof=1) / np.sqrt(len(density_profiles))
-                        if len(density_profiles) > 1 else np.zeros_like(dens_sim))
             mask = r_sim <= 3.5
             dr = r_sim[1] - r_sim[0]
-            integral = 2.0 * np.pi * np.sum(r_sim[mask] * dens_sim[mask]) * dr
-            if integral > 0:
-                dens_sim /= integral
-                dens_err /= integral
+            integrals = 2.0 * np.pi * np.sum(
+                r_sim[mask][None, :] * density_profiles[:, mask], axis=1
+            ) * dr
+            valid_profiles = integrals > 0
+            density_profiles = density_profiles[valid_profiles]
+            density_profiles /= integrals[valid_profiles, None]
+            dens_sim = density_profiles.mean(axis=0)
+            if len(density_profiles) > 1:
+                dens_err = density_profiles.std(axis=0, ddof=1) / np.sqrt(len(density_profiles))
+                print(f"  -> Error de densidad estimado con {len(density_profiles)} perfiles.")
+            else:
+                dens_err = np.zeros_like(dens_sim)
+                print("  [Aviso] Solo hay un perfil radial; no se puede estimar su error estadístico.")
             ax.errorbar(r_sim[mask], dens_sim[mask], yerr=dens_err[mask], fmt='o', color='purple',
-                        markersize=4, capsize=2, label='PIMC (Worm Swap)', alpha=0.8)
+                        ecolor='black', elinewidth=1.1, markersize=3.5, capsize=3,
+                        label='PIMC (Worm Swap)', alpha=0.85, zorder=4)
 
             r_grid = np.linspace(0, 3.5, 200)
             n_bose = analytical_bose_density(r_grid, N_PARTICLES, TEMP)
             n_dist = analytical_distinguishable_density(r_grid, TEMP)
             ax.plot(r_grid, n_bose, color='red', linewidth=1.8, label='Bose Canónico')
             ax.plot(r_grid, n_dist, color='gray', linestyle='--', linewidth=1.5, label='Distinguible')
-            print(f"  -> Perfil radial promediado sobre {len(selected_rd_blocks)} bloques.")
+            print(f"  -> Perfil radial promediado sobre {len(density_profiles)} perfiles.")
     except Exception as ex:
         print(f"  [Aviso] No se pudo graficar densidad radial: {ex}")
 ax.set_xlabel("Radio r", fontsize=11)

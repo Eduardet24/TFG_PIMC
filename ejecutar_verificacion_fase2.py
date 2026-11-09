@@ -14,13 +14,14 @@ import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
 from Script_Comparacion_N_Particulas_2D import analytical_bose_density, analytical_bose_energy
+from worm_config import get_n_particles
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Fase2_Worm")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Parámetros físicos y de simulación
-N_PARTICLES = 5
+N_PARTICLES = get_n_particles(os.path.join(SCRIPT_DIR, "MC.cfg"))
 TEMP = 0.5
 BETA = 1.0 / TEMP
 OMEGA = 1.0
