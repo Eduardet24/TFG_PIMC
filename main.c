@@ -1430,6 +1430,11 @@ int main(int argn, char **argv) {
           fclose(worm_block_file);
         }
       }
+
+      if(measure_RadDistr && RD.times_measured > 0) {
+        SaveRadialDistribution();
+      }
+      EmptyDistributionArrays();
     }
 #endif
 
@@ -1563,7 +1568,7 @@ void Measure(int block, int iter) {
 
 #pragma omp parallel for
   for(w=0; w<Nwalkers; w++) {
-    if(measure_RadDistr) MeasureRadialDistributionWalker(&W[w]);
+    if(MC != PIMC && measure_RadDistr) MeasureRadialDistributionWalker(&W[w]);
     if(measure_Sk) MeasureStaticStructureFactor(w);
     if(measure_FormFactor) MeasureFormFactor(w);
     if(measure_OBDM) MeasureOBDM(w);
@@ -1665,7 +1670,9 @@ void Measure(int block, int iter) {
 
   for(w=0; w<Nwalkers; w++) W[w].times_measured++; // should be executed last
 
+#ifndef WORM_ALGORITHM
   if(iter % Niter == 0) SaveBlockData(block);
+#endif
 
   time_measuring += clock() - time_begin;
 }

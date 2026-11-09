@@ -281,12 +281,22 @@ def read_density_results(run_dir):
     data = np.loadtxt(rd_file)
     saltos = np.where(np.diff(data[:, 0]) < 0)[0] + 1
     bloques = np.split(data, saltos)
-    selected_blocks = bloques[len(bloques) // 2:]
+    bloques_validos = [b for b in bloques if len(b) > 0 and b[:, 1].sum() > 0]
+    selected_blocks = bloques_validos[len(bloques_validos) // 4:] if len(bloques_validos) >= 4 else bloques_validos
+    if not selected_blocks:
+        raise ValueError(f'No se encontraron bloques válidos en {rd_file}')
     r = selected_blocks[-1][:, 0]
-    profiles = np.stack([block[:, 1] for block in selected_blocks])
+    profiles = []
+    for b in selected_blocks:
+        p = b[:, 1]
+        norm = np.trapz(2.0 * np.pi * r * p, r)
+        if norm > 0:
+            profiles.append(p / norm)
+    profiles = np.array(profiles)
+    mean = profiles.mean(axis=0)
     errors = (profiles.std(axis=0, ddof=1) / np.sqrt(len(profiles))
-              if len(profiles) > 1 else np.full(profiles.shape[1], np.nan))
-    return r, profiles.mean(axis=0), errors
+              if len(profiles) > 1 else np.zeros_like(mean))
+    return r, mean, errors
 
 
 # ==============================================================================
@@ -341,18 +351,20 @@ def plot_energy_comparison(n_particles, temps, sim_energies, out_path):
 
 def plot_density_comparison(n_particles, selected_temp, r_sim, n_sim, n_sim_err, out_path):
     """Genera la figura de densidad radial n(r) para una temperatura dada."""
-    r_fine = np.linspace(0.001, max(r_sim), 200)
+    r_fine = np.linspace(0.001, 3.5, 200)
     n_dist_fine = analytical_distinguishable_density(r_fine, selected_temp)
     n_bose_fine = analytical_bose_density(r_fine, n_particles, selected_temp)
 
     fig, ax = plt.subplots(figsize=(7.5, 5))
 
-    ax.plot(r_fine, n_dist_fine, 'k-', linewidth=2.0, label='Analítico: Distinguibles (Gaussiana)')
+    ax.plot(r_fine, n_dist_fine, 'k-', linewidth=2.0, label='Analítico: Distinguibles (Gaussiana)', zorder=1)
     ax.plot(r_fine, n_bose_fine, 'tab:red', linestyle='--', linewidth=2.0,
-            label=f'Analítico: Bosones (canónico, $N={n_particles}$)')
-    ax.errorbar(r_sim, n_sim, yerr=n_sim_err, fmt='o', color='tab:blue', ecolor='tab:blue',
-                elinewidth=1.0, capsize=2, markersize=4.0, alpha=0.85,
-                label='PIMC con Worm Algorithm')
+            label=f'Analítico: Bosones (canónico, $N={n_particles}$)', zorder=2)
+    mask = r_sim <= 3.5
+    ax.errorbar(r_sim[mask], n_sim[mask], yerr=n_sim_err[mask], fmt='o', color='tab:blue', ecolor='black',
+                elinewidth=1.1, capsize=2.5, markersize=4.0, alpha=0.85,
+                label='PIMC con Worm Algorithm', zorder=3)
+    ax.set_xlim(0, 3.5)
 
     ax.set_xlabel(r'Distancia radial $r = \sqrt{x^2 + y^2}$ [$a_{\mathrm{ho}}$]', fontsize=11)
     ax.set_ylabel(r'Densidad radial por partícula $n(r)$', fontsize=11)

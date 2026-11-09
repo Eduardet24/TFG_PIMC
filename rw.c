@@ -3411,9 +3411,9 @@ void SaveBlockData(int block) { // save distributions
 
 #ifdef MPI
   }
-  EmptyDistributionArrays();
   time_done_in_parallel -= MPI_Wtime();
 #endif
+  EmptyDistributionArrays();
 }
 
 /*********************** Save Effective Potential ****************************/

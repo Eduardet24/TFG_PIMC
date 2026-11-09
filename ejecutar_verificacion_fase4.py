@@ -31,6 +31,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Parámetros físicos y de simulación
 N_PARTICLES = get_n_particles(os.path.join(RUN_DIR, "MC.cfg"), "WORM_FASE4_PARTICLES")
+if N_PARTICLES < 2 and "WORM_PARTICLES" not in os.environ and "WORM_FASE4_PARTICLES" not in os.environ:
+    N_PARTICLES = 2
 TEMP = 0.5
 BETA = 1.0 / TEMP
 OMEGA = 1.0
@@ -365,35 +367,33 @@ if os.path.exists(outrd_file):
         if data_rd.ndim == 2 and data_rd.shape[1] >= 2:
             rd_splits = np.where(np.diff(data_rd[:, 0]) < 0)[0] + 1
             rd_blocks = np.split(data_rd, rd_splits)
-            selected_rd_blocks = (rd_blocks[len(rd_blocks) // 2:]
-                                  if len(rd_blocks) >= 8 else rd_blocks)
+            valid_blocks = [b for b in rd_blocks if len(b) > 0 and b[:, 1].sum() > 0]
+            selected_rd_blocks = valid_blocks[len(valid_blocks) // 4:] if len(valid_blocks) >= 4 else valid_blocks
             r_sim = selected_rd_blocks[-1][:, 0]
-            density_profiles = np.stack([block[:, 1] for block in selected_rd_blocks])
-            mask = r_sim <= 3.5
-            dr = r_sim[1] - r_sim[0]
-            integrals = 2.0 * np.pi * np.sum(
-                r_sim[mask][None, :] * density_profiles[:, mask], axis=1
-            ) * dr
-            valid_profiles = integrals > 0
-            density_profiles = density_profiles[valid_profiles]
-            density_profiles /= integrals[valid_profiles, None]
-            dens_sim = density_profiles.mean(axis=0)
-            if len(density_profiles) > 1:
-                dens_err = density_profiles.std(axis=0, ddof=1) / np.sqrt(len(density_profiles))
-                print(f"  -> Error de densidad estimado con {len(density_profiles)} perfiles.")
-            else:
-                dens_err = np.zeros_like(dens_sim)
-                print("  [Aviso] Solo hay un perfil radial; no se puede estimar su error estadístico.")
-            ax.errorbar(r_sim[mask], dens_sim[mask], yerr=dens_err[mask], fmt='o', color='purple',
-                        ecolor='black', elinewidth=1.1, markersize=3.5, capsize=3,
-                        label='PIMC (Worm Swap)', alpha=0.85, zorder=4)
+            profiles = []
+            for b in selected_rd_blocks:
+                p = b[:, 1]
+                norm = np.trapz(2.0 * np.pi * r_sim * p, r_sim)
+                if norm > 0:
+                    profiles.append(p / norm)
+            if len(profiles) > 0:
+                profiles = np.array(profiles)
+                dens_sim = profiles.mean(axis=0)
+                dens_err = (profiles.std(axis=0, ddof=1) / np.sqrt(len(profiles))
+                            if len(profiles) > 1 else np.zeros_like(dens_sim))
+                mask = r_sim <= 3.5
+                ax.errorbar(r_sim[mask], dens_sim[mask], yerr=dens_err[mask], fmt='o', color='purple',
+                            ecolor='black', elinewidth=1.1, markersize=3.5, capsize=3,
+                            label='PIMC (Worm Swap)', alpha=0.85, zorder=4)
 
-            r_grid = np.linspace(0, 3.5, 200)
-            n_bose = analytical_bose_density(r_grid, N_PARTICLES, TEMP)
-            n_dist = analytical_distinguishable_density(r_grid, TEMP)
-            ax.plot(r_grid, n_bose, color='red', linewidth=1.8, label='Bose Canónico')
-            ax.plot(r_grid, n_dist, color='gray', linestyle='--', linewidth=1.5, label='Distinguible')
-            print(f"  -> Perfil radial promediado sobre {len(density_profiles)} perfiles.")
+                r_grid = np.linspace(0, 3.5, 200)
+                n_bose = analytical_bose_density(r_grid, N_PARTICLES, TEMP)
+                n_dist = analytical_distinguishable_density(r_grid, TEMP)
+                ax.plot(r_grid, n_bose, color='red', linewidth=1.8, label='Bose Canónico', zorder=2)
+                ax.plot(r_grid, n_dist, color='gray', linestyle='--', linewidth=1.5, label='Distinguible', zorder=1)
+                ax.set_xlim(0, 3.5)
+                print(f"  -> Perfil radial promediado sobre {len(profiles)} bloques independientes.")
+                print(f"  -> Error estadístico medio en n(r): {np.mean(dens_err):.6e}")
     except Exception as ex:
         print(f"  [Aviso] No se pudo graficar densidad radial: {ex}")
 ax.set_xlabel("Radio r", fontsize=11)
@@ -406,6 +406,9 @@ plot_path = os.path.join(OUTPUT_DIR, "verificacion_fase4_densidad_radial.png")
 fig.savefig(plot_path, dpi=200)
 plt.close(fig)
 print(f"  -> Gráfica guardada: {plot_path}")
+overleaf_img = os.path.join(os.path.dirname(SCRIPT_DIR), "overleaf", "imágenes", "verificacion_fase4_densidad_radial.png")
+if os.path.exists(os.path.dirname(overleaf_img)):
+    shutil.copy(plot_path, overleaf_img)
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
 ax.plot(plot_blocks, plot_epot, color="forestgreen", label=f"Epot = {epot_mean:.4f}")

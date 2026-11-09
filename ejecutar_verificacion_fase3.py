@@ -163,20 +163,24 @@ if os.path.exists(outrd_file):
     rd_raw = np.loadtxt(outrd_file)
     saltos = np.where(np.diff(rd_raw[:, 0]) < 0)[0] + 1
     bloques = np.split(rd_raw, saltos)
-    bloques_utiles = bloques[len(bloques) // 2:]
-    r_grid = bloques_utiles[-1][:, 0]
-    dens_profiles = np.stack([b[:, 1] for b in bloques_utiles])
-    dens_mean = np.mean(dens_profiles, axis=0)
-    dens_err = np.std(dens_profiles, axis=0, ddof=1) / np.sqrt(len(bloques_utiles))
-
-    dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
-    norm_sim = np.trapz(2.0 * np.pi * r_grid * dens_mean, r_grid)
-    if norm_sim > 0:
-        dens_mean_norm = dens_mean / norm_sim
-        dens_err_norm = dens_err / norm_sim
-    else:
-        dens_mean_norm = dens_mean
-        dens_err_norm = dens_err
+    bloques_validos = [b for b in bloques if len(b) > 0 and b[:, 1].sum() > 0]
+    bloques_utiles = bloques_validos[len(bloques_validos) // 4:] if len(bloques_validos) >= 4 else bloques_validos
+    if len(bloques_utiles) > 0:
+        r_grid = bloques_utiles[-1][:, 0]
+        profiles = []
+        for b in bloques_utiles:
+            p = b[:, 1]
+            norm = np.trapz(2.0 * np.pi * r_grid * p, r_grid)
+            if norm > 0:
+                profiles.append(p / norm)
+        if len(profiles) > 0:
+            profiles = np.array(profiles)
+            dens_mean_norm = np.mean(profiles, axis=0)
+            dens_err_norm = (np.std(profiles, axis=0, ddof=1) / np.sqrt(len(profiles))
+                             if len(profiles) > 1 else np.zeros_like(dens_mean_norm))
+            dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
+            print(f"  -> Densidad procesada sobre {len(profiles)} bloques independientes.")
+            print(f"  -> Error estadístico medio en n(r): {np.mean(dens_err_norm):.6e}")
 
 # ==============================================================================
 # Gráficas de Verificación de la Fase 3
@@ -223,11 +227,14 @@ print(f"\n[Guardada figura]: {fig_energy_path}")
 # Gráfica 2: Perfil de Densidad Radial
 if r_grid is not None:
     fig, ax = plt.subplots(figsize=(8, 5.5))
-    ax.plot(r_grid, dens_analitica, "k-", linewidth=2.0,
-            label=f"Analítico exacto: Bose canónico ($N={N_PARTICLES}$)")
-    ax.errorbar(r_grid, dens_mean_norm, yerr=dens_err_norm, fmt="o", color="tab:blue",
-                markersize=4.5, capsize=2.5, elinewidth=1.0, label=f"PIMC Sector Z ($N={N_PARTICLES}$, $P={BEADS}$)")
+    mask = r_grid <= 3.5
+    ax.plot(r_grid[mask], dens_analitica[mask], "r-", linewidth=2.0,
+            label=f"Analítico exacto: Bose canónico ($N={N_PARTICLES}$)", zorder=2)
+    ax.errorbar(r_grid[mask], dens_mean_norm[mask], yerr=dens_err_norm[mask], fmt="o", color="tab:blue",
+                ecolor="black", markersize=4.5, capsize=3.0, elinewidth=1.1,
+                label=f"PIMC Sector Z ($N={N_PARTICLES}$, $P={BEADS}$)", alpha=0.85, zorder=3)
 
+    ax.set_xlim(0, 3.5)
     ax.set_xlabel(r"Radio $r$ [$a_{\mathrm{ho}}$]", fontsize=11)
     ax.set_ylabel(r"Densidad por unidad de área $n(r)$", fontsize=11)
     ax.set_title(f"Fase 3 Worm: Perfil de Densidad en Sector Z\nOscilador Armónico 2D ($T={TEMP}$)",
@@ -239,6 +246,9 @@ if r_grid is not None:
     fig.savefig(fig_dens_path, dpi=200)
     plt.close(fig)
     print(f"[Guardada figura]: {fig_dens_path}")
+    overleaf_img = os.path.join(os.path.dirname(SCRIPT_DIR), "overleaf", "imágenes", "verificacion_fase3_densidad_radial.png")
+    if os.path.exists(os.path.dirname(overleaf_img)):
+        shutil.copy(fig_dens_path, overleaf_img)
 
 # Gráfica 3: Estadísticas de Movimientos del Worm en Fase 3
 if move_stats:

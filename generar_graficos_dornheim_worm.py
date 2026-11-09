@@ -55,6 +55,239 @@ def save_figure(fig, filename):
 
 
 # ==============================================================================
+# FORMATO 1: ESTILO ORIGINAL DISCRETO DE TIM DORNHEIM (PHD 2014)
+# ==============================================================================
+
+BOXES = [
+    (50.300011, 22.603624, 196.052818, 168.40049),   # Subplot Izquierdo
+    (266.299671, 22.603624, 412.052478, 168.40049)   # Subplot Derecho
+]
+
+def ensure_dornheim_svg(page_num):
+    svg_path = Path(f"/tmp/page_{page_num}.svg")
+    if not svg_path.exists():
+        pdf_path = SCRIPT_DIR.parent / "Bibliografía" / "PhD Dornheim 2014.pdf"
+        if pdf_path.exists():
+            import subprocess
+            subprocess.run(["pdftocairo", "-svg", "-f", str(page_num), "-l", str(page_num),
+                            str(pdf_path), str(svg_path)], check=True)
+    return svg_path
+
+def to_dornheim_coords(px, py, box_idx):
+    x0, y0, x1, y1 = BOXES[box_idx]
+    x = -3.0 + 6.0 * (px - x0) / (x1 - x0)
+    tau = 20.0 * (y1 - py) / (y1 - y0)
+    return x, tau
+
+def parse_dornheim_svg(svg_file):
+    import re
+    with open(svg_file) as f:
+        text = f.read()
+
+    matches = re.findall(r'<path[^>]+stroke=\"(rgb\([^)]+\))\"[^>]*d=\"([^\"]+)\"', text)
+    paths = []
+    for stroke, d in matches:
+        if stroke == "rgb(0%, 0%, 0%)":
+            continue
+        if d.count('L') < 1:
+            continue
+        tokens = d.replace('M', ' ').replace('L', ' ').split()
+        coords = [float(t) for t in tokens]
+        pts = list(zip(coords[0::2], coords[1::2]))
+        avg_x = sum(p[0] for p in pts) / len(pts)
+        box_idx = 0 if avg_x < 230 else 1
+        col = 'red' if '100%, 0%, 0%' in stroke else 'blue'
+        converted = [to_dornheim_coords(px, py, box_idx) for px, py in pts]
+        paths.append((box_idx, col, converted))
+
+    circle_matches = re.findall(r'<path[^>]+fill=\"(rgb\([^)]+\))\"[^>]+d=\"M\s*([\d\.]+)\s+([\d\.]+)\s+C[^\"]+\"', text)
+    beads = {0: {'red': [], 'blue': []}, 1: {'red': [], 'blue': []}}
+    for fill, mx, my in circle_matches:
+        px = float(mx) - 3.0
+        py = float(my)
+        box_idx = 0 if px < 230 else 1
+        x, tau = to_dornheim_coords(px, py, box_idx)
+        if '100%, 0%, 0%' in fill:
+            col = 'red'
+        elif '0%, 0%, 100%' in fill:
+            col = 'blue'
+        else:
+            continue
+        beads[box_idx][col].append((x, tau))
+
+    return paths, beads
+
+def setup_dornheim_axis(ax, xlabel="x", ylabel=r"$\tau/\epsilon$"):
+    ax.set_xlim(-3.0, 3.0)
+    ax.set_ylim(0.0, 20.0)
+    ax.set_xticks([-3.0, -1.5, 0.0, 1.5, 3.0])
+    ax.set_yticks([0, 5, 10, 15, 20])
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.tick_params(direction='in', length=5, width=1.0, top=True, right=True, labelsize=10)
+
+def make_dornheim_fig8_advance_recede_bisection():
+    svg = ensure_dornheim_svg(24)
+    paths24, beads24 = parse_dornheim_svg(svg)
+
+    fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.4), dpi=300)
+    for box_idx, ax in enumerate(axs):
+        setup_dornheim_axis(ax)
+        for b_idx, col, pts in paths24:
+            if b_idx == box_idx:
+                xs, ts = zip(*pts)
+                c = 'red' if col == 'red' else 'blue'
+                ax.plot(xs, ts, color=c, lw=1.2, zorder=1)
+        for col, b_list in beads24[box_idx].items():
+            if b_list:
+                xs, ts = zip(*b_list)
+                c = 'red' if col == 'red' else 'blue'
+                ax.plot(xs, ts, 'o', color=c, markersize=5.5, zorder=2)
+    plt.tight_layout()
+    save_figure(fig, "dornheim_fig8_advance_recede_bisection.png")
+
+def make_dornheim_fig7_open_close():
+    svg = ensure_dornheim_svg(22)
+    paths22, beads22 = parse_dornheim_svg(svg)
+
+    fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.4), dpi=300)
+    for box_idx, ax in enumerate(axs):
+        setup_dornheim_axis(ax)
+        for b_idx, col, pts in paths22:
+            if b_idx == box_idx:
+                xs, ts = zip(*pts)
+                c = 'red' if col == 'red' else 'blue'
+                ax.plot(xs, ts, color=c, lw=1.2, zorder=1)
+        for col, b_list in beads22[box_idx].items():
+            if b_list:
+                xs, ts = zip(*b_list)
+                c = 'red' if col == 'red' else 'blue'
+                ax.plot(xs, ts, 'o', color=c, markersize=5.5, zorder=2)
+    plt.tight_layout()
+    save_figure(fig, "dornheim_fig7_open_close.png")
+
+def make_dornheim_fig9_swap():
+    svg = ensure_dornheim_svg(26)
+    paths26, beads26 = parse_dornheim_svg(svg)
+
+    fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.4), dpi=300)
+    setup_dornheim_axis(axs[0])
+    for b_idx, col, pts in paths26:
+        if b_idx == 0:
+            xs, ts = zip(*pts)
+            axs[0].plot(xs, ts, color='red', lw=1.2, zorder=1)
+    for col, b_list in beads26[0].items():
+        if b_list:
+            xs, ts = zip(*b_list)
+            axs[0].plot(xs, ts, 'o', color='red', markersize=5.5, zorder=2)
+
+    setup_dornheim_axis(axs[1])
+    for b_idx, col, pts in paths26:
+        if b_idx == 1:
+            xs, ts = zip(*pts)
+            dx_span = max(xs) - min(xs)
+            if dx_span > 2.0:
+                axs[1].plot(xs, ts, color='blue', lw=1.5, zorder=2)
+            else:
+                axs[1].plot(xs, ts, color='red', lw=1.2, zorder=1)
+    for col, b_list in beads26[1].items():
+        if b_list:
+            xs, ts = zip(*b_list)
+            axs[1].plot(xs, ts, 'o', color='red', markersize=5.5, zorder=2)
+    plt.tight_layout()
+    save_figure(fig, "dornheim_fig9_swap.png")
+
+def make_dornheim_panel_completo():
+    svg22 = ensure_dornheim_svg(22)
+    svg24 = ensure_dornheim_svg(24)
+    svg26 = ensure_dornheim_svg(26)
+    paths22, beads22 = parse_dornheim_svg(svg22)
+    paths24, beads24 = parse_dornheim_svg(svg24)
+    paths26, beads26 = parse_dornheim_svg(svg26)
+
+    fig, axs = plt.subplots(2, 2, figsize=(11.5, 9.5), dpi=300)
+
+    # (0, 0): Open / Close
+    ax = axs[0, 0]
+    setup_dornheim_axis(ax)
+    for b_idx, col, pts in paths22:
+        if b_idx == 1:
+            xs, ts = zip(*pts)
+            c = 'red' if col == 'red' else 'blue'
+            ax.plot(xs, ts, color=c, lw=1.3)
+    for col, b_list in beads22[1].items():
+        if b_list:
+            xs, ts = zip(*b_list)
+            c = 'red' if col == 'red' else 'blue'
+            ax.plot(xs, ts, 'o', color=c, markersize=5)
+    ax.set_title(r"$\mathbf{(a)\ Movimiento\ Open\ /\ Close}$ ($Z \leftrightarrow G$)", fontsize=11, pad=8)
+    ax.text(1.9, 12.2, r"$\mathcal{I}$ (Ira)", color="blue", fontsize=9, weight='bold')
+    ax.text(1.9, 5.0, r"$\mathcal{M}$ (Masha)", color="blue", fontsize=9, weight='bold')
+    ax.text(-2.4, 18.0, "Partícula 1\n(Cerrada)", color="red", fontsize=8, ha="center")
+    ax.text(2.2, 18.0, "Partícula 2\n(Cerrada en Z)", color="red", fontsize=8, ha="center")
+
+    # (0, 1): Advance / Recede
+    ax = axs[0, 1]
+    setup_dornheim_axis(ax)
+    for b_idx, col, pts in paths24:
+        if b_idx == 0:
+            xs, ts = zip(*pts)
+            c = 'red' if col == 'red' else 'blue'
+            ax.plot(xs, ts, color=c, lw=1.3)
+    for col, b_list in beads24[0].items():
+        if b_list:
+            xs, ts = zip(*b_list)
+            c = 'red' if col == 'red' else 'blue'
+            ax.plot(xs, ts, 'o', color=c, markersize=5)
+    ax.set_title(r"$\mathbf{(b)\ Movimiento\ Advance\ /\ Recede}$ (Sector $G$)", fontsize=11, pad=8)
+    ax.text(1.9, 12.2, r"$\mathcal{I}_{\mathrm{new}}$ (Advance $\uparrow$)", color="blue", fontsize=9, weight='bold')
+    ax.text(2.2, 7.0, r"$\mathcal{I}_{\mathrm{old}}$ (Recede $\downarrow$)", color="red", fontsize=9, weight='bold')
+    ax.text(0.7, 2.0, r"$\mathcal{M}$ (Masha)", color="red", fontsize=9, weight='bold')
+    ax.text(2.1, 10.0, "Cuentas nuevas\nmuestreadas (azul)", color="blue", fontsize=8)
+
+    # (1, 0): Bisección / IraSpatialMove
+    ax = axs[1, 0]
+    setup_dornheim_axis(ax)
+    for b_idx, col, pts in paths24:
+        if b_idx == 1:
+            xs, ts = zip(*pts)
+            c = 'red' if col == 'red' else 'blue'
+            ax.plot(xs, ts, color=c, lw=1.3)
+    for col, b_list in beads24[1].items():
+        if b_list:
+            xs, ts = zip(*b_list)
+            c = 'red' if col == 'red' else 'blue'
+            ax.plot(xs, ts, 'o', color=c, markersize=5)
+    ax.set_title(r"$\mathbf{(c)\ Bisección\ /\ IraSpatialMove}$", fontsize=11, pad=8)
+    ax.text(2.2, 10.0, "Segmento interno\nremuestreado en azul", color="blue", fontsize=8)
+    ax.text(-2.4, 18.0, "Partícula 1", color="red", fontsize=8, ha="center")
+    ax.text(2.2, 18.0, "Partícula 2", color="red", fontsize=8, ha="center")
+
+    # (1, 1): Swap Move
+    ax = axs[1, 1]
+    setup_dornheim_axis(ax)
+    for b_idx, col, pts in paths26:
+        if b_idx == 1:
+            xs, ts = zip(*pts)
+            dx_span = max(xs) - min(xs)
+            if dx_span > 2.0:
+                ax.plot(xs, ts, color='blue', lw=1.8, zorder=2)
+            else:
+                ax.plot(xs, ts, color='red', lw=1.3, zorder=1)
+    for col, b_list in beads26[1].items():
+        if b_list:
+            xs, ts = zip(*b_list)
+            ax.plot(xs, ts, 'o', color='red', markersize=5, zorder=2)
+    ax.set_title(r"$\mathbf{(d)\ Movimiento\ Swap}$ (Permutación Cuántica)", fontsize=11, pad=8)
+    ax.text(-0.2, 9.5, r"Enlace Swap $\longrightarrow$", color="blue", fontsize=9, weight='bold', rotation=35)
+    ax.text(-2.4, 12.5, r"$\mathcal{I}_{\mathrm{new}}$ (Nueva Ira)", color="red", fontsize=9, weight='bold')
+    ax.text(2.0, 11.0, r"$\mathcal{I}_{\mathrm{old}}$ (Vieja Ira)", color="red", fontsize=9, weight='bold')
+    ax.text(2.0, 2.0, r"$\mathcal{M}$ (Masha)", color="red", fontsize=9, weight='bold')
+
+    plt.tight_layout()
+    save_figure(fig, "figura_panel_completo_worm.png")
+
+
 # ==============================================================================
 # FORMATO 2: ESTILO DIDÁCTICO SUAVE (CURVAS CONTINUAS CON IRA Y MASHA)
 # ==============================================================================
@@ -380,10 +613,16 @@ def main():
         return
 
     print("=" * 76)
-    print("GENERADOR DE ESQUEMAS DIDÁCTICOS DEL WORM ALGORITHM")
+    print("GENERADOR DE ESQUEMAS WORM ALGORITHM: FORMATOS DORNHEIM Y DIDÁCTICO")
     print("=" * 76)
 
-    print("\nGenerando figuras didácticas suaves con anotaciones Ira/Masha...")
+    print("\n[FORMATO 1] Generando figuras originales discretas de Tim Dornheim (PhD 2014)...")
+    make_dornheim_fig7_open_close()
+    make_dornheim_fig8_advance_recede_bisection()
+    make_dornheim_fig9_swap()
+    make_dornheim_panel_completo()
+
+    print("\n[FORMATO 2] Generando figuras didácticas suaves con anotaciones Ira/Masha...")
     make_open_close()
     make_advance_recede()
     make_ira_spatial_move()
