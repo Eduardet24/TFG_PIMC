@@ -3,6 +3,7 @@
 Script de Verificación de la Fase 4 del Algoritmo Worm (Prokof'ev-Svistunov / Dornheim 2014).
 Verifica:
   - Movimiento Swap (intercambio local de enlaces y generación de permutaciones bosónicas).
+    - Movimientos Advance y Recede con N>1 y gap variable del worm.
   - Distribución de longitudes de ciclo de permutación P(L) en Sector Z.
   - Caída de la energía desde el valor distinguible (E_dist/N = 1.313) hacia el valor bosónico (E_Bose/N = 1.093 a T=0.5).
   - Conservación del Teorema del Virial <Epot> = <Ekin> para polímeros permutados.
@@ -28,7 +29,7 @@ OUTPUT_DIR = os.environ.get(
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Parámetros físicos y de simulación
-N_PARTICLES = 5
+N_PARTICLES = int(os.environ.get("WORM_FASE4_PARTICLES", "5"))
 TEMP = 0.5
 BETA = 1.0 / TEMP
 OMEGA = 1.0
@@ -258,6 +259,14 @@ swap_match = re.search(r"\bSw:\s*([\d.]+)%", worm_lines[-1])
 if swap_match is None or float(swap_match.group(1)) <= 0.0:
     raise RuntimeError("El movimiento Swap no registró ninguna aceptación")
 swap_rate = float(swap_match.group(1))
+if N_PARTICLES > 1:
+    advance_match = re.search(r"\bAdv:\s*([\d.]+)%", worm_lines[-1])
+    recede_match = re.search(r"\bRec:\s*([\d.]+)%", worm_lines[-1])
+    if (advance_match is None or recede_match is None
+            or float(advance_match.group(1)) <= 0.0
+            or float(recede_match.group(1)) <= 0.0):
+        raise RuntimeError("Advance y Recede deben registrar aceptaciones para N>1")
+    print(f"  Aceptación Advance/Recede: {advance_match.group(1)}% / {recede_match.group(1)}%")
 
 perm_file = os.path.join(OUTPUT_DIR, "outworm_perm.dat")
 perm_data = None
