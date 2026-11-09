@@ -173,8 +173,8 @@ if os.path.exists(outrd_file):
             dens_err_norm = (np.std(profiles, axis=0, ddof=1) / np.sqrt(len(profiles))
                              if len(profiles) > 1 else np.zeros_like(dens_mean_norm))
             dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
-            print(f"  -> Densidad procesada sobre {len(profiles)} bloques independientes.")
-            print(f"  -> Error estadístico medio en n(r): {np.mean(dens_err_norm):.6e}")
+            print(f"  -> Densidad procesada sobre {len(profiles)} perfiles por bloques.")
+            print(f"  -> Error estándar estimado entre perfiles: {np.mean(dens_err_norm):.6e}")
 
 # ==============================================================================
 # Generar Figuras de Verificación

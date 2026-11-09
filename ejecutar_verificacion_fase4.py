@@ -361,6 +361,7 @@ print(f"  -> Gráfica guardada: {plot_path}")
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
 outrd_file = os.path.join(OUTPUT_DIR, "outrd.dat")
+density_profile_count = 0
 if os.path.exists(outrd_file):
     try:
         data_rd = np.loadtxt(outrd_file)
@@ -378,13 +379,14 @@ if os.path.exists(outrd_file):
                     profiles.append(p / norm)
             if len(profiles) > 0:
                 profiles = np.array(profiles)
+                density_profile_count = len(profiles)
                 dens_sim = profiles.mean(axis=0)
                 dens_err = (profiles.std(axis=0, ddof=1) / np.sqrt(len(profiles))
                             if len(profiles) > 1 else np.zeros_like(dens_sim))
                 mask = r_sim <= 3.5
                 ax.errorbar(r_sim[mask], dens_sim[mask], yerr=dens_err[mask], fmt='o', color='purple',
                             ecolor='black', elinewidth=1.1, markersize=3.5, capsize=3,
-                            label='PIMC (Worm Swap)', alpha=0.85, zorder=4)
+                            label='PIMC (error estándar entre bloques)', alpha=0.85, zorder=4)
 
                 r_grid = np.linspace(0, 3.5, 200)
                 n_bose = analytical_bose_density(r_grid, N_PARTICLES, TEMP)
@@ -392,13 +394,14 @@ if os.path.exists(outrd_file):
                 ax.plot(r_grid, n_bose, color='red', linewidth=1.8, label='Bose Canónico', zorder=2)
                 ax.plot(r_grid, n_dist, color='gray', linestyle='--', linewidth=1.5, label='Distinguible', zorder=1)
                 ax.set_xlim(0, 3.5)
-                print(f"  -> Perfil radial promediado sobre {len(profiles)} bloques independientes.")
-                print(f"  -> Error estadístico medio en n(r): {np.mean(dens_err):.6e}")
+                print(f"  -> Perfil radial promediado sobre {density_profile_count} bloques.")
+                print(f"  -> Error estándar estimado entre bloques: {np.mean(dens_err):.6e}")
     except Exception as ex:
         print(f"  [Aviso] No se pudo graficar densidad radial: {ex}")
 ax.set_xlabel("Radio r", fontsize=11)
 ax.set_ylabel("Densidad por unidad de área n(r)", fontsize=11)
-ax.set_title("Perfil de Densidad Radial n(r)", fontsize=12, fontweight="bold")
+ax.set_title(f"Perfil de Densidad Radial n(r) (N={N_PARTICLES}, T={TEMP}, {density_profile_count} bloques)",
+             fontsize=12, fontweight="bold")
 ax.legend(fontsize=9, loc="best")
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
