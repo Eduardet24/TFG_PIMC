@@ -604,9 +604,24 @@ void PIMCPseudopotentialMoveOneByOne(int w) {
  *      4. IraSpatialMove: relaja la posición espacial de la cabeza Ira.
  ***********************************************************************/
 
+static int worm_snapshot_seen[6] = {0, 0, 0, 0, 0, 0};
+static const char *worm_snapshot_names[6] = {
+  "Open", "Close", "Advance", "Recede", "Swap", "IraSpatialMove"
+};
+
 void InitWorm(void) {
   int w, i;
   if(worm_next != NULL) return;
+
+  {
+    FILE *snapshot_file = fopen("outworm_snapshots.dat", "w");
+    int move;
+    for(move = 0; move < 6; move++) worm_snapshot_seen[move] = 0;
+    if(snapshot_file != NULL) {
+      fprintf(snapshot_file, "# worm_snapshot_v1\n");
+      fclose(snapshot_file);
+    }
+  }
 
   worm_next = (int**) malloc(NwalkersMax * sizeof(int*));
   worm_prev = (int**) malloc(NwalkersMax * sizeof(int*));
@@ -624,6 +639,37 @@ void InitWorm(void) {
 
   worm_cycle_histogram = (long long*) calloc(N + 1, sizeof(long long));
   worm_cycle_samples = 0;
+}
+
+static int WormSnapshotWrite(int move, const char *phase) {
+  FILE *snapshot_file;
+  int bead, particle;
+
+  snapshot_file = fopen("outworm_snapshots.dat", "a");
+  if(snapshot_file == NULL) return 0;
+
+  fprintf(snapshot_file, "EVENT %s %s %d %d %d %d %d %d %d\n",
+          worm_snapshot_names[move], phase, Nwalkers, N, worm_open,
+          worm_bead, worm_particle, worm_bead_masha, worm_particle_masha);
+  for(bead = 0; bead < Nwalkers; bead++) {
+    for(particle = 0; particle < N; particle++) {
+      fprintf(snapshot_file, "BEAD %d %d %.17g %.17g %d %d\n",
+              bead, particle, (double)W[bead].x[particle], (double)W[bead].y[particle],
+              worm_next[bead][particle], worm_prev[bead][particle]);
+    }
+  }
+  fprintf(snapshot_file, "END\n");
+  fclose(snapshot_file);
+  return 1;
+}
+
+static int WormSnapshotBefore(int move) {
+  if(move < 0 || move >= 6 || worm_snapshot_seen[move]) return 0;
+  return WormSnapshotWrite(move, "before");
+}
+
+static void WormSnapshotAfter(int move) {
+  if(WormSnapshotWrite(move, "after")) worm_snapshot_seen[move] = 1;
 }
 
 #define WORM_MAX_GAP 6
@@ -665,6 +711,7 @@ static void WormOpenMove(void) {
     * p_close * (DOUBLE)Nwalkers * (DOUBLE)N;
 
   if(acc >= 1.0 || Random() < acc) {
+    int record_snapshot = WormSnapshotBefore(0);
     worm_open = 1;
     worm_bead = w_cut;
     worm_particle = i_cut;
@@ -682,6 +729,7 @@ static void WormOpenMove(void) {
     worm_prev[w_next][j_cut] = -1;
 
     worm_acc_open++;
+    if(record_snapshot) WormSnapshotAfter(0);
   }
 }
 
@@ -708,6 +756,7 @@ static void WormCloseMove(void) {
     / (p_close * (DOUBLE)Nwalkers * (DOUBLE)N);
 
   if(acc >= 1.0 || Random() < acc) {
+    int record_snapshot = WormSnapshotBefore(1);
     worm_next[worm_bead][worm_particle] = worm_particle_masha;
     worm_prev[worm_bead_masha][worm_particle_masha] = worm_particle;
 
@@ -718,6 +767,7 @@ static void WormCloseMove(void) {
     worm_particle_masha = -1;
 
     worm_acc_close++;
+    if(record_snapshot) WormSnapshotAfter(1);
   }
 }
 
@@ -750,6 +800,7 @@ static void WormAdvanceMove(void) {
   acc = Exp(-tau_local * dV) * proposal_ratio;
 
   if(acc >= 1.0 || Random() < acc) {
+    int record_snapshot = WormSnapshotBefore(2);
     W[w_next].x[p_idx] = x_new;
     W[w_next].y[p_idx] = y_new;
 
@@ -764,6 +815,7 @@ static void WormAdvanceMove(void) {
     worm_next[w_next][p_idx] = -1;
 
     worm_acc_advance++;
+    if(record_snapshot) WormSnapshotAfter(2);
   }
 }
 
@@ -789,6 +841,7 @@ static void WormRecedeMove(void) {
   acc = Exp(+tau_local * dV) * proposal_ratio;
 
   if(acc >= 1.0 || Random() < acc) {
+    int record_snapshot = WormSnapshotBefore(3);
     worm_next[w_prev][p_idx] = -1;
     worm_prev[w_curr][p_idx] = -1;
 
@@ -798,6 +851,7 @@ static void WormRecedeMove(void) {
     worm.y_ira = W[w_prev].y[p_idx];
 
     worm_acc_recede++;
+    if(record_snapshot) WormSnapshotAfter(3);
   }
 }
 
@@ -891,6 +945,7 @@ static void WormSwapMove(void) {
   acc = sum_weights1 / sum_weights2;
 
   if(acc >= 1.0 || Random() < acc) {
+    int record_snapshot = WormSnapshotBefore(4);
     /* Reconectar enlaces */
     worm_next[w_curr][i_ira] = chosen_k;
     worm_prev[w_next][chosen_k] = i_ira;
@@ -905,6 +960,7 @@ static void WormSwapMove(void) {
     worm.y_ira = W[w_curr].y[p_old];
 
     worm_acc_swap++;
+    if(record_snapshot) WormSnapshotAfter(4);
   }
 
   free(candidates);
@@ -943,11 +999,13 @@ static void WormIraSpatialMove(void) {
   acc = Exp(dS);
 
   if(acc >= 1.0 || Random() < acc) {
+    int record_snapshot = WormSnapshotBefore(5);
     W[w_curr].x[p_idx] = x_new;
     W[w_curr].y[p_idx] = y_new;
     worm.x_ira = x_new;
     worm.y_ira = y_new;
     worm_acc_iramove++;
+    if(record_snapshot) WormSnapshotAfter(5);
   }
 }
 

@@ -168,14 +168,15 @@ try:
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, output=proc.stdout)
 
-    required_outputs = ["oute.dat", "outworm_perm.dat", "outworm_energy_blocks.dat", "outworm_cycle_blocks.dat"]
+    required_outputs = ["oute.dat", "outworm_perm.dat", "outworm_energy_blocks.dat",
+                        "outworm_cycle_blocks.dat", "outworm_snapshots.dat"]
     for fname in required_outputs:
         src = os.path.join(RUN_DIR, fname)
         if not os.path.isfile(src) or os.path.getmtime(src) < run_started:
             raise RuntimeError(f"El archivo {fname} falta o no se regeneró en esta corrida")
 
     for fname in ["oute.dat", "outrd.dat", "in3Dprev.in", "outworm_gap.dat", "outworm_perm.dat",
-                  "outworm_energy_blocks.dat", "outworm_cycle_blocks.dat"]:
+                  "outworm_energy_blocks.dat", "outworm_cycle_blocks.dat", "outworm_snapshots.dat"]:
         src = os.path.join(RUN_DIR, fname)
         if os.path.exists(src):
             shutil.copy(src, os.path.join(OUTPUT_DIR, fname))
