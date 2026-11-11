@@ -722,14 +722,14 @@ def main():
         make_simulation_figures(args.from_simulation)
         return
 
-    print("=" * 76)
-    print("GENERADOR DE ESQUEMAS WORM ALGORITHM: FORMATO TIM DORNHEIM")
-    print("=" * 76)
+    print("=" * 50)
+    print("Generando gráficos movimiento partículas Worm")
+    print("=" * 50)
 
     # Limpiar figuras obsoletas del antiguo estilo didáctico
     clean_obsolete_didactic_files()
 
-    print("\nGenerando figuras discretas de Tim Dornheim con paleta diferencial y alta resolución...")
+    print("\nGenerando gráficos.")
     make_dornheim_fig7_open_close()
     make_dornheim_fig8_advance_recede_bisection()
     make_dornheim_fig9_swap()
