@@ -263,6 +263,7 @@ int LoadParameters(void) {
     CHECK("numeric_derivative_dr=", "%" LF "", &numeric_derivative_dr);
 #ifdef WORM_ALGORITHM
     CHECK("worm_C=", "%" LF "", &worm_C);
+    CHECK("worm_swap=", "%i", &worm_swap_enabled);
 #endif
   }
 

@@ -1341,6 +1341,7 @@ extern long long *worm_gap_histogram;
 extern long long *worm_cycle_histogram;
 extern long long worm_cycle_samples;
 extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
+extern int worm_swap_enabled; /* 1: permutaciones bosónicas (Swap activo), 0: distinguibles (sin Swap) */
 extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
 extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */
 void MeasureWormPermutations(void);

@@ -167,6 +167,7 @@ long long *worm_gap_histogram = NULL;
 long long *worm_cycle_histogram = NULL;
 long long worm_cycle_samples = 0;
 DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
+int worm_swap_enabled = 1;  /* 1 = Swap activo (Bosones), 0 = Swap inactivo (Distinguibles) */
 int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
 int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
 #endif

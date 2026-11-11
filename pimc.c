@@ -646,6 +646,10 @@ void InitWorm(void) {
   int w, i;
   if(worm_next != NULL) return;
 
+  if(getenv("WORM_DISABLE_SWAP") != NULL && atoi(getenv("WORM_DISABLE_SWAP")) != 0) {
+    worm_swap_enabled = 0;
+  }
+
   atexit(FreeWorm);
 
   {
@@ -747,7 +751,7 @@ static void WormOpenMove(void) {
   r2 = dx * dx + dy * dy;
 
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
-  p_close = (N > 1) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
+  p_close = (N > 1 && worm_swap_enabled) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
 
   /* Aceptación Metropolis: ganancia del resorte cinético al cortar */
   acc = worm_C * Exp(r2 / (2.0 * tau_local))
@@ -792,7 +796,7 @@ static void WormCloseMove(void) {
   r2 = dx * dx + dy * dy;
 
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
-  p_close = (N > 1) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
+  p_close = (N > 1 && worm_swap_enabled) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
 
   /* Aceptación Metropolis: coste del resorte cinético al reconectar */
   acc = (1.0 / worm_C) * Exp(-r2 / (2.0 * tau_local))
@@ -850,11 +854,11 @@ static void WormAdvanceMove(void) {
 
   /* Cambio en la acción potencial en el nuevo bead */
   dV = Vext(x_new, y_new, 0.);
-  p_advance = (N > 1) ? WORM_PROB_ADVANCE_N_GT1 : WORM_PROB_ADVANCE_GAP_GT1;
+  p_advance = (N > 1 && worm_swap_enabled) ? WORM_PROB_ADVANCE_N_GT1 : WORM_PROB_ADVANCE_GAP_GT1;
   if(gap == 2) {
-    p_recede_reverse = (N > 1) ? WORM_PROB_RECEDE_N_GAP1 : WORM_PROB_RECEDE_GAP1;
+    p_recede_reverse = (N > 1 && worm_swap_enabled) ? WORM_PROB_RECEDE_N_GAP1 : WORM_PROB_RECEDE_GAP1;
   } else {
-    p_recede_reverse = (N > 1) ? WORM_PROB_RECEDE_N_GT1 : WORM_PROB_RECEDE_GAP_GT1;
+    p_recede_reverse = (N > 1 && worm_swap_enabled) ? WORM_PROB_RECEDE_N_GT1 : WORM_PROB_RECEDE_GAP_GT1;
   }
   proposal_ratio = p_recede_reverse / p_advance;
   acc = Exp(-tau_local * dV) * proposal_ratio;
@@ -902,11 +906,11 @@ static void WormRecedeMove(void) {
 
   /* Al borrar el bead de Ira, se elimina su potencial */
   dV = Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.);
-  p_advance_reverse = (N > 1) ? WORM_PROB_ADVANCE_N_GT1 : WORM_PROB_ADVANCE_GAP_GT1;
+  p_advance_reverse = (N > 1 && worm_swap_enabled) ? WORM_PROB_ADVANCE_N_GT1 : WORM_PROB_ADVANCE_GAP_GT1;
   if(gap == 1) {
-    p_recede = (N > 1) ? WORM_PROB_RECEDE_N_GAP1 : WORM_PROB_RECEDE_GAP1;
+    p_recede = (N > 1 && worm_swap_enabled) ? WORM_PROB_RECEDE_N_GAP1 : WORM_PROB_RECEDE_GAP1;
   } else {
-    p_recede = (N > 1) ? WORM_PROB_RECEDE_N_GT1 : WORM_PROB_RECEDE_GAP_GT1;
+    p_recede = (N > 1 && worm_swap_enabled) ? WORM_PROB_RECEDE_N_GT1 : WORM_PROB_RECEDE_GAP_GT1;
   }
   proposal_ratio = p_advance_reverse / p_recede;
   acc = Exp(+tau_local * dV) * proposal_ratio;
@@ -938,7 +942,7 @@ static void WormSwapMove(void) {
 
   worm_try_swap++;
 
-  if(N < 2) return; /* Se requieren al menos 2 partículas para intercambio */
+  if(!worm_swap_enabled || N < 2) return; /* Se requieren swap activo y al menos 2 partículas */
   if(candidates == NULL || weights == NULL) return;
 
   w_curr = worm_bead;
@@ -1083,7 +1087,7 @@ void PIMCWormMoves(void) {
       if(gap > worm_max_gap_observed) worm_max_gap_observed = gap;
 
       r = Random();
-      if(N > 1) {
+      if(N > 1 && worm_swap_enabled) {
         if(gap == 1) {
           if(r < WORM_PROB_CLOSE_N_GT1) {
             WormCloseMove();
