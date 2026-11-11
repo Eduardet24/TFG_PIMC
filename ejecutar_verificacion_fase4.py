@@ -391,8 +391,12 @@ if os.path.exists(outrd_file):
                 r_grid = np.linspace(0, 3.5, 200)
                 n_bose = analytical_bose_density(r_grid, N_PARTICLES, TEMP)
                 n_dist = analytical_distinguishable_density(r_grid, TEMP)
+                n_bose_pts = analytical_bose_density(r_sim[mask], N_PARTICLES, TEMP)
+
+                ax.fill_between(r_sim[mask], n_bose_pts - 3.0 * dens_err[mask], n_bose_pts + 3.0 * dens_err[mask],
+                                color='red', alpha=0.15, label=r'Banda $3\sigma$ (99.7% confianza)', zorder=1)
                 ax.plot(r_grid, n_bose, color='red', linewidth=2.0, label='Bose Canónico (exacto)', zorder=2)
-                ax.plot(r_grid, n_dist, color='#2b2b2b', linestyle='--', linewidth=2.0, alpha=0.9, label='Distinguible (referencia Boltzmann)', zorder=1)
+                ax.plot(r_grid, n_dist, color='#2b2b2b', linestyle='--', linewidth=2.0, alpha=0.9, label='Distinguible (referencia Boltzmann)', zorder=2)
                 ax.set_xlim(0, 3.5)
                 print(f"  -> Perfil radial promediado sobre {density_profile_count} bloques.")
                 print(f"  -> Error estándar estimado entre bloques: {np.mean(dens_err):.6e}")
