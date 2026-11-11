@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-Generador de esquemas didácticos y gráficos de transiciones aceptadas del Worm.
+Generador de figuras y diagramas de transiciones discretas del Worm Algorithm
+basados en la formulación y esquemas de Tim Dornheim (PhD 2014).
 
-El modo --from-simulation lee snapshots before/after registrados por el código C.
+Soporta dos modalidades:
+  1. Por defecto: reconstruye con alta resolución y paleta diferencial los esquemas
+     discretos de Dornheim (Open/Close, Advance/Recede, Bisección, Swap y Panel Completo)
+     garantizando que la cadena completa esté siempre definida y que las anotaciones
+     sean nítidas y legibles.
+  2. Modo --from-simulation: lee snapshots before/after registrados por el código C.
 
-Cada ejecución reemplaza automáticamente todos los archivos PNG (300 DPI) y PDF en:
+Cada ejecución actualiza automáticamente los archivos PNG (300 DPI) y PDF en:
   - Resultados/Figuras_Worm_Dornheim/
   - ../overleaf/imágenes/
 """
@@ -21,15 +27,32 @@ OVERLEAF_DIR = SCRIPT_DIR.parent / "overleaf" / "imágenes"
 
 
 # ==============================================================================
-# CONFIGURACIÓN Y FUNCIONES COMUNES
+# PALETA DE COLORES DIFERENCIAL Y CONFIGURACIÓN VISUAL
 # ==============================================================================
 
-TIME = np.arange(21, dtype=float)
-PATH_A = "#c84c4c"
-PATH_B = "#4d8b78"
-IRA = "#2458c6"
-MASHA = "#bd6a20"
-MUTED = "#78808d"
+# Partícula 1 (cerrada / espectadora)
+COLOR_P1 = "#1b7837"           # Verde esmeralda profundo
+COLOR_P1_BEAD = "#2ca02c"      # Verde vivo para las cuentas de P1
+
+# Partícula 2 (trayectoria de la partícula donde opera el gusano)
+COLOR_P2 = "#d95f02"           # Naranja terracota intenso
+COLOR_P2_BEAD = "#fd8d3c"      # Naranja cálido para cuentas de P2
+
+# Resto de la cadena definida de la Partícula 2 (tramos fuera del worm activo)
+COLOR_P2_REST = "#b25d00"      # Ocre tostado distintivo
+COLOR_P2_REST_BEAD = "#e69f00" # Ámbar para cuentas del resto de cadena
+
+# Modificaciones topológicas y remuestreos (Advance, Bisección, enlace cortado/añadido)
+COLOR_MODIFIED = "#0066cc"     # Azul real vibrante
+COLOR_MODIFIED_BEAD = "#3182bd"
+
+# Permutación cuántica Swap (enlace de intercambio entre partículas)
+COLOR_SWAP = "#7b1fa2"         # Púrpura intenso
+COLOR_SWAP_BEAD = "#9c27b0"    # Violeta para cuentas del enlace swap
+
+# Extremos cuánticos del gusano
+COLOR_IRA = "#d90429"          # Rojo carmesí intenso (cabeza Ira)
+COLOR_MASHA = "#008080"        # Teal / Verde azulado profundo (cola Masha)
 
 
 def save_figure(fig, filename):
@@ -51,17 +74,41 @@ def save_figure(fig, filename):
     fig.savefig(pdf_overleaf, bbox_inches="tight")
 
     plt.close(fig)
-    print(f"  [REEMPLAZADO] {filename:<40} -> Resultados/ y overleaf/imágenes/")
+    print(f"  [REEMPLAZADO] {filename:<42} -> Resultados/ y overleaf/imágenes/")
+
+
+def clean_obsolete_didactic_files():
+    """Elimina los archivos del antiguo 'estilo didáctico' en ambas carpetas de salida."""
+    obsolete = [
+        "worm_open_close",
+        "worm_advance_recede",
+        "worm_ira_spatial_move",
+        "worm_swap",
+    ]
+    removed_count = 0
+    for name in obsolete:
+        for folder in [OUTPUT_DIR, OVERLEAF_DIR]:
+            for ext in [".png", ".pdf"]:
+                fpath = folder / f"{name}{ext}"
+                if fpath.exists():
+                    try:
+                        fpath.unlink()
+                        removed_count += 1
+                    except OSError:
+                        pass
+    if removed_count > 0:
+        print(f"  [LIMPIEZA] Eliminados {removed_count} archivos obsoletos del estilo didáctico.")
 
 
 # ==============================================================================
-# FORMATO 1: ESTILO ORIGINAL DISCRETO DE TIM DORNHEIM (PHD 2014)
+# PARSEO DE ESQUEMAS DISCRETOS DE TIM DORNHEIM (PHD 2014)
 # ==============================================================================
 
 BOXES = [
     (50.300011, 22.603624, 196.052818, 168.40049),   # Subplot Izquierdo
     (266.299671, 22.603624, 412.052478, 168.40049)   # Subplot Derecho
 ]
+
 
 def ensure_dornheim_svg(page_num):
     svg_path = Path(f"/tmp/page_{page_num}.svg")
@@ -73,11 +120,13 @@ def ensure_dornheim_svg(page_num):
                             str(pdf_path), str(svg_path)], check=True)
     return svg_path
 
+
 def to_dornheim_coords(px, py, box_idx):
     x0, y0, x1, y1 = BOXES[box_idx]
     x = -3.0 + 6.0 * (px - x0) / (x1 - x0)
     tau = 20.0 * (y1 - py) / (y1 - y0)
     return x, tau
+
 
 def parse_dornheim_svg(svg_file):
     import re
@@ -117,347 +166,404 @@ def parse_dornheim_svg(svg_file):
 
     return paths, beads
 
+
 def setup_dornheim_axis(ax, xlabel="x", ylabel=r"$\tau/\epsilon$"):
+    """Configuración tipográfica clara con marcas internas y rejilla suave de orientación."""
     ax.set_xlim(-3.0, 3.0)
     ax.set_ylim(0.0, 20.0)
     ax.set_xticks([-3.0, -1.5, 0.0, 1.5, 3.0])
     ax.set_yticks([0, 5, 10, 15, 20])
-    ax.set_xlabel(xlabel, fontsize=12)
-    ax.set_ylabel(ylabel, fontsize=12)
-    ax.tick_params(direction='in', length=5, width=1.0, top=True, right=True, labelsize=10)
+    ax.set_xlabel(xlabel, fontsize=13, fontweight="bold")
+    ax.set_ylabel(ylabel, fontsize=13, fontweight="bold")
+    ax.tick_params(direction='in', length=6, width=1.1, top=True, right=True, labelsize=11)
+    ax.grid(True, linestyle=":", alpha=0.45, color="#b0b0b0")
 
-def make_dornheim_fig8_advance_recede_bisection():
-    svg = ensure_dornheim_svg(24)
-    paths24, beads24 = parse_dornheim_svg(svg)
 
-    fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.4), dpi=300)
-    for box_idx, ax in enumerate(axs):
-        setup_dornheim_axis(ax)
-        for b_idx, col, pts in paths24:
-            if b_idx == box_idx:
-                xs, ts = zip(*pts)
-                c = 'red' if col == 'red' else 'blue'
-                ax.plot(xs, ts, color=c, lw=1.2, zorder=1)
-        for col, b_list in beads24[box_idx].items():
-            if b_list:
-                xs, ts = zip(*b_list)
-                c = 'red' if col == 'red' else 'blue'
-                ax.plot(xs, ts, 'o', color=c, markersize=5.5, zorder=2)
-    plt.tight_layout()
-    save_figure(fig, "dornheim_fig8_advance_recede_bisection.png")
+def draw_annot_box(ax, x, y, text, color, fontsize=11.5, weight='bold', ha='left', va='center'):
+    """Dibuja una anotación con fondo blanco redondeado para máxima legibilidad."""
+    return ax.text(x, y, text, color=color, fontsize=fontsize, weight=weight, ha=ha, va=va,
+                   bbox=dict(boxstyle="round,pad=0.24", facecolor="white", edgecolor=color, alpha=0.92, lw=0.85),
+                   zorder=10)
+
+
+# ==============================================================================
+# FIGURAS DISCRETAS INDIVIDUALES (PÁGINAS 22, 24 Y 26)
+# ==============================================================================
 
 def make_dornheim_fig7_open_close():
-    svg = ensure_dornheim_svg(22)
-    paths22, beads22 = parse_dornheim_svg(svg)
+    svg22 = ensure_dornheim_svg(22)
+    paths22, _ = parse_dornheim_svg(svg22)
 
-    fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.4), dpi=300)
-    for box_idx, ax in enumerate(axs):
-        setup_dornheim_axis(ax)
-        for b_idx, col, pts in paths22:
-            if b_idx == box_idx:
-                xs, ts = zip(*pts)
-                c = 'red' if col == 'red' else 'blue'
-                ax.plot(xs, ts, color=c, lw=1.2, zorder=1)
-        for col, b_list in beads22[box_idx].items():
-            if b_list:
-                xs, ts = zip(*b_list)
-                c = 'red' if col == 'red' else 'blue'
-                ax.plot(xs, ts, 'o', color=c, markersize=5.5, zorder=2)
+    fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.4), dpi=300)
+
+    # Subplot 0: Insert / Remove
+    ax = axs[0]
+    setup_dornheim_axis(ax)
+    xs1, ts1 = zip(*paths22[0][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    xs_mod0, ts_mod0 = zip(*paths22[1][2])
+    ax.plot(xs_mod0, ts_mod0, color=COLOR_MODIFIED, lw=3.0, zorder=4)
+    ax.scatter(xs_mod0, ts_mod0, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=58, zorder=5)
+
+    ax.scatter([xs_mod0[-1]], [ts_mod0[-1]], color=COLOR_IRA, edgecolor='black', s=130, zorder=6, marker='o')
+    ax.scatter([xs_mod0[0]], [ts_mod0[0]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=6, marker='s')
+
+    ax.set_title(r"$\mathbf{Insert\ /\ Remove}$", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1\n(Cerrada)", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.2, 18.2, "Gusano insertado\n(Sector G)", COLOR_MODIFIED, fontsize=11, ha="center")
+    draw_annot_box(ax, xs_mod0[-1] + 0.35, ts_mod0[-1], r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=11.5)
+    draw_annot_box(ax, xs_mod0[0] + 0.35, ts_mod0[0], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
+
+    # Subplot 1: Open / Close
+    ax = axs[1]
+    setup_dornheim_axis(ax)
+    xs1, ts1 = zip(*paths22[2][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    xs2, ts2 = zip(*paths22[3][2])
+    ax.plot(xs2, ts2, color=COLOR_P2, lw=2.2, zorder=2)
+    ax.scatter(xs2, ts2, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=46, zorder=3)
+
+    xs_mod1, ts_mod1 = zip(*paths22[4][2])
+    ax.plot(xs_mod1, ts_mod1, color=COLOR_MODIFIED, lw=3.0, linestyle='--', zorder=4)
+    ax.scatter(xs_mod1, ts_mod1, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=58, zorder=5)
+
+    ax.scatter([xs_mod1[-1]], [ts_mod1[-1]], color=COLOR_IRA, edgecolor='black', s=130, zorder=6, marker='o')
+    ax.scatter([xs_mod1[0]], [ts_mod1[0]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=6, marker='s')
+
+    ax.set_title(r"$\mathbf{Open\ /\ Close}$ ($Z \leftrightarrow G$)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1\n(Cerrada)", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.2, 18.2, "Partícula 2\n(Sector Z)", COLOR_P2, fontsize=11, ha="center")
+    draw_annot_box(ax, xs_mod1[-1] + 0.35, ts_mod1[-1], r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=11.5)
+    draw_annot_box(ax, xs_mod1[0] + 0.35, ts_mod1[0], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
+    draw_annot_box(ax, 2.2, 8.5, "Enlace cortado (Open)\no cerrado (Close)", COLOR_MODIFIED, fontsize=10.5, ha="center")
+
     plt.tight_layout()
     save_figure(fig, "dornheim_fig7_open_close.png")
 
+
+def make_dornheim_fig8_advance_recede_bisection():
+    svg24 = ensure_dornheim_svg(24)
+    paths24, _ = parse_dornheim_svg(svg24)
+    p2_full = paths24[4][2] # Trayectoria completa de la Partícula 2 (tau 0..20)
+
+    fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.4), dpi=300)
+
+    # Subplot 0: Advance / Recede (con resto de cadena definida)
+    ax = axs[0]
+    setup_dornheim_axis(ax)
+    xs1, ts1 = zip(*paths24[0][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    # Resto de la cadena definida de Partícula 2 (tau 0..2 y 12..20)
+    rest_1 = p2_full[0:3]   # tau 0..2
+    rest_2 = p2_full[12:21] # tau 12..20
+    xs_r1, ts_r1 = zip(*rest_1)
+    xs_r2, ts_r2 = zip(*rest_2)
+    ax.plot(xs_r1, ts_r1, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r1, ts_r1, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+    ax.plot(xs_r2, ts_r2, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r2, ts_r2, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+
+    # Gusano preexistente (tau 2..8)
+    worm_base = p2_full[2:9]
+    xs_wb, ts_wb = zip(*worm_base)
+    ax.plot(xs_wb, ts_wb, color=COLOR_P2, lw=2.6, zorder=3)
+    ax.scatter(xs_wb, ts_wb, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=50, zorder=4)
+
+    # Segmento de Advance nuevo (tau 8..12)
+    xs_adv, ts_adv = zip(*paths24[2][2])
+    ax.plot(xs_adv, ts_adv, color=COLOR_MODIFIED, lw=3.2, zorder=4)
+    ax.scatter(xs_adv, ts_adv, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=60, zorder=5)
+
+    ira_old = (xs_adv[0], ts_adv[0])
+    ira_new = (xs_adv[-1], ts_adv[-1])
+    masha = (xs_wb[0], ts_wb[0])
+
+    ax.scatter([ira_new[0]], [ira_new[1]], color=COLOR_MODIFIED, edgecolor='black', s=140, zorder=6, marker='o')
+    ax.scatter([ira_old[0]], [ira_old[1]], color=COLOR_IRA, edgecolor='black', s=120, zorder=6, marker='o')
+    ax.scatter([masha[0]], [masha[1]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=6, marker='s')
+
+    ax.set_title(r"$\mathbf{Advance\ /\ Recede}$ (Sector $G$)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1\n(Cerrada)", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, ira_new[0] + 0.35, ira_new[1], r"$\mathcal{I}_{\mathrm{new}}$ (Advance $\uparrow$)", COLOR_MODIFIED, fontsize=11.5)
+    draw_annot_box(ax, ira_old[0] + 0.35, ira_old[1] - 0.5, r"$\mathcal{I}_{\mathrm{old}}$ (Recede $\downarrow$)", COLOR_IRA, fontsize=11.5)
+    draw_annot_box(ax, masha[0] - 0.4, masha[1] - 0.2, r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5, ha="right")
+    draw_annot_box(ax, 2.25, 16.5, "Resto de cadena\ndefinida (Partícula 2)", COLOR_P2_REST, fontsize=10.5, ha="center")
+    draw_annot_box(ax, 2.35, 10.0, "Cuentas añadidas\n(Advance azul)", COLOR_MODIFIED, fontsize=10.5, ha="center")
+
+    # Subplot 1: Bisection
+    ax = axs[1]
+    setup_dornheim_axis(ax)
+    xs1, ts1 = zip(*paths24[3][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    xs2, ts2 = zip(*paths24[4][2])
+    ax.plot(xs2, ts2, color=COLOR_P2, lw=2.2, zorder=2)
+    ax.scatter(xs2, ts2, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=46, zorder=3)
+
+    xs_bis, ts_bis = zip(*paths24[5][2])
+    ax.plot(xs_bis, ts_bis, color=COLOR_MODIFIED, lw=3.0, linestyle='--', zorder=4)
+    ax.scatter(xs_bis, ts_bis, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=58, zorder=5)
+
+    ax.set_title(r"$\mathbf{Bisección\ /\ IraSpatialMove}$", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.2, 18.2, "Partícula 2", COLOR_P2, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.25, 9.5, "Segmento interno\nremuestreado (azul)", COLOR_MODIFIED, fontsize=10.5, ha="center")
+
+    plt.tight_layout()
+    save_figure(fig, "dornheim_fig8_advance_recede_bisection.png")
+
+
 def make_dornheim_fig9_swap():
-    svg = ensure_dornheim_svg(26)
-    paths26, beads26 = parse_dornheim_svg(svg)
+    svg24 = ensure_dornheim_svg(24)
+    svg26 = ensure_dornheim_svg(26)
+    paths24, _ = parse_dornheim_svg(svg24)
+    paths26, _ = parse_dornheim_svg(svg26)
+    p2_full = paths24[4][2] # Trayectoria completa Partícula 2
 
-    fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.4), dpi=300)
-    setup_dornheim_axis(axs[0])
-    for b_idx, col, pts in paths26:
-        if b_idx == 0:
-            xs, ts = zip(*pts)
-            axs[0].plot(xs, ts, color='red', lw=1.2, zorder=1)
-    for col, b_list in beads26[0].items():
-        if b_list:
-            xs, ts = zip(*b_list)
-            axs[0].plot(xs, ts, 'o', color='red', markersize=5.5, zorder=2)
+    fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.4), dpi=300)
 
-    setup_dornheim_axis(axs[1])
-    for b_idx, col, pts in paths26:
-        if b_idx == 1:
-            xs, ts = zip(*pts)
-            dx_span = max(xs) - min(xs)
-            if dx_span > 2.0:
-                axs[1].plot(xs, ts, color='blue', lw=1.5, zorder=2)
-            else:
-                axs[1].plot(xs, ts, color='red', lw=1.2, zorder=1)
-    for col, b_list in beads26[1].items():
-        if b_list:
-            xs, ts = zip(*b_list)
-            axs[1].plot(xs, ts, 'o', color='red', markersize=5.5, zorder=2)
+    # Subplot 0: Antes del Swap
+    ax = axs[0]
+    setup_dornheim_axis(ax)
+    xs1, ts1 = zip(*paths26[0][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    rest_1 = p2_full[0:3]   # tau 0..2
+    rest_2 = p2_full[12:21] # tau 12..20
+    xs_r1, ts_r1 = zip(*rest_1)
+    xs_r2, ts_r2 = zip(*rest_2)
+    ax.plot(xs_r1, ts_r1, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r1, ts_r1, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+    ax.plot(xs_r2, ts_r2, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r2, ts_r2, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+
+    worm_base = p2_full[2:13] # tau 2..12
+    xs_wb, ts_wb = zip(*worm_base)
+    ax.plot(xs_wb, ts_wb, color=COLOR_P2, lw=2.6, zorder=3)
+    ax.scatter(xs_wb, ts_wb, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=50, zorder=4)
+
+    ax.scatter([xs_wb[-1]], [ts_wb[-1]], color=COLOR_IRA, edgecolor='black', s=130, zorder=6, marker='o')
+    ax.scatter([xs_wb[0]], [ts_wb[0]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=6, marker='s')
+
+    ax.set_title(r"$\mathbf{Antes\ del\ Swap}$ (Sector $G$)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1\n(Cerrada)", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, xs_wb[-1] + 0.35, ts_wb[-1], r"$\mathcal{I}$ (Ira en Part. 2)", COLOR_IRA, fontsize=11.5)
+    draw_annot_box(ax, xs_wb[0] + 0.35, ts_wb[0], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
+    draw_annot_box(ax, 2.25, 16.5, "Resto de cadena\ndefinida (Partícula 2)", COLOR_P2_REST, fontsize=10.5, ha="center")
+
+    # Subplot 1: Después del Swap
+    ax = axs[1]
+    setup_dornheim_axis(ax)
+    xs_p1_a, ts_p1_a = zip(*paths26[3][2]) # tau 0..12
+    ax.plot(xs_p1_a, ts_p1_a, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs_p1_a, ts_p1_a, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    xs_p1_b, ts_p1_b = zip(*paths26[4][2]) # tau 16..20
+    ax.plot(xs_p1_b, ts_p1_b, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs_p1_b, ts_p1_b, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=46, zorder=3)
+
+    p5 = paths26[5][2]
+    worm_p2 = p5[0:11]    # tau 2..12
+    swap_link = p5[10:15] # tau 12..16 cross
+    xs_w2, ts_w2 = zip(*worm_p2)
+    xs_sw, ts_sw = zip(*swap_link)
+
+    ax.plot(xs_w2, ts_w2, color=COLOR_P2, lw=2.6, zorder=3)
+    ax.scatter(xs_w2, ts_w2, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=50, zorder=4)
+
+    ax.plot(xs_sw, ts_sw, color=COLOR_SWAP, lw=3.4, zorder=5)
+    ax.scatter(xs_sw, ts_sw, color=COLOR_SWAP_BEAD, edgecolor=COLOR_SWAP, s=62, zorder=6)
+
+    # Resto de cadena Partícula 2
+    ax.plot(xs_r1, ts_r1, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r1, ts_r1, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+    ax.plot(xs_r2, ts_r2, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r2, ts_r2, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+
+    ira_new_sw = (xs_p1_a[-1], ts_p1_a[-1])
+    ira_old_sw = (xs_w2[-1], ts_w2[-1])
+    masha_sw = (xs_w2[0], ts_w2[0])
+
+    ax.scatter([ira_new_sw[0]], [ira_new_sw[1]], color=COLOR_IRA, edgecolor='black', s=140, zorder=7, marker='o')
+    ax.scatter([ira_old_sw[0]], [ira_old_sw[1]], color=COLOR_SWAP, edgecolor='black', s=120, zorder=7, marker='o')
+    ax.scatter([masha_sw[0]], [masha_sw[1]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=7, marker='s')
+
+    ax.set_title(r"$\mathbf{Después\ del\ Swap}$ (Permutación Cuántica)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, 0.3, 14.5, r"Enlace Swap $\longrightarrow$", COLOR_SWAP, fontsize=12, ha="center")
+    draw_annot_box(ax, ira_new_sw[0] - 0.4, ira_new_sw[1] + 0.8, r"$\mathcal{I}_{\mathrm{new}}$ (Nueva Ira)", COLOR_IRA, fontsize=11.5, ha="right")
+    draw_annot_box(ax, ira_old_sw[0] + 0.35, ira_old_sw[1] - 0.5, r"$\mathcal{I}_{\mathrm{old}}$ (Vieja Ira)", COLOR_SWAP, fontsize=11.5)
+    draw_annot_box(ax, masha_sw[0] + 0.35, masha_sw[1], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
+
     plt.tight_layout()
     save_figure(fig, "dornheim_fig9_swap.png")
+
+
+# ==============================================================================
+# PANEL COMPLETO 2x2: TODOS LOS MOVIMIENTOS WORM
+# ==============================================================================
 
 def make_dornheim_panel_completo():
     svg22 = ensure_dornheim_svg(22)
     svg24 = ensure_dornheim_svg(24)
     svg26 = ensure_dornheim_svg(26)
-    paths22, beads22 = parse_dornheim_svg(svg22)
-    paths24, beads24 = parse_dornheim_svg(svg24)
-    paths26, beads26 = parse_dornheim_svg(svg26)
+    paths22, _ = parse_dornheim_svg(svg22)
+    paths24, _ = parse_dornheim_svg(svg24)
+    paths26, _ = parse_dornheim_svg(svg26)
+    p2_full = paths24[4][2] # Trayectoria completa Partícula 2 (tau 0..20)
 
-    fig, axs = plt.subplots(2, 2, figsize=(11.5, 9.5), dpi=300)
+    fig, axs = plt.subplots(2, 2, figsize=(13.5, 11.5), dpi=300)
 
+    # --------------------------------------------------------------------------
     # (0, 0): Open / Close
+    # --------------------------------------------------------------------------
     ax = axs[0, 0]
     setup_dornheim_axis(ax)
-    for b_idx, col, pts in paths22:
-        if b_idx == 1:
-            xs, ts = zip(*pts)
-            c = 'red' if col == 'red' else 'blue'
-            ax.plot(xs, ts, color=c, lw=1.3)
-    for col, b_list in beads22[1].items():
-        if b_list:
-            xs, ts = zip(*b_list)
-            c = 'red' if col == 'red' else 'blue'
-            ax.plot(xs, ts, 'o', color=c, markersize=5)
-    ax.set_title(r"$\mathbf{(a)\ Movimiento\ Open\ /\ Close}$ ($Z \leftrightarrow G$)", fontsize=11, pad=8)
-    ax.text(1.9, 12.2, r"$\mathcal{I}$ (Ira)", color="blue", fontsize=9, weight='bold')
-    ax.text(1.9, 5.0, r"$\mathcal{M}$ (Masha)", color="blue", fontsize=9, weight='bold')
-    ax.text(-2.4, 18.0, "Partícula 1\n(Cerrada)", color="red", fontsize=8, ha="center")
-    ax.text(2.2, 18.0, "Partícula 2\n(Cerrada en Z)", color="red", fontsize=8, ha="center")
+    xs1, ts1 = zip(*paths22[2][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=44, zorder=3)
 
-    # (0, 1): Advance / Recede
+    xs2, ts2 = zip(*paths22[3][2])
+    ax.plot(xs2, ts2, color=COLOR_P2, lw=2.2, zorder=2)
+    ax.scatter(xs2, ts2, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=44, zorder=3)
+
+    xs_mod, ts_mod = zip(*paths22[4][2])
+    ax.plot(xs_mod, ts_mod, color=COLOR_MODIFIED, lw=3.0, linestyle='--', zorder=4)
+    ax.scatter(xs_mod, ts_mod, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=56, zorder=5)
+
+    ax.scatter([xs_mod[-1]], [ts_mod[-1]], color=COLOR_IRA, edgecolor='black', s=130, zorder=6, marker='o')
+    ax.scatter([xs_mod[0]], [ts_mod[0]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=6, marker='s')
+
+    ax.set_title(r"$\mathbf{(a)\ Movimiento\ Open\ /\ Close}$ ($Z \leftrightarrow G$)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, xs_mod[-1] + 0.35, ts_mod[-1], r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=11.5)
+    draw_annot_box(ax, xs_mod[0] + 0.35, ts_mod[0], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1\n(Cerrada)", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.2, 18.2, "Partícula 2\n(Sector Z/G)", COLOR_P2, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.25, 8.5, "Enlace cortado (Open)\no cerrado (Close)", COLOR_MODIFIED, fontsize=10.5, ha="center")
+
+    # --------------------------------------------------------------------------
+    # (0, 1): Advance / Recede (con cadena completa definida)
+    # --------------------------------------------------------------------------
     ax = axs[0, 1]
     setup_dornheim_axis(ax)
-    for b_idx, col, pts in paths24:
-        if b_idx == 0:
-            xs, ts = zip(*pts)
-            c = 'red' if col == 'red' else 'blue'
-            ax.plot(xs, ts, color=c, lw=1.3)
-    for col, b_list in beads24[0].items():
-        if b_list:
-            xs, ts = zip(*b_list)
-            c = 'red' if col == 'red' else 'blue'
-            ax.plot(xs, ts, 'o', color=c, markersize=5)
-    ax.set_title(r"$\mathbf{(b)\ Movimiento\ Advance\ /\ Recede}$ (Sector $G$)", fontsize=11, pad=8)
-    ax.text(1.9, 12.2, r"$\mathcal{I}_{\mathrm{new}}$ (Advance $\uparrow$)", color="blue", fontsize=9, weight='bold')
-    ax.text(2.2, 7.0, r"$\mathcal{I}_{\mathrm{old}}$ (Recede $\downarrow$)", color="red", fontsize=9, weight='bold')
-    ax.text(0.7, 2.0, r"$\mathcal{M}$ (Masha)", color="red", fontsize=9, weight='bold')
-    ax.text(2.1, 10.0, "Cuentas nuevas\nmuestreadas (azul)", color="blue", fontsize=8)
+    xs1, ts1 = zip(*paths24[0][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=44, zorder=3)
 
+    rest_1 = p2_full[0:3]
+    rest_2 = p2_full[12:21]
+    xs_r1, ts_r1 = zip(*rest_1)
+    xs_r2, ts_r2 = zip(*rest_2)
+    ax.plot(xs_r1, ts_r1, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r1, ts_r1, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+    ax.plot(xs_r2, ts_r2, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r2, ts_r2, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+
+    worm_base = p2_full[2:9]
+    xs_wb, ts_wb = zip(*worm_base)
+    ax.plot(xs_wb, ts_wb, color=COLOR_P2, lw=2.6, zorder=3)
+    ax.scatter(xs_wb, ts_wb, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=50, zorder=4)
+
+    xs_adv, ts_adv = zip(*paths24[2][2])
+    ax.plot(xs_adv, ts_adv, color=COLOR_MODIFIED, lw=3.2, zorder=4)
+    ax.scatter(xs_adv, ts_adv, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=60, zorder=5)
+
+    ira_old = (xs_adv[0], ts_adv[0])
+    ira_new = (xs_adv[-1], ts_adv[-1])
+    masha = (xs_wb[0], ts_wb[0])
+
+    ax.scatter([ira_new[0]], [ira_new[1]], color=COLOR_MODIFIED, edgecolor='black', s=140, zorder=6, marker='o')
+    ax.scatter([ira_old[0]], [ira_old[1]], color=COLOR_IRA, edgecolor='black', s=120, zorder=6, marker='o')
+    ax.scatter([masha[0]], [masha[1]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=6, marker='s')
+
+    ax.set_title(r"$\mathbf{(b)\ Movimiento\ Advance\ /\ Recede}$ (Sector $G$)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, ira_new[0] + 0.35, ira_new[1], r"$\mathcal{I}_{\mathrm{new}}$ (Advance $\uparrow$)", COLOR_MODIFIED, fontsize=11.5)
+    draw_annot_box(ax, ira_old[0] + 0.35, ira_old[1] - 0.5, r"$\mathcal{I}_{\mathrm{old}}$ (Recede $\downarrow$)", COLOR_IRA, fontsize=11.5)
+    draw_annot_box(ax, masha[0] - 0.4, masha[1] - 0.2, r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5, ha="right")
+    draw_annot_box(ax, 2.25, 16.5, "Resto de cadena\ndefinida (Partícula 2)", COLOR_P2_REST, fontsize=10.5, ha="center")
+    draw_annot_box(ax, 2.35, 10.0, "Cuentas añadidas\n(Advance azul)", COLOR_MODIFIED, fontsize=10.5, ha="center")
+
+    # --------------------------------------------------------------------------
     # (1, 0): Bisección / IraSpatialMove
+    # --------------------------------------------------------------------------
     ax = axs[1, 0]
     setup_dornheim_axis(ax)
-    for b_idx, col, pts in paths24:
-        if b_idx == 1:
-            xs, ts = zip(*pts)
-            c = 'red' if col == 'red' else 'blue'
-            ax.plot(xs, ts, color=c, lw=1.3)
-    for col, b_list in beads24[1].items():
-        if b_list:
-            xs, ts = zip(*b_list)
-            c = 'red' if col == 'red' else 'blue'
-            ax.plot(xs, ts, 'o', color=c, markersize=5)
-    ax.set_title(r"$\mathbf{(c)\ Bisección\ /\ IraSpatialMove}$", fontsize=11, pad=8)
-    ax.text(2.2, 10.0, "Segmento interno\nremuestreado en azul", color="blue", fontsize=8)
-    ax.text(-2.4, 18.0, "Partícula 1", color="red", fontsize=8, ha="center")
-    ax.text(2.2, 18.0, "Partícula 2", color="red", fontsize=8, ha="center")
+    xs1, ts1 = zip(*paths24[3][2])
+    ax.plot(xs1, ts1, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs1, ts1, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=44, zorder=3)
 
-    # (1, 1): Swap Move
+    xs2, ts2 = zip(*paths24[4][2])
+    ax.plot(xs2, ts2, color=COLOR_P2, lw=2.2, zorder=2)
+    ax.scatter(xs2, ts2, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=44, zorder=3)
+
+    xs_bis, ts_bis = zip(*paths24[5][2])
+    ax.plot(xs_bis, ts_bis, color=COLOR_MODIFIED, lw=3.0, linestyle='--', zorder=4)
+    ax.scatter(xs_bis, ts_bis, color=COLOR_MODIFIED_BEAD, edgecolor=COLOR_MODIFIED, s=58, zorder=5)
+
+    ax.set_title(r"$\mathbf{(c)\ Bisección\ /\ IraSpatialMove}$", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, -2.4, 18.2, "Partícula 1", COLOR_P1, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.2, 18.2, "Partícula 2", COLOR_P2, fontsize=11, ha="center")
+    draw_annot_box(ax, 2.25, 9.5, "Segmento interno\nremuestreado (azul)", COLOR_MODIFIED, fontsize=10.5, ha="center")
+
+    # --------------------------------------------------------------------------
+    # (1, 1): Movimiento Swap (Permutación Cuántica)
+    # --------------------------------------------------------------------------
     ax = axs[1, 1]
     setup_dornheim_axis(ax)
-    for b_idx, col, pts in paths26:
-        if b_idx == 1:
-            xs, ts = zip(*pts)
-            dx_span = max(xs) - min(xs)
-            if dx_span > 2.0:
-                ax.plot(xs, ts, color='blue', lw=1.8, zorder=2)
-            else:
-                ax.plot(xs, ts, color='red', lw=1.3, zorder=1)
-    for col, b_list in beads26[1].items():
-        if b_list:
-            xs, ts = zip(*b_list)
-            ax.plot(xs, ts, 'o', color='red', markersize=5, zorder=2)
-    ax.set_title(r"$\mathbf{(d)\ Movimiento\ Swap}$ (Permutación Cuántica)", fontsize=11, pad=8)
-    ax.text(-0.2, 9.5, r"Enlace Swap $\longrightarrow$", color="blue", fontsize=9, weight='bold', rotation=35)
-    ax.text(-2.4, 12.5, r"$\mathcal{I}_{\mathrm{new}}$ (Nueva Ira)", color="red", fontsize=9, weight='bold')
-    ax.text(2.0, 11.0, r"$\mathcal{I}_{\mathrm{old}}$ (Vieja Ira)", color="red", fontsize=9, weight='bold')
-    ax.text(2.0, 2.0, r"$\mathcal{M}$ (Masha)", color="red", fontsize=9, weight='bold')
+    xs_p1_a, ts_p1_a = zip(*paths26[3][2])
+    ax.plot(xs_p1_a, ts_p1_a, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs_p1_a, ts_p1_a, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=44, zorder=3)
+
+    xs_p1_b, ts_p1_b = zip(*paths26[4][2])
+    ax.plot(xs_p1_b, ts_p1_b, color=COLOR_P1, lw=2.2, zorder=2)
+    ax.scatter(xs_p1_b, ts_p1_b, color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=44, zorder=3)
+
+    p5 = paths26[5][2]
+    worm_p2 = p5[0:11]
+    swap_link = p5[10:15]
+    xs_w2, ts_w2 = zip(*worm_p2)
+    xs_sw, ts_sw = zip(*swap_link)
+
+    ax.plot(xs_w2, ts_w2, color=COLOR_P2, lw=2.6, zorder=3)
+    ax.scatter(xs_w2, ts_w2, color=COLOR_P2_BEAD, edgecolor=COLOR_P2, s=50, zorder=4)
+
+    ax.plot(xs_sw, ts_sw, color=COLOR_SWAP, lw=3.4, zorder=5)
+    ax.scatter(xs_sw, ts_sw, color=COLOR_SWAP_BEAD, edgecolor=COLOR_SWAP, s=62, zorder=6)
+
+    # Resto de cadena Partícula 2
+    ax.plot(xs_r1, ts_r1, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r1, ts_r1, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+    ax.plot(xs_r2, ts_r2, color=COLOR_P2_REST, lw=2.0, linestyle=':', zorder=2)
+    ax.scatter(xs_r2, ts_r2, color=COLOR_P2_REST_BEAD, edgecolor=COLOR_P2_REST, s=38, zorder=3)
+
+    ira_new_sw = (xs_p1_a[-1], ts_p1_a[-1])
+    ira_old_sw = (xs_w2[-1], ts_w2[-1])
+    masha_sw = (xs_w2[0], ts_w2[0])
+
+    ax.scatter([ira_new_sw[0]], [ira_new_sw[1]], color=COLOR_IRA, edgecolor='black', s=140, zorder=7, marker='o')
+    ax.scatter([ira_old_sw[0]], [ira_old_sw[1]], color=COLOR_SWAP, edgecolor='black', s=120, zorder=7, marker='o')
+    ax.scatter([masha_sw[0]], [masha_sw[1]], color=COLOR_MASHA, edgecolor='black', s=130, zorder=7, marker='s')
+
+    ax.set_title(r"$\mathbf{(d)\ Movimiento\ Swap}$ (Permutación Cuántica)", fontsize=14, fontweight="bold", pad=10)
+    draw_annot_box(ax, 0.3, 14.5, r"Enlace Swap $\longrightarrow$", COLOR_SWAP, fontsize=12, ha="center")
+    draw_annot_box(ax, ira_new_sw[0] - 0.4, ira_new_sw[1] + 0.8, r"$\mathcal{I}_{\mathrm{new}}$ (Nueva Ira)", COLOR_IRA, fontsize=11.5, ha="right")
+    draw_annot_box(ax, ira_old_sw[0] + 0.35, ira_old_sw[1] - 0.5, r"$\mathcal{I}_{\mathrm{old}}$ (Vieja Ira)", COLOR_SWAP, fontsize=11.5)
+    draw_annot_box(ax, masha_sw[0] + 0.35, masha_sw[1], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
 
     plt.tight_layout()
     save_figure(fig, "figura_panel_completo_worm.png")
 
 
 # ==============================================================================
-# FORMATO 2: ESTILO DIDÁCTICO SUAVE (CURVAS CONTINUAS CON IRA Y MASHA)
+# MODALIDAD SIMULACIÓN C (PROYECCIONES REALES BEFORE/AFTER)
 # ==============================================================================
-
-def setup_axis(ax, title):
-    """Configuración didáctica de ejes con fondo cuadriculado suave."""
-    ax.set_xlim(-2.2, 2.2)
-    ax.set_ylim(0, 20)
-    ax.set_xticks([-2, -1, 0, 1, 2])
-    ax.set_yticks([0, 5, 10, 15, 20])
-    ax.set_xlabel("x")
-    ax.set_ylabel(r"$\tau/\epsilon$")
-    ax.set_title(title, fontsize=11, fontweight="bold")
-    ax.grid(True, color="#d9dde3", linewidth=0.7, alpha=0.7)
-    ax.set_axisbelow(True)
-    ax.tick_params(direction="in", top=True, right=True)
-
-
-def draw_track(ax, x, start=0, stop=None, color=PATH_A, linewidth=1.5,
-               marker_size=4.2, zorder=2):
-    if stop is None:
-        stop = len(x) - 1
-    tau = TIME[start:stop + 1]
-    x_values = x[start:stop + 1]
-    ax.plot(x_values, tau, color=color, linewidth=linewidth, zorder=zorder)
-    ax.scatter(x_values, tau, s=marker_size**2, color=color, zorder=zorder + 1)
-
-
-def mark_endpoint(ax, x, tau, label, color, offset=(7, 5), hollow=False):
-    face = "white" if hollow else color
-    ax.scatter([x], [tau], s=68, facecolor=face, edgecolor=color, linewidth=1.7,
-               zorder=5)
-    ax.annotate(label, (x, tau), xytext=offset, textcoords="offset points",
-                color=color, fontsize=9, fontweight="bold", zorder=6)
-
-
-def draw_open_path(ax, x, head, masha):
-    draw_track(ax, x, stop=head, color=PATH_A)
-    draw_track(ax, x, start=masha, color=PATH_A)
-    mark_endpoint(ax, x[head], head, "Ira", IRA, offset=(7, 7))
-    mark_endpoint(ax, x[masha], masha, "Masha", MASHA, offset=(7, -13))
-
-
-def make_open_close():
-    x_a = -1.05 + 0.28 * np.sin(2 * np.pi * TIME / 20 + 0.2)
-    x_b = 1.05 + 0.27 * np.sin(2 * np.pi * TIME / 20 + 1.5)
-    cut = 10
-
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5), sharey=True)
-    setup_axis(axes[0], "Z: caminos cerrados")
-    draw_track(axes[0], x_a, color=PATH_A)
-    draw_track(axes[0], x_b, color=PATH_B)
-
-    setup_axis(axes[1], "G: enlace abierto")
-    draw_track(axes[1], x_a, stop=cut, color=PATH_A)
-    draw_track(axes[1], x_a, start=cut + 1, color=PATH_A)
-    draw_track(axes[1], x_b, color=PATH_B)
-    mark_endpoint(axes[1], x_a[cut], cut, "Ira", IRA, offset=(9, 12))
-    mark_endpoint(axes[1], x_a[cut + 1], cut + 1, "Masha", MASHA, offset=(-58, -14))
-
-    fig.suptitle("Open / Close: cortar o reconectar un enlace", fontweight="bold")
-    fig.text(0.5, 0.015, "Open: Z → G     |     Close: G → Z (extremos adyacentes; τ periódico)",
-             ha="center", fontsize=9)
-    fig.tight_layout(rect=(0, 0.06, 1, 0.88))
-    save_figure(fig, "worm_open_close.png")
-
-
-def make_advance_recede():
-    x = 0.1 + 0.35 * np.sin(2 * np.pi * TIME / 20 + 0.5)
-    old_head = 7
-    masha = 15
-    advanced_head = 10
-    receded_head = 4
-
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5), sharey=True)
-    setup_axis(axes[0], "Advance: Ira avanza en τ")
-    draw_open_path(axes[0], x, advanced_head, masha)
-    draw_track(axes[0], x, start=old_head, stop=advanced_head, color=IRA,
-               linewidth=2.2, marker_size=5.0, zorder=3)
-    mark_endpoint(axes[0], x[old_head], old_head, "Ira anterior", MUTED,
-                  offset=(-64, -15), hollow=True)
-    axes[0].annotate("beads añadidos", xy=(x[9], 9), xytext=(1.15, 8.5),
-                     arrowprops={"arrowstyle": "->", "color": IRA}, color=IRA,
-                     fontsize=8, ha="center")
-
-    setup_axis(axes[1], "Recede: Ira retrocede en τ")
-    draw_open_path(axes[1], x, receded_head, masha)
-    mark_endpoint(axes[1], x[old_head], old_head, "Ira anterior", MUTED,
-                  offset=(7, 7), hollow=True)
-    axes[1].annotate("el gap se amplía", xy=(x[6], 6), xytext=(1.15, 8.5),
-                     arrowprops={"arrowstyle": "->", "color": IRA}, color=IRA,
-                     fontsize=8, ha="center")
-
-    fig.suptitle("Advance / Recede: desplazar Ira y cambiar el gap", fontweight="bold")
-    fig.text(0.5, 0.015, "En esta implementación, Advance/Recede se selecciona para N = 1.",
-             ha="center", fontsize=9)
-    fig.tight_layout(rect=(0, 0.06, 1, 0.88))
-    save_figure(fig, "worm_advance_recede.png")
-
-
-def make_ira_spatial_move():
-    x_before = 0.15 + 0.3 * np.sin(2 * np.pi * TIME / 20 + 0.3)
-    head = 10
-    masha = 15
-    x_after = x_before.copy()
-    x_after[head] += 0.72
-
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5), sharey=True)
-    setup_axis(axes[0], "Antes: posición actual de Ira")
-    draw_open_path(axes[0], x_before, head, masha)
-
-    setup_axis(axes[1], "Después: propuesta aceptada")
-    draw_open_path(axes[1], x_after, head, masha)
-    axes[1].scatter([x_before[head]], [head], s=68, facecolor="white",
-                    edgecolor=MUTED, linewidth=1.7, zorder=5)
-    axes[1].annotate("desplazamiento espacial", xy=(x_after[head], head),
-                     xytext=(x_before[head] - 0.9, head + 2.0),
-                     arrowprops={"arrowstyle": "->", "color": IRA}, color=IRA,
-                     fontsize=8, ha="center")
-
-    fig.suptitle("IraSpatialMove: mover Ira en el mismo slice", fontweight="bold")
-    fig.text(0.5, 0.015, "Se propone un desplazamiento gaussiano en x e y; aquí se muestra la proyección x–τ.",
-             ha="center", fontsize=9)
-    fig.tight_layout(rect=(0, 0.06, 1, 0.88))
-    save_figure(fig, "worm_ira_spatial_move.png")
-
-
-def make_swap():
-    x_a = -1.0 + 0.2 * np.sin(2 * np.pi * TIME / 20 + 0.2)
-    x_b = 1.0 + 0.2 * np.sin(2 * np.pi * TIME / 20 + 1.4)
-    current_slice = 10
-    next_slice = current_slice + 1
-
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5), sharey=True)
-    setup_axis(axes[0], "Antes: cabeza Ira en la trayectoria A")
-    draw_track(axes[0], x_a, stop=current_slice, color=PATH_A)
-    draw_track(axes[0], x_b, color=PATH_B)
-    axes[0].plot(x_b[current_slice:next_slice + 1],
-                 TIME[current_slice:next_slice + 1], color=MUTED,
-                 linestyle="--", linewidth=2.0, zorder=3)
-    mark_endpoint(axes[0], x_a[current_slice], current_slice, "Ira", IRA)
-    axes[0].scatter([x_b[next_slice]], [next_slice], s=62, facecolor="white",
-                    edgecolor=IRA, linewidth=1.6, zorder=5)
-    axes[0].annotate("candidato k", (x_b[next_slice], next_slice),
-                     xytext=(8, 8), textcoords="offset points", color=IRA, fontsize=8)
-
-    setup_axis(axes[1], "Después: reconexión Swap")
-    draw_track(axes[1], x_b, stop=current_slice, color=PATH_B)
-    draw_track(axes[1], x_a, stop=current_slice, color=PATH_A)
-    draw_track(axes[1], x_b, start=next_slice, color=PATH_A)
-    axes[1].plot([x_a[current_slice], x_b[next_slice]],
-                 [current_slice, next_slice], color=IRA, linewidth=2.4,
-                 zorder=3)
-    mark_endpoint(axes[1], x_b[current_slice], current_slice, "Ira nueva", IRA,
-                  offset=(7, -14))
-    axes[1].scatter([x_a[current_slice]], [current_slice], s=48, facecolor="white",
-                    edgecolor=MUTED, linewidth=1.3, zorder=5)
-    axes[1].annotate("enlace reconectado", xy=(x_a[current_slice] * 0.35 + x_b[next_slice] * 0.65,
-                                                current_slice + 0.65),
-                     xytext=(0.2, current_slice + 2.7),
-                     arrowprops={"arrowstyle": "->", "color": IRA}, color=IRA,
-                     fontsize=8, ha="center")
-
-    fig.suptitle("Swap: cambiar el enlace de Ira a un candidato del siguiente slice",
-                 fontweight="bold")
-    fig.text(0.5, 0.015, "Esquema local; Masha no cambia y las demás conexiones del camino se omiten.",
-             ha="center", fontsize=9)
-    fig.tight_layout(rect=(0, 0.06, 1, 0.88))
-    save_figure(fig, "worm_swap.png")
-
 
 def read_worm_snapshots(snapshot_file):
     events = {}
@@ -528,50 +634,50 @@ def open_worm_edges(state):
 
 
 def draw_simulation_state(ax, state, title):
-  n_beads = state["n_beads"]
-  tau = np.arange(n_beads + 1) / n_beads
-  open_edges = open_worm_edges(state)
+    n_beads = state["n_beads"]
+    tau = np.arange(n_beads + 1) / n_beads
+    open_edges = open_worm_edges(state)
 
-  for bead in range(n_beads):
-    next_bead = (bead + 1) % n_beads
-    for particle in range(state["n_particles"]):
-      next_particle = state["next"][bead, particle]
-      if next_particle < 0:
-        continue
-      color = IRA if (bead, particle) in open_edges else PATH_A
-      ax.plot([state["x"][bead, particle], state["x"][next_bead, next_particle]],
-          [tau[bead], tau[bead + 1]], color=color,
-          linewidth=1.35 if color == PATH_A else 2.0, zorder=2)
+    for bead in range(n_beads):
+        next_bead = (bead + 1) % n_beads
+        for particle in range(state["n_particles"]):
+            next_particle = state["next"][bead, particle]
+            if next_particle < 0:
+                continue
+            is_open = (bead, particle) in open_edges
+            color = COLOR_MODIFIED if is_open else COLOR_P1
+            lw = 2.4 if is_open else 1.5
+            ax.plot([state["x"][bead, particle], state["x"][next_bead, next_particle]],
+                    [tau[bead], tau[bead + 1]], color=color, linewidth=lw, zorder=2)
 
-  bead_times = np.arange(n_beads) / n_beads
-  ax.scatter(state["x"].ravel(), np.repeat(bead_times, state["n_particles"]),
-         color=PATH_A, s=12, zorder=3)
+    bead_times = np.arange(n_beads) / n_beads
+    ax.scatter(state["x"].ravel(), np.repeat(bead_times, state["n_particles"]),
+               color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=18, zorder=3)
 
-  if state["worm_open"]:
-    ira_bead, ira_particle = state["ira"]
-    masha_bead, masha_particle = state["masha"]
-    ax.scatter([state["x"][ira_bead, ira_particle]], [bead_times[ira_bead]],
-           color=IRA, edgecolor="white", linewidth=0.7, s=54, zorder=5)
-    ax.annotate("Ira", (state["x"][ira_bead, ira_particle], bead_times[ira_bead]),
-          xytext=(8, 9), textcoords="offset points", color=IRA,
-          fontsize=8, fontweight="bold")
-    ax.scatter([state["x"][masha_bead, masha_particle]], [bead_times[masha_bead]],
-           color=MASHA, edgecolor="white", linewidth=0.7, s=54, zorder=5)
-    ax.annotate("Masha", (state["x"][masha_bead, masha_particle], bead_times[masha_bead]),
-          xytext=(-52, -13), textcoords="offset points", color=MASHA,
-          fontsize=8, fontweight="bold")
+    if state["worm_open"]:
+        ira_bead, ira_particle = state["ira"]
+        masha_bead, masha_particle = state["masha"]
+        ax.scatter([state["x"][ira_bead, ira_particle]], [bead_times[ira_bead]],
+                   color=COLOR_IRA, edgecolor="black", linewidth=1.0, s=70, zorder=5)
+        draw_annot_box(ax, state["x"][ira_bead, ira_particle] + 0.1, bead_times[ira_bead],
+                       r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=10.5)
 
-  xmin = float(np.min(state["x"]))
-  xmax = float(np.max(state["x"]))
-  padding = max(0.35, 0.12 * (xmax - xmin))
-  ax.set_xlim(xmin - padding, xmax + padding)
-  ax.set_ylim(0, 1)
-  ax.set_xlabel("x (coordenada de la simulación)")
-  ax.set_ylabel(r"$\tau/\beta$")
-  ax.set_title(title, fontsize=10, fontweight="bold")
-  ax.grid(True, color="#d9dde3", linewidth=0.7, alpha=0.7)
-  ax.set_axisbelow(True)
-  ax.tick_params(direction="in", top=True, right=True)
+        ax.scatter([state["x"][masha_bead, masha_particle]], [bead_times[masha_bead]],
+                   color=COLOR_MASHA, edgecolor="black", linewidth=1.0, s=70, zorder=5, marker="s")
+        draw_annot_box(ax, state["x"][masha_bead, masha_particle] - 0.1, bead_times[masha_bead],
+                       r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10.5, ha="right")
+
+    xmin = float(np.min(state["x"]))
+    xmax = float(np.max(state["x"]))
+    padding = max(0.35, 0.12 * (xmax - xmin))
+    ax.set_xlim(xmin - padding, xmax + padding)
+    ax.set_ylim(0, 1)
+    ax.set_xlabel("x (coordenada de la simulación)", fontsize=12, fontweight="bold")
+    ax.set_ylabel(r"$\tau/\beta$", fontsize=12, fontweight="bold")
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.grid(True, linestyle=":", alpha=0.45, color="#b0b0b0")
+    ax.set_axisbelow(True)
+    ax.tick_params(direction="in", top=True, right=True, labelsize=10.5)
 
 
 def make_simulation_figures(snapshot_file):
@@ -582,14 +688,14 @@ def make_simulation_figures(snapshot_file):
             print(f"[omitido] {move}: falta el estado before/after")
             continue
 
-        fig, axes = plt.subplots(1, 2, figsize=(9, 4.7), sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=(10, 5.0), sharey=True)
         draw_simulation_state(axes[0], phases["before"], "Antes de la aceptación")
         draw_simulation_state(axes[1], phases["after"], "Después de la aceptación")
-        fig.suptitle(f"{move}: transición aceptada de la simulación Worm", fontweight="bold")
+        fig.suptitle(f"{move}: transición aceptada de la simulación Worm", fontweight="bold", fontsize=13)
         fig.text(0.5, 0.015,
                  "Coordenadas x y enlaces next/prev guardados por el algoritmo; se muestra la proyección x–τ.",
-                 ha="center", fontsize=8)
-        fig.tight_layout(rect=(0, 0.06, 1, 0.9))
+                 ha="center", fontsize=9)
+        fig.tight_layout(rect=(0, 0.06, 1, 0.92))
         filename = f"worm_simulacion_{move.lower()}.png"
         save_figure(fig, filename)
         generated += 1
@@ -597,6 +703,10 @@ def make_simulation_figures(snapshot_file):
     if generated == 0:
         raise ValueError(f"No hay pares before/after completos en {snapshot_file}")
 
+
+# ==============================================================================
+# PUNTO DE ENTRADA PRINCIPAL
+# ==============================================================================
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -613,24 +723,21 @@ def main():
         return
 
     print("=" * 76)
-    print("GENERADOR DE ESQUEMAS WORM ALGORITHM: FORMATOS DORNHEIM Y DIDÁCTICO")
+    print("GENERADOR DE ESQUEMAS WORM ALGORITHM: FORMATO TIM DORNHEIM")
     print("=" * 76)
 
-    print("\n[FORMATO 1] Generando figuras originales discretas de Tim Dornheim (PhD 2014)...")
+    # Limpiar figuras obsoletas del antiguo estilo didáctico
+    clean_obsolete_didactic_files()
+
+    print("\nGenerando figuras discretas de Tim Dornheim con paleta diferencial y alta resolución...")
     make_dornheim_fig7_open_close()
     make_dornheim_fig8_advance_recede_bisection()
     make_dornheim_fig9_swap()
     make_dornheim_panel_completo()
 
-    print("\n[FORMATO 2] Generando figuras didácticas suaves con anotaciones Ira/Masha...")
-    make_open_close()
-    make_advance_recede()
-    make_ira_spatial_move()
-    make_swap()
-
     print("\n" + "=" * 76)
     print("¡Éxito! Todas las figuras han sido generadas y reemplazadas.")
-    print(f"Ubicaciones actualizadas (PNG 300 DPI y PDF):")
+    print("Ubicaciones actualizadas (PNG 300 DPI y PDF):")
     print(f"  1. {OUTPUT_DIR}")
     print(f"  2. {OVERLEAF_DIR}")
     print("=" * 76)
