@@ -8,7 +8,7 @@ del Algoritmo Worm (Prokof'ev-Svistunov / Dornheim 2014 / Boninsegni 2006).
 
 Incluye:
   1. Solución analítica exacta de referencia (Kernel de Mehler y expansión en ciclos).
-  2. Carga y normalización de la matriz medida en Sector G (gap == 1).
+    2. Carga de la matriz medida en Sector G (gap == 1), normalizada por la traza en C.
   3. Gráficas de mapa de calor 2D (PIMC vs Analítico vs Residuos).
   4. Cortes unidimensionales: diagonal local rho_1(x, x) y cortes de coherencia rho_1(x, -x), rho_1(x, 0).
   5. Decaimiento de la coherencia cuántica en función de la distancia de separación s = |r - r'|.
@@ -141,11 +141,12 @@ def load_worm_obdm_data(data_path):
     step = float(metadata.get("step", (max_x - min_x) / grid_size))
 
     # Cargar datos tabulares: col 0: x, col 1: x_prime, col 2: count, col 3: rho1_norm
-    raw_data = np.loadtxt(data_path, comments="#")
+    raw_data = np.atleast_2d(np.loadtxt(data_path, comments="#"))
     x_vals = np.linspace(min_x + 0.5 * step, max_x - 0.5 * step, grid_size)
     
     # Reconstruir matriz cuadrada
     matrix_counts = np.zeros((grid_size, grid_size), dtype=float)
+    matrix_norm = np.zeros((grid_size, grid_size), dtype=float)
     if raw_data.shape[1] >= 3:
         for row in raw_data:
             ix = int(np.floor((row[0] - min_x) / step))
@@ -153,16 +154,17 @@ def load_worm_obdm_data(data_path):
             if 0 <= ix < grid_size and 0 <= ixp < grid_size:
                 matrix_counts[ix, ixp] = row[2]
                 matrix_counts[ixp, ix] = row[2]  # Simetrización Hermítica
+                if raw_data.shape[1] >= 4:
+                    matrix_norm[ix, ixp] = row[3]
+                    matrix_norm[ixp, ix] = row[3]
 
-    # Normalización exacta por traza: \int rho_1(x, x) dx = N
-    trace_integral = np.sum(np.diag(matrix_counts)) * step
     n_part = int(metadata.get("N", N_PARTICLES))
-    if trace_integral > 0:
-        matrix_norm = matrix_counts * (float(n_part) / trace_integral)
-    else:
-        matrix_norm = matrix_counts
+    raw_trace_integral = np.sum(np.diag(matrix_counts)) * step
+    if raw_data.shape[1] < 4 and raw_trace_integral > 0:
+        matrix_norm = matrix_counts * (float(n_part) / raw_trace_integral)
 
-    metadata["trace_integral"] = trace_integral
+    metadata["raw_trace_integral"] = raw_trace_integral
+    metadata["trace_integral"] = np.sum(np.diag(matrix_norm)) * step
     return x_vals, matrix_norm, matrix_counts, metadata
 
 
@@ -199,7 +201,10 @@ def generar_mapa_calor_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=T
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.8), constrained_layout=True)
 
     # Panel 1: PIMC
-    im0 = axes[0].imshow(pimc_matrix, extent=[x_vals[0], x_vals[-1], x_vals[0], x_vals[-1]],
+    half_step = 0.5 * (x_vals[1] - x_vals[0])
+    extent = [x_vals[0] - half_step, x_vals[-1] + half_step,
+              x_vals[0] - half_step, x_vals[-1] + half_step]
+    im0 = axes[0].imshow(pimc_matrix.T, extent=extent,
                          origin="lower", cmap="viridis", vmin=vmin, vmax=vmax)
     axes[0].set_title(r"$\rho_1(x, x')$ -- PIMC Algoritmo Worm", fontsize=12, fontweight="bold")
     axes[0].set_xlabel(r"Posición $x$ [$a_{\mathrm{ho}}$]", fontsize=11)
@@ -207,7 +212,7 @@ def generar_mapa_calor_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=T
     fig.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
 
     # Panel 2: Analítico Bose
-    im1 = axes[1].imshow(bose_exact, extent=[x_vals[0], x_vals[-1], x_vals[0], x_vals[-1]],
+    im1 = axes[1].imshow(bose_exact.T, extent=extent,
                          origin="lower", cmap="viridis", vmin=vmin, vmax=vmax)
     axes[1].set_title(r"$\rho_1(x, x')$ -- Analítico Bose Canónico", fontsize=12, fontweight="bold")
     axes[1].set_xlabel(r"Posición $x$ [$a_{\mathrm{ho}}$]", fontsize=11)
@@ -216,7 +221,7 @@ def generar_mapa_calor_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=T
 
     # Panel 3: Residuos
     max_err = max(np.max(np.abs(diff_matrix)), 1e-4)
-    im2 = axes[2].imshow(diff_matrix, extent=[x_vals[0], x_vals[-1], x_vals[0], x_vals[-1]],
+    im2 = axes[2].imshow(diff_matrix.T, extent=extent,
                          origin="lower", cmap="coolwarm", vmin=-max_err, vmax=max_err)
     axes[2].set_title(r"Residuo: $\rho_1^{\mathrm{PIMC}} - \rho_1^{\mathrm{Bose}}$", fontsize=12, fontweight="bold")
     axes[2].set_xlabel(r"Posición $x$ [$a_{\mathrm{ho}}$]", fontsize=11)
@@ -252,8 +257,9 @@ def generar_cortes_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=TEMP,
     antidiag_dist = analytical_distinguishable_obdm_1d(x_vals, -x_vals, n_particles, temp)
 
     # Corte x' = 0 (coherencia con el centro de la trampa)
-    idx_center = np.argmin(np.abs(x_vals))
-    cut_center_pimc = pimc_matrix[:, idx_center]
+    cut_center_pimc = np.array([
+        np.interp(0.0, x_vals, pimc_matrix[i, :]) for i in range(len(x_vals))
+    ])
     cut_center_bose = analytical_bose_obdm_1d(x_vals, np.zeros_like(x_vals), n_particles, temp)
     cut_center_dist = analytical_distinguishable_obdm_1d(x_vals, np.zeros_like(x_vals), n_particles, temp)
 

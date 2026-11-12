@@ -7,7 +7,7 @@ muestreada mediante los extremos de cadenas abiertas en el Algoritmo Worm (PIMC)
 
 Calcula y valida:
   - Muestreo del sector G con gap == 1 (Ira y Masha).
-  - Normalización exacta de la traza diagonal a N partículas: \int \rho_1(x, x) dx = N.
+    - Comprobación de la traza del archivo, normalizada por construcción en el motor C.
   - Comparación de \rho_1(x, x') con la solución canónica exacta de Bose (Kernel de Mehler).
   - Comparación con el límite de partículas distinguibles para constatar la coherencia de Bose.
   - Generación de gráficos en alta resolución y sincronización con el directorio de Overleaf.
@@ -124,6 +124,7 @@ def main():
 
         obdm_file = os.path.join(SCRIPT_DIR, "outworm_obdm.dat")
         dist_file = os.path.join(SCRIPT_DIR, "outworm_obdm_dist.dat")
+        radii_file = os.path.join(SCRIPT_DIR, "outworm_obdm_endpoint_radii.dat")
         if not os.path.isfile(obdm_file):
             raise FileNotFoundError(f"No se generó el fichero esperado {obdm_file}")
 
@@ -131,13 +132,19 @@ def main():
         shutil.copy2(obdm_file, os.path.join(OUTPUT_DIR, "outworm_obdm.dat"))
         if os.path.isfile(dist_file):
             shutil.copy2(dist_file, os.path.join(OUTPUT_DIR, "outworm_obdm_dist.dat"))
+        if os.path.isfile(radii_file):
+            shutil.copy2(radii_file, os.path.join(OUTPUT_DIR, "outworm_obdm_endpoint_radii.dat"))
 
         print("\n[2/3] Procesando y normalizando matriz de densidad \rho_1(x, x')...")
         x_vals, pimc_norm, pimc_counts, meta = load_worm_obdm_data(obdm_file)
         n_samples = meta.get("samples", 0)
         trace_int = meta.get("trace_integral", 0.0)
         print(f"  -> Muestras en Sector G (gap == 1): {n_samples}")
-        print(f"  -> Integral de la traza diagonal sin normalizar: {trace_int:.4e}")
+        print(f"  -> Traza del histograma antes de normalizar: {meta.get('raw_trace_integral', 0.0):.4e}")
+        print(f"  -> Traza en el archivo exportado: {trace_int:.6f} (normalizada por construcción a N)")
+        tau_gap1 = meta.get("tau")
+        if tau_gap1 is not None:
+            print(f"  -> Separación temporal de gap=1: tau={tau_gap1:.6g}; la comparación tau=0 es aproximada")
 
         # Comparación analítica
         X, XP = np.meshgrid(x_vals, x_vals)
@@ -162,7 +169,7 @@ def main():
         generar_grafico_distancia_extremos(dist_file, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR)
 
         print("\n=================================================================")
-        print("  VERIFICACIÓN DE OBDM COMPLETADA CON ÉXITO")
+        print("  ANÁLISIS DE OBDM COMPLETADO; las discrepancias son comparaciones diagnósticas")
         print("=================================================================")
         print(f"  Archivos generados en: {OUTPUT_DIR}")
         print(f"  Figuras copiadas a   : {OVERLEAF_IMG_DIR}")

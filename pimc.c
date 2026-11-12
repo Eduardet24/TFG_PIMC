@@ -704,9 +704,6 @@ void InitWorm(void) {
   worm_cycle_histogram = (long long*) calloc(N + 1, sizeof(long long));
   worm_cycle_samples = 0;
 
-  if(RD.max > 0.0 && worm_obdm_max == 3.5) {
-    worm_obdm_max = RD.max;
-  }
   if(worm_obdm_grid < 10) worm_obdm_grid = 100;
 
   worm_obdm_matrix = (long long**) malloc(worm_obdm_grid * sizeof(long long*));
@@ -1336,24 +1333,27 @@ void MeasureWormOBDM(void) {
 void SaveWormOBDM(const char *filename) {
   FILE *f;
   int i, j;
-  DOUBLE step_x, x_val, xp_val, norm_trace, trace_sum;
+  DOUBLE step_x, step_r, x_val, xp_val, norm_trace, trace_sum;
 
   if(worm_obdm_matrix == NULL || worm_obdm_samples_gap1 == 0) return;
 
   step_x = (2.0 * worm_obdm_max) / (DOUBLE)worm_obdm_grid;
+  step_r = worm_obdm_max / (DOUBLE)worm_obdm_grid;
 
   trace_sum = 0.0;
   for(i = 0; i < worm_obdm_grid; i++) {
     trace_sum += (DOUBLE)worm_obdm_matrix[i][i];
   }
-  norm_trace = (trace_sum > 0.0) ? ((DOUBLE)N / (trace_sum * step_x)) : 1.0;
+  if(trace_sum <= 0.0) return;
+  norm_trace = (DOUBLE)N / (trace_sum * step_x);
 
   f = fopen(filename, "w");
   if(f == NULL) return;
 
   fprintf(f, "# WORM_OBDM_MATRIX_GAP1\n");
-  fprintf(f, "# grid: %d min: %.6f max: %.6f step: %.6f samples: %lld norm_trace: %.15e N: %d\n",
-          worm_obdm_grid, -worm_obdm_max, worm_obdm_max, step_x, worm_obdm_samples_gap1, norm_trace, N);
+    fprintf(f, "# grid: %d min: %.6f max: %.6f step: %.6f samples: %lld norm_trace: %.15e N: %d tau: %.15e\n",
+      worm_obdm_grid, -worm_obdm_max, worm_obdm_max, step_x, worm_obdm_samples_gap1,
+      norm_trace, N, 1.0 / (T * (DOUBLE)Nwalkers));
   fprintf(f, "# x x_prime count rho1_normalized\n");
 
   for(i = 0; i < worm_obdm_grid; i++) {
@@ -1380,6 +1380,31 @@ void SaveWormOBDM(const char *filename) {
       DOUBLE s_val = ((DOUBLE)i + 0.5) * step_s;
       DOUBLE p_s = (dist_sum > 0) ? ((DOUBLE)worm_obdm_dist[i] / ((DOUBLE)dist_sum * step_s)) : 0.0;
       fprintf(f, "%.6f %lld %.15e\n", s_val, worm_obdm_dist[i], p_s);
+    }
+    fclose(f);
+  }
+
+  f = fopen("outworm_obdm_endpoint_radii.dat", "w");
+  if(f != NULL) {
+    DOUBLE radial_sum = 0.0;
+    for(i = 0; i < worm_obdm_grid; i++) {
+      for(j = 0; j < worm_obdm_grid; j++) {
+        radial_sum += (DOUBLE)worm_obdm_radial[i][j];
+      }
+    }
+    fprintf(f, "# WORM_OBDM_ENDPOINT_RADII_GAP1: samples=%lld\n", worm_obdm_samples_gap1);
+    fprintf(f, "# r_masha r_ira count p_radii\n");
+    for(i = 0; i < worm_obdm_grid; i++) {
+      DOUBLE r_masha = ((DOUBLE)i + 0.5) * step_r;
+      for(j = 0; j < worm_obdm_grid; j++) {
+        DOUBLE r_ira = ((DOUBLE)j + 0.5) * step_r;
+        DOUBLE p_radii = radial_sum > 0.0
+          ? (DOUBLE)worm_obdm_radial[i][j] / (radial_sum * step_r * step_r)
+          : 0.0;
+        fprintf(f, "%.6f %.6f %lld %.15e\n",
+                r_masha, r_ira, worm_obdm_radial[i][j], p_radii);
+      }
+      fprintf(f, "\n");
     }
     fclose(f);
   }
