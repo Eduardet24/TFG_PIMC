@@ -170,6 +170,15 @@ DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
 int worm_swap_enabled = 1;  /* 1 = Swap activo (Bosones), 0 = Swap inactivo (Distinguibles) */
 int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
 int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
+DOUBLE worm_obdm_max = 3.5; /* rango espacial máximo para histograma OBDM [-max, max] */
+int worm_obdm_grid = 100;   /* resolución de la matriz OBDM */
+long long worm_obdm_samples_gap1 = 0; /* muestras acumuladas con gap == 1 */
+long long worm_obdm_samples_all = 0;  /* muestras acumuladas con cualquier gap */
+long long **worm_obdm_matrix = NULL;     /* histograma 2D \rho_1(x, x') con gap == 1 */
+long long *worm_obdm_dist = NULL;        /* histograma 1D de distancia s = |r_ira - r_masha| */
+long long **worm_obdm_radial = NULL;     /* histograma 2D radial \rho_1(r_ira, r_masha) */
+long long **worm_obdm_matrix_all = NULL; /* histograma 2D para todos los gaps */
+long long *worm_obdm_dist_all = NULL;    /* histograma 1D de distancia para todos los gaps */
 #endif
 
 struct Walker *W, *Wp;
@@ -1397,6 +1406,9 @@ int main(int argn, char **argv) {
           time_begin = clock();
           if(video) Picture();
 #ifdef WORM_ALGORITHM
+        } else {
+          /* En el sector G (cadena abierta), muestreamos la matriz de densidad \rho_1 */
+          MeasureWormOBDM();
         }
 #endif
       }
@@ -1404,6 +1416,7 @@ int main(int argn, char **argv) {
 
 #ifdef WORM_ALGORITHM
     if(MC == PIMC && block >= 0) {
+      SaveWormOBDM("outworm_obdm.dat");
       worm_block_file = fopen("outworm_energy_blocks.dat", "a");
       if(worm_block_file != NULL) {
         DOUBLE sample_divisor = worm_block_energy_samples > 0 ? (DOUBLE)worm_block_energy_samples : 1.;
@@ -1531,6 +1544,7 @@ int main(int argn, char **argv) {
   if(MC == PIMC) {
     SaveWormGapHistogram("outworm_gap.dat");
     SaveWormPermutations("outworm_perm.dat");
+    SaveWormOBDM("outworm_obdm.dat");
   }
   free(worm_cycle_block_start);
 #endif

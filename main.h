@@ -1344,8 +1344,19 @@ extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
 extern int worm_swap_enabled; /* 1: permutaciones bosónicas (Swap activo), 0: distinguibles (sin Swap) */
 extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
 extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */
+extern DOUBLE worm_obdm_max; /* rango espacial máximo para histograma OBDM [-max, max] */
+extern int worm_obdm_grid;   /* resolución de la matriz OBDM */
+extern long long worm_obdm_samples_gap1; /* muestras acumuladas con gap == 1 */
+extern long long worm_obdm_samples_all;  /* muestras acumuladas con cualquier gap */
+extern long long **worm_obdm_matrix;     /* histograma 2D \rho_1(x, x') con gap == 1 */
+extern long long *worm_obdm_dist;        /* histograma 1D de distancia s = |r_ira - r_masha| */
+extern long long **worm_obdm_radial;     /* histograma 2D radial \rho_1(r_ira, r_masha) */
+extern long long **worm_obdm_matrix_all; /* histograma 2D para todos los gaps */
+extern long long *worm_obdm_dist_all;    /* histograma 1D de distancia para todos los gaps */
 void MeasureWormPermutations(void);
 void SaveWormPermutations(const char *filename);
+void MeasureWormOBDM(void);
+void SaveWormOBDM(const char *filename);
 #endif
 
 void Measure(int, int);

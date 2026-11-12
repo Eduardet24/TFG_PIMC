@@ -216,6 +216,15 @@ try:
             shutil.copy(src, os.path.join(OUTPUT_DIR, fname))
             print(f"  -> Archivo de datos guardado: {fname}")
 
+    energy_data_dir = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Densidad", "sim_swap")
+    os.makedirs(energy_data_dir, exist_ok=True)
+    for fname in ("oute.dat", "outworm_energy_blocks.dat"):
+        src = os.path.join(OUTPUT_DIR, fname)
+        dst = os.path.join(energy_data_dir, fname)
+        if os.path.abspath(src) != os.path.abspath(dst):
+            shutil.copy2(src, dst)
+        print(f"  -> Datos de energía actualizados para gráficos: {dst}")
+
 finally:
     if os.path.exists(cfg_backup_path):
         shutil.move(cfg_backup_path, cfg_path)

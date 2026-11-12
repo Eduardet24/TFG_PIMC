@@ -32,6 +32,8 @@ void WormDiagnostic(void);
 void SaveWormGapHistogram(const char *filename);
 void MeasureWormPermutations(void);
 void SaveWormPermutations(const char *filename);
+void MeasureWormOBDM(void);
+void SaveWormOBDM(const char *filename);
 #endif
 
 #endif

@@ -264,6 +264,8 @@ int LoadParameters(void) {
 #ifdef WORM_ALGORITHM
     CHECK("worm_C=", "%" LF "", &worm_C);
     CHECK("worm_swap=", "%i", &worm_swap_enabled);
+    CHECK("worm_obdm_max=", "%" LF "", &worm_obdm_max);
+    CHECK("worm_obdm_grid=", "%i", &worm_obdm_grid);
 #endif
   }
 
