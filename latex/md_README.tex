@@ -1,0 +1,60 @@
+\chapter{Simulacion PIMC del oscilador armonico 1D}
+\hypertarget{md_README}{}\label{md_README}\index{Simulacion PIMC del oscilador armonico 1D@{Simulacion PIMC del oscilador armonico 1D}}
+\label{md_README_autotoc_md0}%
+\Hypertarget{md_README_autotoc_md0}%
+ \hypertarget{md_README_autotoc_md1}{}\doxysection{\texorpdfstring{Compilacion rapida}{Compilacion rapida}}\label{md_README_autotoc_md1}
+Desde este directorio\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{gcc\ -\/O2\ -\/fopenmp\ *.c\ -\/lm\ -\/o\ MC}
+
+\end{DoxyCode}
+
+
+Tambien se puede usar el Makefile de Intel, si {\ttfamily icc} esta disponible\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{make\ -\/f\ Makefile.txt}
+
+\end{DoxyCode}
+
+
+Para eliminar los objetos compilados\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{make\ -\/f\ Makefile.txt\ clean}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md2}{}\doxysection{\texorpdfstring{Ejecucion}{Ejecucion}}\label{md_README_autotoc_md2}
+El programa lee los parametros de {\ttfamily MC.\+cfg} y genera los archivos de salida de la simulacion\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{./MC}
+
+\end{DoxyCode}
+
+
+Entre ellos se encuentran {\ttfamily outrd.\+dat}, con la distribucion radial, y {\ttfamily oute.\+dat}, con la energia.\hypertarget{md_README_autotoc_md3}{}\doxysection{\texorpdfstring{Analisis y graficas}{Analisis y graficas}}\label{md_README_autotoc_md3}
+Con {\ttfamily numpy} y {\ttfamily matplotlib} instalados, ejecutar\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{python3\ script\_python\_graficas.py}
+
+\end{DoxyCode}
+
+
+El script guarda los resultados en\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{Resultados/1DArmonico/}
+
+\end{DoxyCode}
+
+
+Los archivos de resultados y las graficas se sobrescriben en cada ejecucion. 

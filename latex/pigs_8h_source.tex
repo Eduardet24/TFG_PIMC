@@ -1,0 +1,25 @@
+\doxysection{pigs.\+h}
+\hypertarget{pigs_8h_source}{}\label{pigs_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*pigs.h*/}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#ifndef\ \_PIGS\_H\_}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#define\ \_PIGS\_H\_}}
+\DoxyCodeLine{00004\ }
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#define\ VextUp(x,\ y,\ z,\ i)\ Vext(x,\ y,\ z)}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#define\ VextDn(x,\ y,\ z,\ i)\ Vext(x,\ y,\ z)}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{comment}{//\ one/two\ components}}
+\DoxyCodeLine{00009\ \textcolor{keywordtype}{void}\ PathIntegralMoveAll(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00010\ DOUBLE\ PathIntegralPseudopotentialSdetailed(DOUBLE\ *Skincheck,\ DOUBLE\ *Sdeltacheck,\ DOUBLE\ *Swfcheck);}
+\DoxyCodeLine{00011\ DOUBLE\ PathIntegralPseudopotentialS(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00012\ \textcolor{keywordtype}{double}\ PropagatorPseudopotenial1D\_ij(\textcolor{keywordtype}{double}\ m,\ \textcolor{keywordtype}{double}\ a,\ \textcolor{keywordtype}{double}\ dt,\ \textcolor{keywordtype}{double}\ xi0,\ \textcolor{keywordtype}{double}\ xj0,\ \textcolor{keywordtype}{double}\ xi,\ \textcolor{keywordtype}{double}\ xj);}
+\DoxyCodeLine{00013\ \textcolor{keywordtype}{double}\ PropagatorLaplacian(\textcolor{keywordtype}{double}\ m,\ \textcolor{keywordtype}{double}\ dt,\ \textcolor{keywordtype}{double}\ dr);}
+\DoxyCodeLine{00014\ \textcolor{keywordtype}{void}\ PathIntegralPseudopotentialStaging(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#ifdef\ ONE\_COMPONENT\_CODE}}
+\DoxyCodeLine{00017\ \ \ \textcolor{keyword}{extern}\ DOUBLE\ mA;}
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

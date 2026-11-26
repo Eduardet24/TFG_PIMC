@@ -58,7 +58,7 @@ DOUBLE alpha_z=0., alpha_z2, two_alpha_z, alpha_Rz= -PI;
 DOUBLE omega_x = 1, omega_y = 1, omega_z = 1; // parameters of the trap
 DOUBLE omega_x2, omega_y2, omega_z2;
 DOUBLE alpha_latt = 1, alpha_Jastrow = 1, beta_latt = 1, gamma_latt = 1;
-DOUBLE D = 1, n = 0.01, dt = 1e-3, dt_vmc = 1e-3, dt_one = 1., dt_all = 1e-3, beta = 1.;
+DOUBLE D = DIMENSION, n = 0.01, dt = 1e-3, dt_vmc = 1e-3, dt_one = 1., dt_all = 1e-3, beta = 1.;
 DOUBLE acceptance_rate = 0.;
 int N=16, Nimp=0, NCrystal, Ndens=16, Nspin = 1;
 int Nwalkers=100, NwalkersMax=100;
@@ -140,6 +140,46 @@ int measure_pure_coordinates = OFF;
 int measure_tVMC = OFF;
 int measure_Hessian_matrix = OFF;
 int check_kinetic_energy = ON;
+
+/* Variables globales del algoritmo worm (Prokof'ev-Svistunov) */
+#ifdef WORM_ALGORITHM
+int worm_open = 0;          /* 0 = sector-Z (anillos cerrados), 1 = sector-G (cadena abierta) */
+int worm_bead = -1;         /* índice del bead donde está ira (cabeza) */
+int worm_particle = -1;     /* índice de la partícula del gusano */
+int worm_bead_masha = -1;   /* índice del bead donde está masha (cola) */
+int worm_particle_masha = -1; /* índice de la partícula donde está masha */
+long long worm_count_Z = 0; /* pasos en sector Z */
+long long worm_count_G = 0; /* pasos en sector G */
+long long worm_try_open = 0;
+long long worm_acc_open = 0;
+long long worm_try_close = 0;
+long long worm_acc_close = 0;
+long long worm_try_advance = 0;
+long long worm_acc_advance = 0;
+long long worm_try_recede = 0;
+long long worm_acc_recede = 0;
+long long worm_try_iramove = 0;
+long long worm_acc_iramove = 0;
+long long worm_try_swap = 0;
+long long worm_acc_swap = 0;
+int worm_max_gap_observed = 0;
+long long *worm_gap_histogram = NULL;
+long long *worm_cycle_histogram = NULL;
+long long worm_cycle_samples = 0;
+DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
+int worm_swap_enabled = 1;  /* 1 = Swap activo (Bosones), 0 = Swap inactivo (Distinguibles) */
+int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
+int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
+DOUBLE worm_obdm_max = 3.5; /* rango espacial máximo para histograma OBDM [-max, max] */
+int worm_obdm_grid = 100;   /* resolución de la matriz OBDM */
+long long worm_obdm_samples_gap1 = 0; /* muestras acumuladas con gap == 1 */
+long long worm_obdm_samples_all = 0;  /* muestras acumuladas con cualquier gap */
+long long **worm_obdm_matrix = NULL;     /* histograma 2D \rho_1(x, x') con gap == 1 */
+long long *worm_obdm_dist = NULL;        /* histograma 1D de distancia s = |r_ira - r_masha| */
+long long **worm_obdm_radial = NULL;     /* histograma 2D radial \rho_1(r_ira, r_masha) */
+long long **worm_obdm_matrix_all = NULL; /* histograma 2D para todos los gaps */
+long long *worm_obdm_dist_all = NULL;    /* histograma 1D de distancia para todos los gaps */
+#endif
 
 struct Walker *W, *Wp;
 struct Grid G; // Jastrow terms of w.f.
@@ -252,6 +292,15 @@ int main(int argn, char **argv) {
   int block, iter;
   unsigned long int measured_blck = 0;
   clock_t time_begin;
+#ifdef WORM_ALGORITHM
+  DOUBLE worm_block_energy_sum[3] = {0., 0., 0.};
+  unsigned long worm_block_energy_samples = 0;
+  long long *worm_cycle_block_start = NULL;
+  long long worm_cycle_samples_block_start = 0;
+  long long worm_cycle_samples_block;
+  int worm_cycle_length;
+  FILE *worm_block_file;
+#endif
 
   time_start = clock();
   time(&time_era_begin);
@@ -317,6 +366,14 @@ int main(int argn, char **argv) {
 #endif
 
   LoadParameters();
+
+  if(MC == PIMC) {
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+  Message("  PIMC move: exact harmonic normal modes (all noninteracting particles)\n");
+#else
+    Message("  PIMC move: bead-by-bead Metropolis\n");
+#endif
+  }
 
   Message("\n\n  particles move in ");
   CaseX(Message("X ");)
@@ -1166,6 +1223,26 @@ int main(int argn, char **argv) {
   time_communicating = clock() - time_start;
   dt_Kurbakov=dt;
 
+#ifdef WORM_ALGORITHM
+  if(MC == PIMC) {
+    worm_cycle_block_start = (long long*) calloc(N + 1, sizeof(long long));
+    worm_block_file = fopen("outworm_energy_blocks.dat", "w");
+    if(worm_block_file != NULL) {
+      fprintf(worm_block_file, "# block samples Etot Epot Ekin\n");
+      fclose(worm_block_file);
+    }
+    worm_block_file = fopen("outworm_cycle_blocks.dat", "w");
+    if(worm_block_file != NULL) {
+      fprintf(worm_block_file, "# block samples");
+      for(worm_cycle_length = 1; worm_cycle_length <= N; worm_cycle_length++) {
+        fprintf(worm_block_file, " P%d", worm_cycle_length);
+      }
+      fprintf(worm_block_file, "\n");
+      fclose(worm_block_file);
+    }
+  }
+#endif
+
   for(block=-blck_heating; block<blck; block++) {
     time_begin = clock();
     accepted = accepted_one = accepted_all = 0; // control rate initialization
@@ -1174,6 +1251,18 @@ int main(int argn, char **argv) {
     tried = 0;
     Eblck = 0.;
     measured_blck = 0;
+#ifdef WORM_ALGORITHM
+    worm_block_energy_sum[0] = 0.;
+    worm_block_energy_sum[1] = 0.;
+    worm_block_energy_sum[2] = 0.;
+    worm_block_energy_samples = 0;
+    worm_cycle_samples_block_start = worm_cycle_samples;
+    if(worm_cycle_block_start != NULL && worm_cycle_histogram != NULL) {
+      for(worm_cycle_length = 0; worm_cycle_length <= N; worm_cycle_length++) {
+        worm_cycle_block_start[worm_cycle_length] = worm_cycle_histogram[worm_cycle_length];
+      }
+    }
+#endif
 
     if(block == 0) Message("Starting measurements...\n");
     EmptyDistributionArrays();
@@ -1190,6 +1279,21 @@ int main(int argn, char **argv) {
 #endif
       iteration_global++;
 
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+  if(MC == PIMC) {
+#ifdef WORM_ALGORITHM
+    /* Muestrear modos normales solo cuando los caminos son cerrados (sector Z) */
+    if(worm_open == 0) {
+      PIMCMoveHarmonicNormalModes();
+    }
+    PIMCWormMoves(); /* actualización del algoritmo worm */
+#else
+    PIMCMoveHarmonicNormalModes();
+#endif
+  }
+  else
+#endif
+  {
 #pragma omp parallel for
       for(w=0; w<Nwalkers+Nwalkers_pure; w++) {
         if(MC == VARIATIONAL) { // Variational Monte Carlo
@@ -1251,6 +1355,7 @@ int main(int argn, char **argv) {
           //dt_vmc /= Tannealing;
         }
       } // OMP for pragma
+      }
 //#pragma omp single
 
       if(MC == DIFFUSION) { // Branching
@@ -1283,12 +1388,69 @@ int main(int argn, char **argv) {
       //if(Niter_store && block>=0 && iter % Niter_store == 0) SaveCoordinatesOptimization();
 
       if(block >= 0 && iter % Nmeasure == 0) {
-        time_simulating += clock() - time_begin;
-        Measure(block, iter);
-        time_begin = clock();
-        if(video) Picture();
+#ifdef WORM_ALGORITHM
+        /* Las medidas canónicas (E, n(r)) se realizan estrictamente en el sector Z */
+        if(worm_open == 0) {
+#endif
+          time_simulating += clock() - time_begin;
+          Measure(block, iter);
+#ifdef WORM_ALGORITHM
+          if(MC == PIMC && measure_energy) {
+            worm_block_energy_sum[0] += E;
+            worm_block_energy_sum[1] += Epot;
+            worm_block_energy_sum[2] += Ekin;
+            worm_block_energy_samples++;
+          }
+#endif
+          MeasureWormPermutations();
+          time_begin = clock();
+          if(video) Picture();
+#ifdef WORM_ALGORITHM
+        } else {
+          /* En el sector G (cadena abierta), muestreamos la matriz de densidad \rho_1 */
+          MeasureWormOBDM();
+        }
+#endif
       }
     }
+
+#ifdef WORM_ALGORITHM
+    if(MC == PIMC && block >= 0) {
+      SaveWormOBDM("outworm_obdm.dat");
+      worm_block_file = fopen("outworm_energy_blocks.dat", "a");
+      if(worm_block_file != NULL) {
+        DOUBLE sample_divisor = worm_block_energy_samples > 0 ? (DOUBLE)worm_block_energy_samples : 1.;
+        fprintf(worm_block_file, "%d %lu %.15" LE " %.15" LE " %.15" LE "\n",
+                block, worm_block_energy_samples,
+                energy_unit * worm_block_energy_sum[0] / sample_divisor,
+                energy_unit * worm_block_energy_sum[1] / sample_divisor,
+                energy_unit * worm_block_energy_sum[2] / sample_divisor);
+        fclose(worm_block_file);
+      }
+
+      if(worm_cycle_block_start != NULL && worm_cycle_histogram != NULL) {
+        worm_cycle_samples_block = worm_cycle_samples - worm_cycle_samples_block_start;
+        worm_block_file = fopen("outworm_cycle_blocks.dat", "a");
+        if(worm_block_file != NULL) {
+          fprintf(worm_block_file, "%d %lld", block, worm_cycle_samples_block);
+          for(worm_cycle_length = 1; worm_cycle_length <= N; worm_cycle_length++) {
+            DOUBLE cycle_fraction = worm_cycle_samples_block > 0
+              ? (DOUBLE)(worm_cycle_histogram[worm_cycle_length] - worm_cycle_block_start[worm_cycle_length])
+                / ((DOUBLE)worm_cycle_samples_block * (DOUBLE)N)
+              : 0.;
+            fprintf(worm_block_file, " %.15g", cycle_fraction);
+          }
+          fprintf(worm_block_file, "\n");
+          fclose(worm_block_file);
+        }
+      }
+
+      if(measure_RadDistr && RD.times_measured > 0) {
+        SaveRadialDistribution();
+      }
+      EmptyDistributionArrays();
+    }
+#endif
 
     time_simulating += clock() - time_begin;
 
@@ -1296,7 +1458,7 @@ int main(int argn, char **argv) {
     time(&time_era_end);
     MessageTimeElapsed((int)(time_era_end-time_era_begin));
 
-    if(acceptance_rate != 0. && (MC != DIFFUSION)) {
+    if(acceptance_rate != 0. && (MC != DIFFUSION) && (accepted+rejected > 0)) {
       Message("dt= %.2g ", dt_vmc);
       if(accepted) // adjust the timestep
         dt_vmc *= (DOUBLE) accepted/((DOUBLE) (accepted+rejected)*acceptance_rate);
@@ -1318,6 +1480,9 @@ int main(int argn, char **argv) {
 #endif
 
     Message("\n");
+#ifdef WORM_ALGORITHM
+    if(MC == PIMC) WormDiagnostic();
+#endif
   }
 
 #ifdef MPI
@@ -1375,6 +1540,15 @@ int main(int argn, char **argv) {
   ParallelStop();
 #endif
 
+#ifdef WORM_ALGORITHM
+  if(MC == PIMC) {
+    SaveWormGapHistogram("outworm_gap.dat");
+    SaveWormPermutations("outworm_perm.dat");
+    SaveWormOBDM("outworm_obdm.dat");
+  }
+  free(worm_cycle_block_start);
+#endif
+
   Message("done\n");
   return 0;
 }
@@ -1409,7 +1583,7 @@ void Measure(int block, int iter) {
 
 #pragma omp parallel for
   for(w=0; w<Nwalkers; w++) {
-    if(measure_RadDistr) MeasureRadialDistributionWalker(&W[w]);
+    if(MC != PIMC && measure_RadDistr) MeasureRadialDistributionWalker(&W[w]);
     if(measure_Sk) MeasureStaticStructureFactor(w);
     if(measure_FormFactor) MeasureFormFactor(w);
     if(measure_OBDM) MeasureOBDM(w);
@@ -1497,17 +1671,23 @@ void Measure(int block, int iter) {
     Eo = E = Energy(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
 
     if(measure_energy && iter % Nmeasure == 0) {
-      for(w=0; w<Nwalkers; w++) {
-        WalkerEnergy(&W[w], &Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
-        Epot /= (DOUBLE) N;
-        SaveEnergyCls(Epot);
-      }
+      SaveEnergyPIMC(E, Epot, Ekin, Ekin_prim);
+      Evar += E;
+      Evar2 += E*E;
+      EFFvar += EFF;
+      EFFvar2 += EFF*EFF;
+      Epotvar += Epot;
+      Epotvar2 += Epot*Epot;
+      Ekinvar += Ekin;
+      Ekinvar2 += Ekin*Ekin;
     }
   }
 
   for(w=0; w<Nwalkers; w++) W[w].times_measured++; // should be executed last
 
+#ifndef WORM_ALGORITHM
   if(iter % Niter == 0) SaveBlockData(block);
+#endif
 
   time_measuring += clock() - time_begin;
 }

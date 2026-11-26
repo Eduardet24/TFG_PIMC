@@ -210,7 +210,7 @@ void CopyWalker(struct Walker *out, const struct Walker *in) {
 #ifdef INTERACTION_WITH_DAMPING
   out->Edamping = in->Edamping;
 #endif
-  out->times_measured = out->times_measured
+  out->times_measured = in->times_measured;
 
   // 1)
   CaseX(ArrayCopy1D(out->x, in->x, i, N));

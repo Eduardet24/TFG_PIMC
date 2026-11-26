@@ -1,0 +1,68 @@
+#!/usr/bin/gnuplot
+set colors classic
+set mxtics
+set mytics
+set style line 12 lc rgb '#ddccdd' lt 1 lw 1.5
+set style line 13 lc rgb '#ddccdd' lt 1 lw 0.5
+set grid xtics mxtics ytics mytics back ls 12, ls 13
+set terminal windows color solid enhanced fontscale 1. linewidth 2 font 'CMU Classical Serif Bold, 16'
+set size ratio 2./3.
+set samples 1000
+set encoding utf8
+set fit errorvariables
+set colors classic
+# Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω
+# α β γ δ ε ζ η θ ι κϰ λ μ ν ξ ο π ρ σς τ υ φϕ χ ψ ω
+# ħ² Å ∞ ↑ ↓ → ← ± ² ³ ≠ ° ∫ ≈
+# perp -> ⟂ parallel ∥ bullet • langle〈 rangle 〉  much less ≪  much larger ≫ 
+
+#set format x "%2.0t·10^{%L}"
+#set datafile missing "GNUPLOTSKIP"
+#set datafile missing "NaN"
+#set datafile missing "**"
+#set title "`hostname | sed 's/\..*/:/'``pwd`"
+#dashtype "pattern" # dot (.) hyphen (-) underscore(_) and space.
+
+set xlabel rotate by 0
+set ylabel rotate by 90
+set title  rotate by 0
+
+set xlabel font 'Times New Roman Bold, 14' rotate by 0 "r"
+set ylabel font 'Times New Roman Bold, 14' rotate by 90 "n(r)"
+set title font 'Times New Roman Bold, 14' rotate by 0
+
+
+# 1D quantum harmonic oscillator at temperature T
+# Units: hbar = k_B = 1
+
+m     = 1.
+omega = 1.
+T     = 10.
+
+alpha = m*omega*tanh(omega/(2.*T))
+
+x2 = 1./(2.*m*omega*tanh(omega/(2.*T)))
+
+print sprintf("<x^2> = %.12g", x2)
+
+nExact(x) = sqrt(alpha/pi)*exp(-alpha*x**2)
+
+set title "radial distribution function"
+set xlabel "x"
+set ylabel "n(x)"
+set grid
+set xrange [0:3.0/sqrt(alpha)]
+
+
+!AnalOBDM outrdz.dat rdz.dat
+pause -1
+
+plot [x=:][0:] "outrdz.dat" u 1:2 w p t "PIMC", nExact(x) with lines lw 2 title "exact"
+pause -1
+
+plot [x=:][0:] "rdz.dat" u 1:2:3 w e t "PIMC", nExact(x) with lines lw 2 title "exact"
+pause -1
+
+plot [r=:][0:] "outrdz.dat"
+pause -1
+

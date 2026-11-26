@@ -7,6 +7,9 @@
 // one component
 void PIMCMoveOneByOne(int w);
 void PIMCPseudopotentialMoveOneByOne(int w);
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+void PIMCMoveHarmonicNormalModes(void);
+#endif
 
 struct Worm {
   DOUBLE x_ira;
@@ -18,5 +21,19 @@ struct Worm {
   int w;
   int i;
 };
+
+extern struct Worm worm;
+
+#ifdef WORM_ALGORITHM
+void InitWorm(void);
+void FreeWorm(void);
+void PIMCWormMoves(void);
+void WormDiagnostic(void);
+void SaveWormGapHistogram(const char *filename);
+void MeasureWormPermutations(void);
+void SaveWormPermutations(const char *filename);
+void MeasureWormOBDM(void);
+void SaveWormOBDM(const char *filename);
+#endif
 
 #endif

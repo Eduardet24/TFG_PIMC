@@ -1,0 +1,121 @@
+\doxysection{libigor.\+h}
+\hypertarget{libigor_8h_source}{}\label{libigor_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{//\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //\ //}}
+\DoxyCodeLine{00002\ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ structures}}
+\DoxyCodeLine{00003\ \textcolor{comment}{//}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structrandom}{random}}\{\textcolor{comment}{//\ structure\ for\ random\ number\ generator}}
+\DoxyCodeLine{00005\ \ \ DOUBLE\ c0,c1,c2,c3,c4;\textcolor{comment}{//\ constants}}
+\DoxyCodeLine{00006\ \ \ DOUBLE\ arr[16];\textcolor{comment}{//\ array\ of\ 16\ rectangularly\ distributed\ random\ numbers\ (0<=arr[j]<1;\ 53\ bits)}}
+\DoxyCodeLine{00007\ \ \ DOUBLE\ xi,Xi,aa;\textcolor{comment}{//\ rectangularly\ distributed\ random\ numbers\ (0<=xi,Xi,aa<1;\ 53\ bits)}}
+\DoxyCodeLine{00008\ \ \ \textcolor{keywordtype}{int}\ index;\textcolor{comment}{//\ index}}
+\DoxyCodeLine{00009\ \};}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structRunge}{Runge}}\{\textcolor{comment}{//\ structure\ for\ Runge\ integration}}
+\DoxyCodeLine{00012\ \textcolor{comment}{//\ d/dx\ y1(X)=f1(X,y1(X),...\ yn(X)),}}
+\DoxyCodeLine{00013\ \textcolor{comment}{//\ ...}}
+\DoxyCodeLine{00014\ \textcolor{comment}{//\ d/dx\ yn(X)=fn(X,y1(X),...\ yn(X)),}}
+\DoxyCodeLine{00015\ \textcolor{comment}{//\ x=X[\_l],\ y1(a)=y01,...yn(a)=y0n}}
+\DoxyCodeLine{00016\ \ \ DOUBLE\ a;\textcolor{comment}{//\ initial\ point}}
+\DoxyCodeLine{00017\ \ \ DOUBLE\ b;\textcolor{comment}{//\ final\ point}}
+\DoxyCodeLine{00018\ \ \ \textcolor{keywordtype}{int}\ \_l;\textcolor{comment}{//\ number\ of\ the\ variable\ (x=X[\_l])}}
+\DoxyCodeLine{00019\ \ \ \textcolor{keywordtype}{int}\ nn;\textcolor{comment}{//\ number\ of\ steps\ (nn=(b-\/a)/dx)}}
+\DoxyCodeLine{00020\ \ \ \textcolor{keywordtype}{int}\ n;\textcolor{comment}{//\ number\ of\ functions}}
+\DoxyCodeLine{00021\ \ \ \textcolor{keywordtype}{int}\ s;\textcolor{comment}{//\ save\ values\ of\ functions\ y1(xj),...ys(xj)\ (1<=j<=nn,\ xj=a+dx*j)}}
+\DoxyCodeLine{00022\ \ \ DOUBLE\ *arr;\textcolor{comment}{//\ array\ for\ saving\ y1(xj),...ys(xj)\ (memory\ s*(nn+1)\ MUST\ BE\ allocated)}}
+\DoxyCodeLine{00023\ \ \ DOUBLE\ *yl;\textcolor{comment}{//\ reserve\ array}}
+\DoxyCodeLine{00024\ \ \ DOUBLE\ *fk;\textcolor{comment}{//\ array\ of\ functions}}
+\DoxyCodeLine{00025\ \ \ DOUBLE\ *mik0,*mik1,*mik2,*mik3;\textcolor{comment}{//\ coefficients\ m0,m1,m2,m3}}
+\DoxyCodeLine{00026\ \ \ DOUBLE\ *yk0;\textcolor{comment}{//\ initial\ values}}
+\DoxyCodeLine{00027\ \ \ DOUBLE\ *ykxj;\textcolor{comment}{//\ final\ values}}
+\DoxyCodeLine{00028\ \};}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structexint}{exint}}\{\textcolor{comment}{//\ structure\ for\ extrapolation\ and\ integration}}
+\DoxyCodeLine{00031\ \ \ DOUBLE\ *Dnl;\textcolor{comment}{//\ coefficients\ D\_n\string^l\ (2M*M)}}
+\DoxyCodeLine{00032\ \ \ DOUBLE\ *Aknm;\textcolor{comment}{//\ coefficients\ A\_kn\string^m\ ((M+1)*2M*M)}}
+\DoxyCodeLine{00033\ \ \ DOUBLE\ *Wkm;\textcolor{comment}{//\ coefficients\ W\_k\string^m\ (2M*M)}}
+\DoxyCodeLine{00034\ \ \ DOUBLE\ *Ilm;\textcolor{comment}{//\ coefficients\ I\_l\string^m\ (2M*M)}}
+\DoxyCodeLine{00035\ \ \ DOUBLE\ *Blm;\textcolor{comment}{//\ coefficients\ B\_l\string^m\ (M*M)}}
+\DoxyCodeLine{00036\ \ \ DOUBLE\ *Dkm;\textcolor{comment}{//\ coefficients\ D\_k\string^m\ (M*M)}}
+\DoxyCodeLine{00037\ \ \ DOUBLE\ *cl\_du;\textcolor{comment}{//\ coefficients\ cl\ for\ dual\ grid\ \ (M)}}
+\DoxyCodeLine{00038\ \ \ DOUBLE\ *v1n;\textcolor{comment}{//\ values\ of\ 1./n\ (64)}}
+\DoxyCodeLine{00039\ \ \ DOUBLE\ *yxj;\textcolor{comment}{//\ auxiliary\ array\ (64)}}
+\DoxyCodeLine{00040\ \ \ \textcolor{keywordtype}{int}\ M;\textcolor{comment}{//\ maximal\ order\ of\ schemes}}
+\DoxyCodeLine{00041\ \};}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structlimit}{limit}}\{\textcolor{comment}{//\ structure\ for\ taking\ limiting\ value\ numerically}}
+\DoxyCodeLine{00044\ \ \ DOUBLE\ *fxj;\textcolor{comment}{//\ array\ of\ function\ values\ (16)}}
+\DoxyCodeLine{00045\ \ \ DOUBLE\ *erj;\textcolor{comment}{//\ array\ of\ their\ errors\ (16)}}
+\DoxyCodeLine{00046\ \ \ DOUBLE\ *raj;\textcolor{comment}{//\ array\ of\ random\ numbers\ (16)}}
+\DoxyCodeLine{00047\ \ \ DOUBLE\ *a;\textcolor{comment}{//\ symmetrized\ array\ (32)}}
+\DoxyCodeLine{00048\ \};}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structspline}{spline}}\{\textcolor{comment}{//\ structure\ for\ a\ spline\ y[j]=f(x0+j*dx,x1,x2,x3,...),\ j=0,1,2,3,...jm}}
+\DoxyCodeLine{00051\ \ \ \textcolor{keywordtype}{int}\ m,j0;\textcolor{comment}{//\ 0<=m<=7\ is\ order\ of\ scheme,\ j0=2*m+1}}
+\DoxyCodeLine{00052\ \ \ \textcolor{keywordtype}{int}\ step;\textcolor{comment}{//\ step*dx\ is\ step\ for\ differentiation\ (1<=step<=stma),}}
+\DoxyCodeLine{00053\ \ \ \textcolor{keywordtype}{int}\ stma;\textcolor{comment}{//\ stma\ is\ maximal\ value\ of\ step,}}
+\DoxyCodeLine{00054\ \ \ \textcolor{keywordtype}{int}\ j0st;\textcolor{comment}{//\ j0st=(2*m+1)*stma\ is\ number\ of\ points\ to\ the\ left\ and\ to\ the\ right\ of\ the\ interpolated\ region}}
+\DoxyCodeLine{00055\ \ \ \textcolor{keywordtype}{int}\ jmax;\textcolor{comment}{//\ jmax>=1\ (dx*jmax\ is\ lenght\ of\ the\ interpolated\ region)}}
+\DoxyCodeLine{00056\ \ \ \textcolor{keywordtype}{int}\ jm;\textcolor{comment}{//\ jm+1=jmax+2*j0st+1\ is\ total\ number\ of\ points\ in\ the\ spline}}
+\DoxyCodeLine{00057\ \ \ \textcolor{keywordtype}{int}\ Jm;\textcolor{comment}{//\ maximal\ number\ of\ points\ in\ the\ spline:\ jm+1<=Jm}}
+\DoxyCodeLine{00058\ \ \ DOUBLE\ a,b;\textcolor{comment}{//\ diapazon\ of\ interpolated\ region\ (f(a)=y[j0st],\ f(b)=y[j0st+jmax])}}
+\DoxyCodeLine{00059\ \ \ DOUBLE\ dx,\_dx;\textcolor{comment}{//\ dx=(b-\/a)/jmax>0\ is\ step\ of\ the\ spline,\ \_dx=1./dx}}
+\DoxyCodeLine{00060\ \ \ DOUBLE\ x0;\textcolor{comment}{//\ x0=a-\/j0st*dx\ is\ first\ point\ of\ the\ spline}}
+\DoxyCodeLine{00061\ \ \ DOUBLE\ *y;\textcolor{comment}{//\ array\ for\ the\ spline\ (Jm)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ memory\ for\ these}}
+\DoxyCodeLine{00062\ \ \ DOUBLE\ *yd;\textcolor{comment}{//\ array\ for\ the\ dual\ spline\ (Jm)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ arrays\ (if\ they}}
+\DoxyCodeLine{00063\ \ \ DOUBLE\ *er;\textcolor{comment}{//\ array\ for\ errors\ in\ spline\ points\ (Jm)\ \ \ \ \ \ \ \ \ \ are\ used)\ must\ be}}
+\DoxyCodeLine{00064\ \ \ DOUBLE\ *y1;\textcolor{comment}{//\ array\ for\ k-\/th\ derivative\ of\ the\ spline\ (Jm)\ \ \ \ allocated\ apart}}
+\DoxyCodeLine{00065\ \};}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ DOUBLE\ \_Cnm(\textcolor{keywordtype}{int}\ n,\textcolor{keywordtype}{int}\ m);\ \textcolor{comment}{//\ binominal\ coefficients\ n!/m!/(n-\/m)!}}
+\DoxyCodeLine{00068\ DOUBLE\ \_po(DOUBLE\ n,\textcolor{keywordtype}{int}\ m);\ }
+\DoxyCodeLine{00069\ DOUBLE\ \_fa(\textcolor{keywordtype}{int}\ n);\ \textcolor{comment}{//\ n!\ (n>=0)}}
+\DoxyCodeLine{00070\ DOUBLE\ \_Dnlfunc(\textcolor{keywordtype}{int}\ n,\textcolor{keywordtype}{int}\ j\_,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculating\ D\_n\string^l}}
+\DoxyCodeLine{00071\ DOUBLE\ \_Aknmfunc(\textcolor{keywordtype}{int}\ k,\textcolor{keywordtype}{int}\ n,\textcolor{keywordtype}{int}\ m,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculating\ A\_kn\string^m}}
+\DoxyCodeLine{00072\ DOUBLE\ \_Wkmfunc(\textcolor{keywordtype}{int}\ k,\textcolor{keywordtype}{int}\ m,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculation\ of\ W\_k\string^m}}
+\DoxyCodeLine{00073\ DOUBLE\ \_Ilmfunc(\textcolor{keywordtype}{int}\ l,\textcolor{keywordtype}{int}\ m,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculation\ of\ I\_l\string^m}}
+\DoxyCodeLine{00074\ DOUBLE\ \_Blmfunc(\textcolor{keywordtype}{int}\ l,\textcolor{keywordtype}{int}\ m,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculation\ of\ B\_l\string^m}}
+\DoxyCodeLine{00075\ \textcolor{keywordtype}{void}\ \_cldu(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculation\ of\ c\_l\ for\ dual\ grid}}
+\DoxyCodeLine{00076\ DOUBLE\ \_Dkmfunc(\textcolor{keywordtype}{int}\ k,\textcolor{keywordtype}{int}\ m,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculation\ of\ \(\backslash\)tilde\ D\_k\string^m}}
+\DoxyCodeLine{00077\ \textcolor{keywordtype}{void}\ \_extrmatr(\textcolor{keywordtype}{int}\ M,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ *e);\ \textcolor{comment}{//\ calculation\ of\ matrices\ for\ D\_n\string^l\ and\ A\_kn\string^m\ and\ array\ of\ values\ 1./n}}
+\DoxyCodeLine{00078\ DOUBLE\ \_fxjnmx(DOUBLE\ dx,\textcolor{keywordtype}{int}\ n,\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ j0,\textcolor{keywordtype}{int}\ step,DOUBLE\ *fxj,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ quick\ direct\ calculation\ of\ n-\/th\ derivative\ of\ f(x)\ in\ (m-\/n/2)-\/th\ order}}
+\DoxyCodeLine{00079\ DOUBLE\ \_fxjkx(DOUBLE\ xminusx0,DOUBLE\ dx,\textcolor{keywordtype}{int}\ k,\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ nmax,\textcolor{keywordtype}{int}\ j0,\textcolor{keywordtype}{int}\ step,DOUBLE\ *fxj,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//quick\ Tailor\ series\ for\ k-\/th\ derivative\ of\ f(x)\ in\ m-\/th\ order\ at\ x\ near\ to\ x0}}
+\DoxyCodeLine{00080\ DOUBLE\ \_spline5(DOUBLE\ x,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s);\ \textcolor{comment}{//\ ultraquick\ calculation\ of\ 5-\/th\ order\ spline\ for\ function\ f(x)\ (21\ multiplications)}}
+\DoxyCodeLine{00081\ DOUBLE\ \_deriv5(DOUBLE\ x,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s);\ \textcolor{comment}{//\ spline\ derivative}}
+\DoxyCodeLine{00082\ DOUBLE\ \_spline7(DOUBLE\ x,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s);\ \textcolor{comment}{//\ ultraquick\ calculation\ of\ 7-\/th\ order\ spline\ for\ function\ f(x)\ (31\ multiplications)}}
+\DoxyCodeLine{00083\ DOUBLE\ \_deriv7(DOUBLE\ x,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s);\ \textcolor{comment}{//}}
+\DoxyCodeLine{00084\ DOUBLE\ \_spline9(DOUBLE\ x,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s);\ \textcolor{comment}{//\ ultraquick\ calculation\ of\ 9-\/th\ order\ spline\ for\ function\ f(x)\ (37\ multiplications)}}
+\DoxyCodeLine{00085\ DOUBLE\ \_deriv9(DOUBLE\ x,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s);}
+\DoxyCodeLine{00086\ \textcolor{keywordtype}{void}\ \_spline\_anal(DOUBLE\ re,DOUBLE\ im,DOUBLE\ *Re,DOUBLE\ *Im,\textcolor{keywordtype}{int}\ k,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ analytic\ continuation:\ Tailor\ series\ for\ k-\/th\ derivative\ of\ f(z)\ in\ m-\/th\ order}}
+\DoxyCodeLine{00087\ DOUBLE\ \_calcstep(DOUBLE\ a,DOUBLE\ b,\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ Jmax,\textcolor{keywordtype}{int}\ *\_jmax,\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,\ DOUBLE\ *y,DOUBLE\ *yd,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e,DOUBLE\ (f)(DOUBLE\ *X));\ \textcolor{comment}{//\ calculation\ of\ step\ (b-\/a)/\_jmax\ of\ function\ f(x)=f(X[0],X[1],X[2],X[3],...),}}
+\DoxyCodeLine{00088\ \textcolor{keywordtype}{void}\ \_splineprep(DOUBLE\ a,DOUBLE\ b,\textcolor{keywordtype}{int}\ jmax,\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ stma,\textcolor{keywordtype}{int}\ Jm,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ *s);\ \textcolor{comment}{//\ preparing\ of\ a\ structure\ for\ a\ spline}}
+\DoxyCodeLine{00089\ \textcolor{keywordtype}{void}\ \_splinecalc(\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,DOUBLE\ (f)(DOUBLE\ *X));\ \textcolor{comment}{//\ calculating\ a\ spline\ y[j]=f(X[0],X[1],X[2],X[3],...)\ with\ X[\_l]=x0+j*dx}}
+\DoxyCodeLine{00090\ \textcolor{keywordtype}{void}\ \_dual(\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ jm,DOUBLE\ *y,DOUBLE\ *yd,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ dual\ transformation\ in\ m-\/th\ order:\ yd[j]\ is\ between\ y[j]\ and\ y[j+1]}}
+\DoxyCodeLine{00091\ \textcolor{keywordtype}{void}\ \_dualspline(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculation\ of\ dual\ spline\ yd[]\ for\ a\ spline\ y[]}}
+\DoxyCodeLine{00092\ \textcolor{keywordtype}{void}\ \_convertdual(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ *S);\ \textcolor{comment}{//\ converting\ a\ dual\ spline\ in\ s\ into\ a\ new\ spline\ S}}
+\DoxyCodeLine{00093\ \textcolor{keywordtype}{void}\ \_doublingspline(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ *s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ doubling\ the\ spline\ in\ m-\/th\ order:}}
+\DoxyCodeLine{00094\ \textcolor{keywordtype}{void}\ \_splinederivative(\textcolor{keywordtype}{int}\ k,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ caclulating\ k-\/th\ derivative\ of\ spline\ in\ m-\/th\ order}}
+\DoxyCodeLine{00095\ \textcolor{keywordtype}{void}\ \_convertderivative(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ *S);\ \textcolor{comment}{//\ converting\ k-\/th\ derivative\ of\ spline\ s\ into\ a\ new\ spline\ S}}
+\DoxyCodeLine{00096\ DOUBLE\ \_splineerror(\textcolor{keywordtype}{int}\ Jer,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structspline}{spline}}\ s,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ calculating\ errors\ in\ spline\ (in\ m-\/th\ order\ with\ averaging\ over\ 2*Jer+1\ values)}}
+\DoxyCodeLine{00097\ \textcolor{keywordtype}{void}\ \_predict(\textcolor{keywordtype}{int}\ J,\textcolor{keywordtype}{int}\ m,DOUBLE\ *fxj,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ predicting\ J\ (-\/J)\ values\ of\ function\ f(x)\ followed\ (preceded)\ by\ its\ known\ 2*m\ values}}
+\DoxyCodeLine{00098\ \textcolor{keywordtype}{void}\ \_coeffm(DOUBLE\ *X,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structRunge}{Runge}}\ *r,\textcolor{keywordtype}{void}\ (funcs)(\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,DOUBLE\ *yl,DOUBLE\ *fk));\ \textcolor{comment}{//\ calculation\ of\ coefficients\ m0,m1,m2,m3\ in\ Runge\ integration}}
+\DoxyCodeLine{00099\ \textcolor{keywordtype}{void}\ \_runge(DOUBLE\ *X,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structRunge}{Runge}}\ *r,\ \textcolor{keywordtype}{void}\ (funcs)(\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,DOUBLE\ *yl,DOUBLE\ *fk));\ \textcolor{comment}{//\ Runge\ integration\ of\ n\ equations\ from\ x=a\ to\ x=b\ with\ step\ dx=(b-\/a)/nn}}
+\DoxyCodeLine{00100\ \textcolor{keywordtype}{void}\ \_rungematr(\textcolor{keywordtype}{int}\ n,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structRunge}{Runge}}\ *r);\ \textcolor{comment}{//\ memory\ for\ Runge\ matrices}}
+\DoxyCodeLine{00101\ \textcolor{keywordtype}{void}\ \_randcalc(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structrandom}{random}}\ *s);\ \textcolor{comment}{//\ generation\ of\ rectangularly\ distributed\ random\ numbers\ 0<=arr[0],...arr[15]<1\ of\ DOUBLE\ type\ (53\ bits)}}
+\DoxyCodeLine{00102\ \textcolor{keywordtype}{void}\ \_randinit(\textcolor{keywordtype}{int}\ init,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structrandom}{random}}\ *s);\ \textcolor{comment}{//\ initialization\ of\ generator\ (-\/2\string^31<=init<2\string^31)}}
+\DoxyCodeLine{00103\ DOUBLE\ \_randrect(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structrandom}{random}}\ *s);\ \textcolor{comment}{//\ generates\ rectangular\ distribution\ (53\ bits,\ 50\ tacts)}}
+\DoxyCodeLine{00104\ DOUBLE\ \_randrect\_lowquality(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structrandom}{random}}\ *s);\ \textcolor{comment}{//\ quick\ rectangular\ distribution\ (53\ bits,\ 25\ tacts)}}
+\DoxyCodeLine{00105\ DOUBLE\ \_randnorm(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structrandom}{random}}\ *s);\ \textcolor{comment}{//\ normal\ distribution\ (exact\ formula,\ 170\ tacts)}}
+\DoxyCodeLine{00106\ DOUBLE\ \_zero(DOUBLE\ x1,DOUBLE\ x2,\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,DOUBLE\ (f)(DOUBLE\ *X));\ \textcolor{comment}{//\ searching\ a\ zero\ of\ f(X)\ (or\ 1/f(X)),\ where\ X=X[0],X[1],X[2],X[3]...\ and}}
+\DoxyCodeLine{00107\ \textcolor{keywordtype}{void}\ \_accumulate(\textcolor{keywordtype}{int}\ n,DOUBLE\ a,DOUBLE\ *av,DOUBLE\ *er);\ \textcolor{comment}{//\ accumulating\ average\ value\ and\ error\ at\ n-\/th\ iteration}}
+\DoxyCodeLine{00108\ DOUBLE\ \_integ\_arr(DOUBLE\ a,DOUBLE\ b,\textcolor{keywordtype}{int}\ jmax,\textcolor{keywordtype}{int}\ m,DOUBLE\ *fxj,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ quick\ integration\ of\ f(x)\ on\ dx\ over\ [a;b]\ in\ m-\/th\ order;}}
+\DoxyCodeLine{00109\ DOUBLE\ \_integ\_quick(DOUBLE\ a,DOUBLE\ b,\textcolor{keywordtype}{int}\ jmax,\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e,DOUBLE\ (f)(DOUBLE\ *X));\ \textcolor{comment}{//\ quick\ integration\ of\ f(X[0],X[1],X[2],X[3],...)\ on\ dX[\_l]\ over\ [a;b]\ in\ m-\/th\ order}}
+\DoxyCodeLine{00110\ DOUBLE\ \_sumaj(\textcolor{keywordtype}{int}\ jm,\textcolor{keywordtype}{int}\ m,\textcolor{keywordtype}{int}\ \_l,DOUBLE\ *X,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e,DOUBLE\ (aj)(DOUBLE\ *X));\ \textcolor{comment}{//\ summation\ of\ aj(X[0],X[1],X[2],X[3],...)\ with\ X[\_l]=j\ from\ j=1\ to\ j=+infty:}}
+\DoxyCodeLine{00111\ DOUBLE\ \_limit\_dir(\textcolor{keywordtype}{int}\ j0,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structlimit}{limit}}\ l,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ direct\ taking\ of\ the\ limit}}
+\DoxyCodeLine{00112\ DOUBLE\ \_limit\_skip(\textcolor{keywordtype}{int}\ j0,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structlimit}{limit}}\ l,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e);\ \textcolor{comment}{//\ advanced\ taking\ the\ limit}}
+\DoxyCodeLine{00113\ DOUBLE\ \_limit\_err(\textcolor{keywordtype}{int}\ j0,\textcolor{keywordtype}{int}\ N,DOUBLE\ *err,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structlimit}{limit}}\ l,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e,\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structrandom}{random}}\ *r,DOUBLE\ (lim)(\textcolor{keywordtype}{int}\ j0,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structlimit}{limit}}\ l,\textcolor{keyword}{struct}\ \mbox{\hyperlink{structexint}{exint}}\ e));\ \textcolor{comment}{//\ calculating\ average\ value\ and\ error\ in\ taking\ limit,\ j0=3,4,5,...16}}
+\DoxyCodeLine{00114\ \textcolor{keywordtype}{void}\ \_limit\_mem(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structlimit}{limit}}\ *l);\ \textcolor{comment}{//\ memory\ allocation\ for\ arrays\ used\ for\ taking\ limit}}
+\DoxyCodeLine{00115\ }
+\DoxyCodeLine{00116\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structexint}{exint}}\ M8;}
+
+\end{DoxyCode}

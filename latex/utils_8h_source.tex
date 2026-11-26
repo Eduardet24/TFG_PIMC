@@ -1,0 +1,28 @@
+\doxysection{utils.\+h}
+\hypertarget{utils_8h_source}{}\label{utils_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*utils.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_ERROR\_H}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_ERROR\_H}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}\ \textcolor{comment}{//define\ DOUBLE}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{keywordtype}{void}\ Error(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\ format,\ ...);}
+\DoxyCodeLine{00009\ \textcolor{keywordtype}{void}\ Warning(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\ format,\ ...);}
+\DoxyCodeLine{00010\ \textcolor{keywordtype}{void}\ Message(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\ format,\ ...);}
+\DoxyCodeLine{00011\ \textcolor{keywordtype}{void}\ Exit(\textcolor{keywordtype}{int}\ status,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\ format,\ ...);}
+\DoxyCodeLine{00012\ \textcolor{keywordtype}{void}\ CheckMantissa(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00013\ \textcolor{keywordtype}{int}\ CheckMemcpy(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00014\ \textcolor{keywordtype}{int}\ CheckContigiousArray(\textcolor{keywordtype}{int}\ **a,\ \textcolor{keywordtype}{int}\ dim1,\ \textcolor{keywordtype}{int}\ dim2);}
+\DoxyCodeLine{00015\ \textcolor{keywordtype}{int}\ CheckEnergyAndDerivatives(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00016\ \textcolor{keywordtype}{void}\ SaveMatrix(\textcolor{keywordtype}{char}\ *fileout,\ DOUBLE\ **matrix,\ \textcolor{keywordtype}{int}\ size1,\ \textcolor{keywordtype}{int}\ size2);}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{void}\ SaveGrid(\textcolor{keywordtype}{char}\ *fileout,\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G);}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{void}\ MessageTimeElapsed(\textcolor{keywordtype}{int}\ sec);}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#define\ ON\ 1}}
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#define\ OFF\ 0}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

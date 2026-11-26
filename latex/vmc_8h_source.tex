@@ -1,0 +1,449 @@
+\doxysection{vmc.\+h}
+\hypertarget{vmc_8h_source}{}\label{vmc_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*vmc.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_VMC\_H}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_VMC\_H}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}utils.h"{}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <math.h>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ DOUBLE\ Psi(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ \mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ DOUBLE\ U(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ \mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00013\ DOUBLE\ U\_sum\_of\_two\_wavefunctions(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00014\ DOUBLE\ Uvector(DOUBLE\ **R,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00015\ DOUBLE\ OneBodyUWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ \mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ DOUBLE\ OneBodyU(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{void}\ OneBodyFp(DOUBLE\ *Fx,\ DOUBLE\ *Fy,\ DOUBLE\ *Fz,\ DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00019\ DOUBLE\ OneBodyE(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ DOUBLE\ WalkerEnergy2(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{keywordtype}{void}\ VMCMoveOneByOne(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00024\ \textcolor{keywordtype}{void}\ VMCMoveAll(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00025\ \textcolor{keywordtype}{void}\ VMCMoveDrift(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{void}\ VMCMoveDriftOneByOne(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{void}\ VMCMoveSumOfTwoWavefunctions(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{keywordtype}{void}\ ClassicalMoveOneByOne(\textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{int}\ CheckInteractionConditionWF(\textcolor{keyword}{const}\ DOUBLE\ x,\ \textcolor{keyword}{const}\ DOUBLE\ y,\ \textcolor{keyword}{const}\ DOUBLE\ z,\ \textcolor{keyword}{const}\ DOUBLE\ r2);}
+\DoxyCodeLine{00032\ \textcolor{keywordtype}{int}\ CheckInteractionConditionPotential(\textcolor{keyword}{const}\ DOUBLE\ x,\ \textcolor{keyword}{const}\ DOUBLE\ y,\ \textcolor{keyword}{const}\ DOUBLE\ z,\ \textcolor{keyword}{const}\ DOUBLE\ r2);}
+\DoxyCodeLine{00033\ \textcolor{keywordtype}{int}\ CheckParticlesInTheBox(\textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ W);}
+\DoxyCodeLine{00034\ \textcolor{keywordtype}{int}\ CheckWalkersAlive(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00035\ \textcolor{keywordtype}{int}\ CheckWalkersInTheBox(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \textcolor{keywordtype}{void}\ UpdateScalableTable(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{int}\ FindCell(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z);}
+\DoxyCodeLine{00039\ \textcolor{keywordtype}{int}\ FindNearestCells(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z,\ \textcolor{keywordtype}{int}\ *s);}
+\DoxyCodeLine{00040\ \textcolor{keywordtype}{void}\ AdjustCenterOfMassWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *\mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00041\ }
+\DoxyCodeLine{00042\ \textcolor{comment}{/****************************\ INLINE\ *************************************/}}
+\DoxyCodeLine{00043\ \textcolor{preprocessor}{\#ifdef\ \_\_linux\_\_}}
+\DoxyCodeLine{00044\ \textcolor{preprocessor}{\#\ \ define\ INLINE\ static\ inline}}
+\DoxyCodeLine{00045\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00046\ \textcolor{preprocessor}{\#\ \ define\ INLINE\ static\ \_\_inline}}
+\DoxyCodeLine{00047\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \textcolor{comment}{/**********************\ Reduce\ To\ The\ Box\ XYZ\ *****************************/}}
+\DoxyCodeLine{00050\ INLINE\ \textcolor{keywordtype}{void}\ ReduceToTheBoxXYZ(DOUBLE\ *x,\ DOUBLE\ *y,\ DOUBLE\ *z)\ \{}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \textcolor{comment}{//x=x-\/L*int(x/L)}}
+\DoxyCodeLine{00053\ \textcolor{comment}{//x=x-\/L*int(2*x/L)}}
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_CUBE\ }\textcolor{comment}{//\ infinite\ 3D\ system}}
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00057\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x)*Lx;}
+\DoxyCodeLine{00058\ \ \ *y\ -\/=\ (floor)(*y*L\_inv\_y)*Ly;}
+\DoxyCodeLine{00059\ \ \ *z\ -\/=\ (floor)(*z*L\_inv\_z)*Lz;}
+\DoxyCodeLine{00060\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00061\ \ \ \textcolor{keywordflow}{if}(*x\ <\ 0)\ *x\ +=\ Lx;}
+\DoxyCodeLine{00062\ \ \ \textcolor{keywordflow}{if}(*x\ >\ Lx)\ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00063\ \ \ \textcolor{keywordflow}{if}(*y\ <\ 0)\ *y\ +=\ Ly;}
+\DoxyCodeLine{00064\ \ \ \textcolor{keywordflow}{if}(*y\ >\ Ly)\ *y\ -\/=\ Ly;}
+\DoxyCodeLine{00065\ \ \ \textcolor{keywordflow}{if}(*z\ <\ 0)\ *z\ +=\ Lz;}
+\DoxyCodeLine{00066\ \ \ \textcolor{keywordflow}{if}(*z\ >\ Lz)\ *z\ -\/=\ Lz;}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ \ \ \textcolor{keywordflow}{if}(*x>Lx\ ||\ *x<0\ ||\ *y>Ly\ ||\ *y<0\ ||\ *z>Lz\ ||\ *z<0)\ \{\ \textcolor{comment}{//\ in\ 3D\ PBC\ (x,y,z)\ must\ be\ inside\ of\ the\ box}}
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keywordflow}{if}(verbosity\ >\ 1)\ Warning(\textcolor{stringliteral}{"{}Reduce\ to\ the\ box\ :\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lx);}
+\DoxyCodeLine{00070\ \ \ \ \ ReduceToTheBoxXYZ(x,\ y,\ z);}
+\DoxyCodeLine{00071\ \ \ \}}
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00073\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_TRUNCATED\_OCTAHEDRON}}
+\DoxyCodeLine{00076\ \ \ \textcolor{comment}{//\ reduce\ to\ the\ cube}}
+\DoxyCodeLine{00077\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x)*Lx;}
+\DoxyCodeLine{00078\ \ \ *y\ -\/=\ (floor)(*y*L\_inv\_y)*Ly;}
+\DoxyCodeLine{00079\ \ \ *z\ -\/=\ (floor)(*z*L\_inv\_z)*Lz;}
+\DoxyCodeLine{00080\ }
+\DoxyCodeLine{00081\ \ \ \textcolor{comment}{//\ check\ the\ truncated\ regions}}
+\DoxyCodeLine{00082\ \ \ \textcolor{keywordflow}{if}(fabs(*x-\/Lhalf)+fabs(*y-\/Lhalf)+fabs(*z-\/Lhalf)>0.75*L)\ \{}
+\DoxyCodeLine{00083\ \ \ \ \ *x\ +=\ (*x>Lhalf)?(-\/Lhalf):(Lhalf);}
+\DoxyCodeLine{00084\ \ \ \ \ *y\ +=\ (*y>Lhalf)?(-\/Lhalf):(Lhalf);}
+\DoxyCodeLine{00085\ \ \ \ \ *z\ +=\ (*z>Lhalf)?(-\/Lhalf):(Lhalf);}
+\DoxyCodeLine{00086\ \ \ \}}
+\DoxyCodeLine{00087\ }
+\DoxyCodeLine{00088\ \textcolor{preprocessor}{\#ifdef\ SECURE}}
+\DoxyCodeLine{00089\ \ \ \textcolor{keywordflow}{if}(*x>Lx\ \&\&\ *y>Ly\ \&\&\ *z>Lz)\ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ L);}
+\DoxyCodeLine{00090\ \ \ \textcolor{keywordflow}{if}(*x<0\ \&\&\ *y<0\ \&\&\ *z<0)\ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{})"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z);}
+\DoxyCodeLine{00091\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00092\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00093\ }
+\DoxyCodeLine{00094\ \textcolor{preprocessor}{\#ifdef\ BC\_SPHERE\ }\textcolor{comment}{//\ put\ make\ to\ the\ sphere}}
+\DoxyCodeLine{00095\ \ \ Rnow\ =\ sqrt((*x)*(*x)\ +\ (*y)*(*y)\ +\ (*z)*(*z));\ \textcolor{comment}{//\ calculate\ distance\ from\ the\ center}}
+\DoxyCodeLine{00096\ \ \ Rnow\ /=\ Rsphere;\ \textcolor{comment}{//\ \ normalize\ to\ the\ sphere\ radius}}
+\DoxyCodeLine{00097\ \ \ *x\ /=\ Rnow;}
+\DoxyCodeLine{00098\ \ \ *y\ /=\ Rnow;}
+\DoxyCodeLine{00099\ \ \ *z\ /=\ Rnow;}
+\DoxyCodeLine{00100\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00101\ }
+\DoxyCodeLine{00102\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_SQUARE\ }\textcolor{comment}{//\ infinite\ 2D\ system}}
+\DoxyCodeLine{00103\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00104\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x)*Lx;}
+\DoxyCodeLine{00105\ \ \ *y\ -\/=\ (floor)(*y*L\_inv\_y)*Ly;}
+\DoxyCodeLine{00106\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00107\ \ \ \textcolor{keywordflow}{if}(*x\ <\ 0)\ *x\ +=\ Lx;}
+\DoxyCodeLine{00108\ \ \ \textcolor{keywordflow}{if}(*x\ >\ Lx)\ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00109\ \ \ \textcolor{keywordflow}{if}(*y\ <\ 0)\ *y\ +=\ Ly;}
+\DoxyCodeLine{00110\ \ \ \textcolor{keywordflow}{if}(*y\ >\ Ly)\ *y\ -\/=\ Ly;}
+\DoxyCodeLine{00111\ }
+\DoxyCodeLine{00112\ \ \ \textcolor{keywordflow}{if}(*x>Lx\ ||\ *x<0\ ||\ *y>Ly\ ||\ *y<0\ )\ \{\ \textcolor{comment}{//\ in\ 2D\ PBC\ (x,y)\ must\ be\ inside\ of\ the\ box}}
+\DoxyCodeLine{00113\ \ \ \ \ \textcolor{keywordflow}{if}(verbosity\ >\ 1)\ Warning(\textcolor{stringliteral}{"{}Reduce\ to\ the\ box\ :\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lx);}
+\DoxyCodeLine{00114\ \ \ \ \ ReduceToTheBoxXYZ(x,\ y,\ z);}
+\DoxyCodeLine{00115\ \ \ \}}
+\DoxyCodeLine{00116\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00117\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00118\ }
+\DoxyCodeLine{00119\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_HEXAGON\ }\textcolor{comment}{//\ infinite\ 2D\ system}}
+\DoxyCodeLine{00120\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x)*Lx;}
+\DoxyCodeLine{00121\ \ \ \textcolor{keywordflow}{if}(fabs(*x-\/L\_half\_x)+sqrt(3.)*fabs(*y-\/L\_half\_y)>Lx)\ \{\ \textcolor{comment}{//\ check\ angles}}
+\DoxyCodeLine{00122\ \ \ \ \ *x\ -\/=\ (*x>L\_half\_x)?(L\_half\_x):(-\/L\_half\_x);}
+\DoxyCodeLine{00123\ \ \ \ \ *y\ -\/=\ (*y>L\_half\_y)?(0.75*Ly):(-\/0.75*Ly);}
+\DoxyCodeLine{00124\ \ \ \ \ \textcolor{comment}{//*y\ -\/=\ (*y>L\_half\_y)?(L\_half\_x*sqrt(3.)):(-\/L\_half\_x*sqrt(3.));}}
+\DoxyCodeLine{00125\ \ \ \}}
+\DoxyCodeLine{00126\ \ \ \textcolor{keywordflow}{if}(*x>Lx\ ||\ *x<0\ ||\ fabs(*x-\/L\_half\_x)+sqrt(3.)*fabs(*y-\/L\_half\_y)>Lx)\ \{}
+\DoxyCodeLine{00127\ \ \ \ \ \textcolor{keywordflow}{if}(verbosity\ >\ 1)\ Warning(\textcolor{stringliteral}{"{}Reduce\ to\ the\ box\ :\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lx);}
+\DoxyCodeLine{00128\ \ \ \ \ ReduceToTheBoxXYZ(x,\ y,\ z);}
+\DoxyCodeLine{00129\ \ \ \}}
+\DoxyCodeLine{00130\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00131\ }
+\DoxyCodeLine{00132\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_Z\ }\textcolor{comment}{//\ tube}}
+\DoxyCodeLine{00133\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00134\ \ \ *z\ -\/=\ (floor)(*z*L\_inv\_z)*Lz;}
+\DoxyCodeLine{00135\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00136\ \ \ \textcolor{keywordflow}{if}(*z\ <\ 0.)\ *z\ +=\ Lz;}
+\DoxyCodeLine{00137\ \ \ \textcolor{keywordflow}{if}(*z\ >\ L)\ \ *z\ -\/=\ Lz;}
+\DoxyCodeLine{00138\ \ \ \textcolor{keywordflow}{if}(*z>Lz\ ||\ *z<0)\ \{\ \textcolor{comment}{//\ in\ 1D\ PBC\ (z)\ coordinate\ must\ be\ inside\ of\ the\ box}}
+\DoxyCodeLine{00139\ \ \ \ \ \textcolor{keywordflow}{if}(verbosity\ >\ 1)\ Warning(\textcolor{stringliteral}{"{}Reduce\ to\ the\ box\ :\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lz);}
+\DoxyCodeLine{00140\ \ \ \ \ ReduceToTheBoxXYZ(x,\ y,\ z);}
+\DoxyCodeLine{00141\ \ \ \}}
+\DoxyCodeLine{00142\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00143\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00144\ }
+\DoxyCodeLine{00145\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X\ }\textcolor{comment}{//\ tube}}
+\DoxyCodeLine{00146\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00147\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x)*Lx;}
+\DoxyCodeLine{00148\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00149\ \ \ \textcolor{keywordflow}{if}(*x\ <\ 0.)\ *x\ +=\ Lx;}
+\DoxyCodeLine{00150\ \ \ \textcolor{keywordflow}{if}(*x\ >\ L)\ \ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00151\ \ \ \textcolor{keywordflow}{if}(*x>Lx\ ||\ *x<0)\ \{\ \textcolor{comment}{//\ in\ 1D\ PBC\ (x)\ coordinate\ must\ be\ inside\ of\ the\ box}}
+\DoxyCodeLine{00152\ \ \ \ \ \textcolor{keywordflow}{if}(verbosity\ >\ 1)\ Warning(\textcolor{stringliteral}{"{}Reduce\ to\ the\ box\ :\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lz);}
+\DoxyCodeLine{00153\ \ \ \ \ ReduceToTheBoxXYZ(x,\ y,\ z);}
+\DoxyCodeLine{00154\ \ \ \}}
+\DoxyCodeLine{00155\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00156\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00157\ \}}
+\DoxyCodeLine{00158\ }
+\DoxyCodeLine{00159\ \textcolor{comment}{/**********************\ Reduce\ To\ The\ Box\ *********************************/}}
+\DoxyCodeLine{00160\ INLINE\ \textcolor{keywordtype}{void}\ ReduceToTheBox(DOUBLE\ *x)\ \{}
+\DoxyCodeLine{00161\ \ \ ReduceToTheBoxXYZ(\&x[0],\ \&x[1],\ \&x[2]);}
+\DoxyCodeLine{00162\ \}}
+\DoxyCodeLine{00163\ }
+\DoxyCodeLine{00164\ \textcolor{comment}{/**********************\ Reduce\ Walker\ To\ The\ Box\ **************************/}}
+\DoxyCodeLine{00165\ INLINE\ \textcolor{keywordtype}{void}\ ReduceWalkerToTheBox(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *\mbox{\hyperlink{structWalker}{Walker}})\ \{}
+\DoxyCodeLine{00166\ \ \ \textcolor{keywordtype}{int}\ i;}
+\DoxyCodeLine{00167\ }
+\DoxyCodeLine{00168\ \textcolor{preprocessor}{\#ifdef\ BC\_ABSENT}}
+\DoxyCodeLine{00169\ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00170\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00171\ }
+\DoxyCodeLine{00172\ \ \ \textcolor{keywordflow}{for}(i=0;\ i<N;\ i++)\ ReduceToTheBoxXYZ(\&\mbox{\hyperlink{structWalker}{Walker}}-\/>x[i],\ \&\mbox{\hyperlink{structWalker}{Walker}}-\/>y[i],\ \&\mbox{\hyperlink{structWalker}{Walker}}-\/>z[i]);}
+\DoxyCodeLine{00173\ \}}
+\DoxyCodeLine{00174\ }
+\DoxyCodeLine{00175\ \textcolor{comment}{/**********************\ Reduce\ Vector\ To\ The\ Box\ **************************/}}
+\DoxyCodeLine{00176\ INLINE\ \textcolor{keywordtype}{void}\ ReduceVectorToTheBox(DOUBLE\ **R)\ \{}
+\DoxyCodeLine{00177\ \ \ \textcolor{keywordtype}{int}\ i;}
+\DoxyCodeLine{00178\ }
+\DoxyCodeLine{00179\ \textcolor{preprocessor}{\#ifdef\ BC\_ABSENT}}
+\DoxyCodeLine{00180\ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00181\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00182\ }
+\DoxyCodeLine{00183\ \ \ \textcolor{keywordflow}{for}(i=0;\ i<N;\ i++)\ ReduceToTheBoxXYZ(\&R[i][0],\ \&R[i][1],\ \&R[i][2]);}
+\DoxyCodeLine{00184\ \}}
+\DoxyCodeLine{00185\ }
+\DoxyCodeLine{00186\ \textcolor{comment}{/***************************\ Find\ Image\ **************************************/}}
+\DoxyCodeLine{00187\ \textcolor{comment}{/*\ find\ for\ the\ particle\ i\ the\ image\ of\ the\ pair\ particle\ j\ within\ L/2\ */}}
+\DoxyCodeLine{00188\ INLINE\ DOUBLE\ FindNearestImageCenterOfMass(DOUBLE\ *x,\ DOUBLE\ *y,\ DOUBLE\ *z)\ \{}
+\DoxyCodeLine{00189\ \textcolor{preprocessor}{\#ifdef\ BC\_ABSENT}}
+\DoxyCodeLine{00190\ \ \ CaseX(*x\ =\ (floor)(*x*L\_inv\_x\ +\ 0.5)*Lx);}
+\DoxyCodeLine{00191\ \ \ CaseY(*y\ =\ (floor)(*y*L\_inv\_y\ +\ 0.5)*Ly);}
+\DoxyCodeLine{00192\ \ \ CaseZ(*z\ =\ (floor)(*z*L\_inv\_z\ +\ 0.5)*Lz);}
+\DoxyCodeLine{00193\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00194\ \ \ \textcolor{keywordflow}{return}\ *x**x\ +\ *y**y\ +\ *z**z;}
+\DoxyCodeLine{00195\ \}}
+\DoxyCodeLine{00196\ \textcolor{comment}{/***************************\ Find\ Image\ **************************************/}}
+\DoxyCodeLine{00197\ \textcolor{comment}{/*\ find\ for\ the\ particle\ i\ the\ image\ of\ the\ pair\ particle\ j\ within\ L/2\ */}}
+\DoxyCodeLine{00198\ INLINE\ DOUBLE\ FindNearestImage(DOUBLE\ *x,\ DOUBLE\ *y,\ DOUBLE\ *z)\ \{}
+\DoxyCodeLine{00199\ }
+\DoxyCodeLine{00200\ \textcolor{preprocessor}{\#ifdef\ BC\_3DPBC\_CUBE\ }\textcolor{comment}{//\ homogeneous\ 3D\ system}}
+\DoxyCodeLine{00201\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00202\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x\ +\ 0.5)*Lx;}
+\DoxyCodeLine{00203\ \ \ *y\ -\/=\ (floor)(*y*L\_inv\_y\ +\ 0.5)*Ly;}
+\DoxyCodeLine{00204\ \ \ *z\ -\/=\ (floor)(*z*L\_inv\_z\ +\ 0.5)*Lz;}
+\DoxyCodeLine{00205\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00206\ }
+\DoxyCodeLine{00207\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_IF\_IF}}
+\DoxyCodeLine{00208\ \ \ \textcolor{keywordflow}{if}(*x\ >\ L\_half\_x)\ \{}
+\DoxyCodeLine{00209\ \ \ \ \ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00210\ \ \ \}}
+\DoxyCodeLine{00211\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(*x\ <\ -\/L\_half\_x)\ \{}
+\DoxyCodeLine{00212\ \ \ \ \ *x\ +=\ Lx;}
+\DoxyCodeLine{00213\ \ \ \}}
+\DoxyCodeLine{00214\ \ \ \textcolor{keywordflow}{if}(*y\ >\ L\_half\_y)\ \{}
+\DoxyCodeLine{00215\ \ \ \ \ *y\ -\/=\ Ly;}
+\DoxyCodeLine{00216\ \ \ \}}
+\DoxyCodeLine{00217\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(*y\ <\ -\/L\_half\_y)\ \{}
+\DoxyCodeLine{00218\ \ \ \ \ *y\ +=\ Ly;}
+\DoxyCodeLine{00219\ \ \ \}}
+\DoxyCodeLine{00220\ \ \ \textcolor{keywordflow}{if}(*z\ >\ L\_half\_z)\ \{}
+\DoxyCodeLine{00221\ \ \ \ \ *z\ -\/=\ Lz;}
+\DoxyCodeLine{00222\ \ \ \}}
+\DoxyCodeLine{00223\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(*z\ <\ -\/L\_half\_z)\ \{}
+\DoxyCodeLine{00224\ \ \ \ \ *z\ +=\ Lz;}
+\DoxyCodeLine{00225\ \ \ \}}
+\DoxyCodeLine{00226\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00227\ }
+\DoxyCodeLine{00228\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_ABS\_IF}}
+\DoxyCodeLine{00229\ \ \ \textcolor{keywordflow}{if}(fabs(*x)\ >\ L\_half\_x)\ \{}
+\DoxyCodeLine{00230\ \ \ \ \ \textcolor{keywordflow}{if}(*x\ >\ 0.)\ \{}
+\DoxyCodeLine{00231\ \ \ \ \ \ \ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00232\ \ \ \ \ \}}
+\DoxyCodeLine{00233\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ *x\ +=\ Lx;}
+\DoxyCodeLine{00235\ \ \ \ \ \}}
+\DoxyCodeLine{00236\ \ \ \}}
+\DoxyCodeLine{00237\ \ \ \textcolor{keywordflow}{if}(fabs(*y)\ >\ L\_half\_y)\ \{}
+\DoxyCodeLine{00238\ \ \ \ \ \textcolor{keywordflow}{if}(*y\ >\ 0.)\ \{}
+\DoxyCodeLine{00239\ \ \ \ \ \ \ *y\ -\/=\ Ly;}
+\DoxyCodeLine{00240\ \ \ \ \ \}}
+\DoxyCodeLine{00241\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ *y\ +=\ Ly;}
+\DoxyCodeLine{00243\ \ \ \ \ \}}
+\DoxyCodeLine{00244\ \ \ \}}
+\DoxyCodeLine{00245\ \ \ \textcolor{keywordflow}{if}(fabs(*z)\ >\ L\_half\_z)\ \{}
+\DoxyCodeLine{00246\ \ \ \ \ \textcolor{keywordflow}{if}(*z\ >\ 0.)\ \{}
+\DoxyCodeLine{00247\ \ \ \ \ \ \ *z\ -\/=\ Lz;}
+\DoxyCodeLine{00248\ \ \ \ \ \}}
+\DoxyCodeLine{00249\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ *z\ +=\ Lz;}
+\DoxyCodeLine{00251\ \ \ \ \ \}}
+\DoxyCodeLine{00252\ \ \ \}}
+\DoxyCodeLine{00253\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00254\ }
+\DoxyCodeLine{00255\ \textcolor{preprocessor}{\#ifdef\ SECURE}}
+\DoxyCodeLine{00256\ \ \ \textcolor{keywordflow}{if}(fabs(*x)>Lx\ \&\&\ fabs(*y)>Ly\ \&\&\ fabs(*z)>Lz)\ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lx);}
+\DoxyCodeLine{00257\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00258\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00259\ }
+\DoxyCodeLine{00260\ \textcolor{preprocessor}{\#ifdef\ \ BC\_3DPBC\_TRUNCATED\_OCTAHEDRON}}
+\DoxyCodeLine{00261\ \ \ \textcolor{comment}{//\ reduce\ to\ the\ cube}}
+\DoxyCodeLine{00262\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x\ +\ 0.5)*Lx;}
+\DoxyCodeLine{00263\ \ \ *y\ -\/=\ (floor)(*y*L\_inv\_y\ +\ 0.5)*Ly;}
+\DoxyCodeLine{00264\ \ \ *z\ -\/=\ (floor)(*z*L\_inv\_z\ +\ 0.5)*Lz;}
+\DoxyCodeLine{00265\ }
+\DoxyCodeLine{00266\ \ \ \textcolor{comment}{//\ check\ the\ truncated\ regions}}
+\DoxyCodeLine{00267\ \ \ \textcolor{keywordflow}{if}(fabs(*x)+fabs(*y)+fabs(*z)>0.75*L)\ \{}
+\DoxyCodeLine{00268\ \ \ \ \ *x\ +=\ (*x>0)?(-\/Lhalf):(Lhalf);}
+\DoxyCodeLine{00269\ \ \ \ \ *y\ +=\ (*y>0)?(-\/Lhalf):(Lhalf);}
+\DoxyCodeLine{00270\ \ \ \ \ *z\ +=\ (*z>0)?(-\/Lhalf):(Lhalf);}
+\DoxyCodeLine{00271\ \ \ \}}
+\DoxyCodeLine{00272\ }
+\DoxyCodeLine{00273\ \textcolor{preprocessor}{\#ifdef\ SECURE}}
+\DoxyCodeLine{00274\ \ \ \textcolor{keywordflow}{if}(fabs(*x)>Lhalf\ \&\&\ fabs(*y)>Lhalf\ \&\&\ fabs(*z)>Lhalf)\ }
+\DoxyCodeLine{00275\ \ \ \ \ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lx);}
+\DoxyCodeLine{00276\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00277\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00278\ }
+\DoxyCodeLine{00279\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_NON\_ORTHOGONAL}}
+\DoxyCodeLine{00280\ \ \ *x\ -\/=\ (int)(*x*Crystal.e1x*Crystal.e1abs\_inv2)*Crystal.e1x\ +\ (int)(*x*Crystal.e2x*Crystal.e2abs\_inv2)*Crystal.e2x;}
+\DoxyCodeLine{00281\ \ \ *y\ -\/=\ (int)(*y*Crystal.e1y*Crystal.e1abs\_inv2)*Crystal.e1y\ +\ (int)(*y*Crystal.e2y*Crystal.e2abs\_inv2)*Crystal.e2y;}
+\DoxyCodeLine{00282\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00283\ }
+\DoxyCodeLine{00284\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_SQUARE\ }\textcolor{comment}{//\ homogeneous\ 2D\ system\ (x,y)\ plane}}
+\DoxyCodeLine{00285\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00286\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x\ +\ 0.5)*Lx;}
+\DoxyCodeLine{00287\ \ \ *y\ -\/=\ (floor)(*y*L\_inv\_y\ +\ 0.5)*Ly;}
+\DoxyCodeLine{00288\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00289\ }
+\DoxyCodeLine{00290\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_IF\_IF}}
+\DoxyCodeLine{00291\ \ \ \textcolor{keywordflow}{if}(*x\ >\ L\_half\_x)\ \{}
+\DoxyCodeLine{00292\ \ \ \ \ \textcolor{comment}{//if((*x\ -\/Lx)\ !=\ (*x-\/(floor)(*x*L\_inv\_x\ +\ 0.5)*Lx))\ Message("{}aaa\ x"{});}}
+\DoxyCodeLine{00293\ \ \ \ \ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00294\ \ \ \}}
+\DoxyCodeLine{00295\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(*x\ <\ -\/L\_half\_x)\ \{}
+\DoxyCodeLine{00296\ \ \ \ \ \textcolor{comment}{//if((*x\ +Lx)\ !=\ *x-\/(floor)(*x*L\_inv\_x\ +\ 0.5)*Lx)\ Message("{}aaa\ x2"{});}}
+\DoxyCodeLine{00297\ \ \ \ \ *x\ +=\ Lx;}
+\DoxyCodeLine{00298\ \ \ \}}
+\DoxyCodeLine{00299\ \ \ \textcolor{keywordflow}{if}(*y\ >\ L\_half\_y)\ \{}
+\DoxyCodeLine{00300\ \ \ \ \ \textcolor{comment}{//if(*y\ -\/Ly\ !=\ *y-\/(floor)(*y*L\_inv\_y\ +\ 0.5)*Ly)\ Message("{}aaa\ y"{});}}
+\DoxyCodeLine{00301\ \ \ \ \ *y\ -\/=\ Ly;}
+\DoxyCodeLine{00302\ \ \ \}}
+\DoxyCodeLine{00303\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(*y\ <\ -\/L\_half\_y)\ \{}
+\DoxyCodeLine{00304\ \ \ \ \ \textcolor{comment}{//if(*y\ +Ly\ !=\ *y-\/(floor)(*y*L\_inv\_y\ +\ 0.5)*Ly)\ Message("{}aaa\ y2"{});}}
+\DoxyCodeLine{00305\ \ \ \ \ *y\ +=\ Ly;}
+\DoxyCodeLine{00306\ \ \ \}}
+\DoxyCodeLine{00307\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00308\ }
+\DoxyCodeLine{00309\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_ABS\_IF}}
+\DoxyCodeLine{00310\ \ \ \textcolor{keywordflow}{if}(fabs(*x)\ >\ L\_half\_x)\ \{}
+\DoxyCodeLine{00311\ \ \ \ \ \textcolor{keywordflow}{if}(*x\ >\ 0.)\ \{}
+\DoxyCodeLine{00312\ \ \ \ \ \ \ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00313\ \ \ \ \ \}}
+\DoxyCodeLine{00314\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00315\ \ \ \ \ \ \ *x\ +=\ Lx;}
+\DoxyCodeLine{00316\ \ \ \ \ \}}
+\DoxyCodeLine{00317\ \ \ \}}
+\DoxyCodeLine{00318\ \ \ \textcolor{keywordflow}{if}(fabs(*y)\ >\ L\_half\_y)\ \{}
+\DoxyCodeLine{00319\ \ \ \ \ \textcolor{keywordflow}{if}(*y\ >\ 0.)\ \{}
+\DoxyCodeLine{00320\ \ \ \ \ \ \ *y\ -\/=\ Ly;}
+\DoxyCodeLine{00321\ \ \ \ \ \}}
+\DoxyCodeLine{00322\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00323\ \ \ \ \ \ \ *y\ +=\ Ly;}
+\DoxyCodeLine{00324\ \ \ \ \ \}}
+\DoxyCodeLine{00325\ \ \ \}}
+\DoxyCodeLine{00326\ \textcolor{preprocessor}{\#ifdef\ SECURE}}
+\DoxyCodeLine{00327\ \ \ \textcolor{keywordflow}{if}(fabs(*x)>Lx\ \&\&\ fabs(*y)>Ly)\ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lx);}
+\DoxyCodeLine{00328\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00329\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00330\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00331\ }
+\DoxyCodeLine{00332\ \textcolor{preprocessor}{\#ifdef\ BC\_2DPBC\_HEXAGON\ }\textcolor{comment}{//\ infinite\ 2D\ system}}
+\DoxyCodeLine{00333\ \ \ *x\ -\/=\ (floor)(*x*L\_inv\_x\ +\ 0.5)*Lx;}
+\DoxyCodeLine{00334\ \ \ \textcolor{keywordflow}{if}(fabs(*x)+sqrt(3.)*fabs(*y)>Lx)\ \{\ \textcolor{comment}{//\ check\ angles}}
+\DoxyCodeLine{00335\ \ \ \ \ *x\ -\/=\ (*x>0)?(L\_half\_x):(-\/L\_half\_x);}
+\DoxyCodeLine{00336\ \ \ \ \ *y\ -\/=\ (*y>0)?(0.75*Ly):(-\/0.75*Ly);}
+\DoxyCodeLine{00337\ \ \ \}}
+\DoxyCodeLine{00338\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00339\ }
+\DoxyCodeLine{00340\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_Z\ }\textcolor{comment}{//\ tube\ (z\ direction)}}
+\DoxyCodeLine{00341\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_FLOOR}}
+\DoxyCodeLine{00342\ \ \ *z\ -\/=\ (floor)(*z*L\_inv\_z\ +\ 0.5)*Lz;}
+\DoxyCodeLine{00343\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00344\ }
+\DoxyCodeLine{00345\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_IF\_IF}}
+\DoxyCodeLine{00346\ \ \ \textcolor{keywordflow}{if}(*z\ >\ L\_half\_z)\ \{}
+\DoxyCodeLine{00347\ \ \ \ \ *z\ -\/=\ Lz;}
+\DoxyCodeLine{00348\ \ \ \}}
+\DoxyCodeLine{00349\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(*z\ <\ -\/L\_half\_z)\ \{}
+\DoxyCodeLine{00350\ \ \ \ \ *z\ +=\ Lz;}
+\DoxyCodeLine{00351\ \ \ \}}
+\DoxyCodeLine{00352\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00353\ }
+\DoxyCodeLine{00354\ \textcolor{preprocessor}{\#ifdef\ IMAGES\_ABS\_IF}}
+\DoxyCodeLine{00355\ \ \ \textcolor{keywordflow}{if}(fabs(*z)\ >\ L\_half\_z)\ \{}
+\DoxyCodeLine{00356\ \ \ \ \ \textcolor{keywordflow}{if}(*z\ >\ 0.)\ \{}
+\DoxyCodeLine{00357\ \ \ \ \ \ \ *z\ -\/=\ Lz;}
+\DoxyCodeLine{00358\ \ \ \ \ \}}
+\DoxyCodeLine{00359\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00360\ \ \ \ \ \ \ *z\ +=\ Lz;}
+\DoxyCodeLine{00361\ \ \ \ \ \}}
+\DoxyCodeLine{00362\ \ \ \}}
+\DoxyCodeLine{00363\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00364\ }
+\DoxyCodeLine{00365\ \textcolor{preprocessor}{\#ifdef\ SECURE}}
+\DoxyCodeLine{00366\ \ \ \textcolor{keywordflow}{if}(fabs(*z)>Lz)\ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lz);}
+\DoxyCodeLine{00367\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00368\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00369\ }
+\DoxyCodeLine{00370\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X\ }\textcolor{comment}{//\ tube\ (x\ direction)}}
+\DoxyCodeLine{00371\ \ \ \textcolor{keywordflow}{if}(fabs(*x)\ >\ L\_half\_x)\ \{}
+\DoxyCodeLine{00372\ \ \ \ \ \textcolor{keywordflow}{if}(*x\ >\ 0.)\ \{}
+\DoxyCodeLine{00373\ \ \ \ \ \ \ *x\ -\/=\ Lx;}
+\DoxyCodeLine{00374\ \ \ \ \ \}}
+\DoxyCodeLine{00375\ \ \ \ \ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00376\ \ \ \ \ \ \ *x\ +=\ Lx;}
+\DoxyCodeLine{00377\ \ \ \ \ \}}
+\DoxyCodeLine{00378\ \ \ \}}
+\DoxyCodeLine{00379\ \textcolor{preprocessor}{\#ifdef\ SECURE}}
+\DoxyCodeLine{00380\ \ \ \textcolor{keywordflow}{if}(fabs(*x)>Lx)\ Error(\textcolor{stringliteral}{"{}bad\ particle\ coordinates\ (\%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{},\ \%"{}}\ LF\ \textcolor{stringliteral}{"{});\ L\ =\ \%"{}}\ LF\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}},\ *x,\ *y,\ *z,\ Lz);}
+\DoxyCodeLine{00381\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00382\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00383\ }
+\DoxyCodeLine{00384\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_1D}}
+\DoxyCodeLine{00385\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X\ }\textcolor{comment}{//\ in\ 1D\ trap\ return\ z*z}}
+\DoxyCodeLine{00386\ \ \ \textcolor{keywordflow}{return}\ *x**x;}
+\DoxyCodeLine{00387\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00388\ \ \ \textcolor{keywordflow}{return}\ *z**z;}
+\DoxyCodeLine{00389\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00390\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00391\ }
+\DoxyCodeLine{00392\ \textcolor{preprocessor}{\#ifdef\ BC\_SPHERE}}
+\DoxyCodeLine{00393\ \ \ \textcolor{keywordflow}{return}\ *x**x\ +\ *y**y\ +\ *z**z;}
+\DoxyCodeLine{00394\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00395\ }
+\DoxyCodeLine{00396\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_2D}}
+\DoxyCodeLine{00397\ \ \ \textcolor{keywordflow}{return}\ *x**x\ +\ *y**y;}
+\DoxyCodeLine{00398\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00399\ \textcolor{preprocessor}{\#ifdef\ TRIAL\_3D}}
+\DoxyCodeLine{00400\ \ \ \textcolor{keywordflow}{return}\ *x**x\ +\ *y**y\ +\ *z**z;}
+\DoxyCodeLine{00401\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00402\ \}}
+\DoxyCodeLine{00403\ }
+\DoxyCodeLine{00404\ \textcolor{comment}{/**********************************\ Overlapping\ *******************************/}}
+\DoxyCodeLine{00405\ \textcolor{preprocessor}{\#ifndef\ HARD\_SPHERE}}
+\DoxyCodeLine{00406\ \textcolor{preprocessor}{\#\ \ define\ Overlapping(R)\ 0}}
+\DoxyCodeLine{00407\ \textcolor{preprocessor}{\#\ \ define\ OverlappingWalker(W)\ 0}}
+\DoxyCodeLine{00408\ \textcolor{preprocessor}{\#\ \ define\ CheckOverlapping()\ 0}}
+\DoxyCodeLine{00409\ \textcolor{preprocessor}{\#\ \ define\ CheckWalkerOverlapping(W)\ 0}}
+\DoxyCodeLine{00410\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00411\ \textcolor{keywordtype}{int}\ Overlapping(DOUBLE\ **R);}
+\DoxyCodeLine{00412\ \textcolor{keywordtype}{int}\ OverlappingWalker(\textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}*\ W);}
+\DoxyCodeLine{00413\ \textcolor{keywordtype}{int}\ CheckOverlapping(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00414\ \textcolor{keywordtype}{int}\ CheckWalkerOverlapping(\textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ W);}
+\DoxyCodeLine{00415\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00416\ }
+\DoxyCodeLine{00417\ \textcolor{keywordtype}{int}\ CheckWalkerHyperradiusOverlapping(\textcolor{keyword}{const}\ \textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ W);}
+\DoxyCodeLine{00418\ \textcolor{keywordtype}{int}\ CheckWalkerHyperradiusOverlappingCount(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *W);}
+\DoxyCodeLine{00419\ \textcolor{keywordtype}{int}\ CheckVectorHyperradiusOverlapping(DOUBLE\ **R);}
+\DoxyCodeLine{00420\ \textcolor{keywordtype}{void}\ U\_psiT\_sigma\_inv(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ \mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00421\ }
+\DoxyCodeLine{00422\ \textcolor{comment}{/*****************************\ 3D\ image\ ***************************************/}}
+\DoxyCodeLine{00423\ \textcolor{preprocessor}{\#ifdef\ BC\_ABSENT}}
+\DoxyCodeLine{00424\ \textcolor{preprocessor}{\#define\ FindNearestImage3D(r2,\ x,\ y,\ z)\ (r2\ =\ x*x\ +\ y*y\ +\ z*z)}}
+\DoxyCodeLine{00425\ \textcolor{preprocessor}{\#else\ }}
+\DoxyCodeLine{00426\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_Z\ }\textcolor{comment}{//\ z\ direction}}
+\DoxyCodeLine{00427\ \textcolor{preprocessor}{\#define\ FindNearestImage3D(r2,\ x,\ y,\ z)\ \{\(\backslash\)}}
+\DoxyCodeLine{00428\ \textcolor{preprocessor}{\ \ z\ -\/=\ (floor)(z*L\_inv\_z\ +\ 0.5)*Lz;\(\backslash\)}}
+\DoxyCodeLine{00429\ \textcolor{preprocessor}{\ \ r2\ =\ z*z;\}}}
+\DoxyCodeLine{00430\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00431\ \textcolor{preprocessor}{\#ifdef\ BC\_1DPBC\_X\ }\textcolor{comment}{//\ x\ direction}}
+\DoxyCodeLine{00432\ \textcolor{preprocessor}{\#define\ FindNearestImage3D(r2,\ x,\ y,\ z)\ \{\(\backslash\)}}
+\DoxyCodeLine{00433\ \textcolor{preprocessor}{\ \ x\ -\/=\ (floor)(x*L\_inv\_x\ +\ 0.5)*Lx;\(\backslash\)}}
+\DoxyCodeLine{00434\ \textcolor{preprocessor}{\ \ r2\ =\ x*x;\}}}
+\DoxyCodeLine{00435\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00436\ \textcolor{preprocessor}{\#define\ FindNearestImage3D(r2,\ x,\ y,\ z)\ (r2\ =\ FindNearestImage(\&x,\&y,\&z))}}
+\DoxyCodeLine{00437\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ BC\_1DPBC\_X}}
+\DoxyCodeLine{00438\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ BC\_1DPBC\_Z}}
+\DoxyCodeLine{00439\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ BC\_ABSENT}}
+\DoxyCodeLine{00440\ }
+\DoxyCodeLine{00441\ \textcolor{keywordtype}{void}\ ExcludedVolumeCoordinatesWrap(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ \mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00442\ \textcolor{keywordtype}{void}\ ExcludedVolumeCoordinatesUnwrap(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ \mbox{\hyperlink{structWalker}{Walker}});}
+\DoxyCodeLine{00443\ }
+\DoxyCodeLine{00444\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

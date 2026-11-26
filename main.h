@@ -44,7 +44,7 @@
 //#define OBDM_FERMIONS
 //#define OBDM_ANYONS
 
-//#define INTERACTION_ABSENT
+#define INTERACTION_ABSENT
 //#define INTERACTION_Aziz // uses energy_unit inside InteractionEnergy call, to have [K] as local energy unit
 //#define INTERACTION_HYDROGEN // uses energy_unit inside InteractionEnergy call, to have [K] as local energy unit
 //#define INTERACTION_YUKAWA
@@ -68,7 +68,7 @@
 //#define INTERACTION_DOUBLE_GAUSSIAN // -gaussian_alpha*exp(-0.5*r*r) - gaussian_beta*exp(-0.25*r*r)
 //#define INTERACTION_LOGARITHMIC
 //#define INTERACTION_POWER // D/r^Apar, Apar>2
-#define INTERACTION_COULOMB // 1/r
+//#define INTERACTION_COULOMB // 1/r
 //#define INTERACTION_R2 // 1/r^2
 //#define INTERACTION_DIPOLE // D/r^3
 //#define INTERACTION_QUADRUPOLE  // 1/r^5
@@ -275,8 +275,8 @@
 //#define PAIR_DISTRBUTION_EMPTINESS_FORMATION_PROBABILITY_1D // calculate probability of a gap of size x between in particles in 1D
 
 // select dimensionality
-#define TRIAL_1D
-//#define TRIAL_2D
+//#define TRIAL_1D
+#define TRIAL_2D
 //#define TRIAL_3D
 
 /* define ONLY ONE of following boundary conditions */
@@ -292,6 +292,14 @@
 
 /* define if trap potential is present */
 #define TRAP_POTENTIAL
+
+/* Exact Fourier-mode sampling for noninteracting particles in a harmonic trap. */
+#define PIMC_HARMONIC_NORMAL_MODES
+
+/* Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose-Einstein.
+   Requiere: PIMC + BC_ABSENT + TRAP_POTENTIAL + INTERACTION_ABSENT.
+   Descomentar la siguiente línea para activar el worm. */
+#define WORM_ALGORITHM
 
 /* if trap one-body terms are present in the trial w.f., enable ONE_BODY_TRIAL_TERMS*/
 //#define ONE_BODY_TRIAL_TERMS
@@ -331,6 +339,19 @@
 //#define VEXT_TRAP_DOUBLE_WELL // (0.5*z*z + alpha_latt*Exp(-0.5*z*z) - (Log(alpha_latt)+1))
 
 //#define SPECKLES // define for applying speckle potential
+
+#if defined(PIMC_HARMONIC_NORMAL_MODES) && \
+  ((!defined(TRIAL_1D) && !defined(TRIAL_2D)) || !defined(TRAP_POTENTIAL) || !defined(BC_ABSENT) || \
+   defined(SPECKLES) || defined(VEXT_SPLINE_1D) || defined(VEXT_COS2) || \
+   defined(VEXT_SOLITON_FIXED_PHASE) || defined(EXTERNAL_POTENTIAL_Uo_R2) || \
+   defined(VEXT_IMPURITY_3DSW) || defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) || \
+   defined(VEXT_GAUSSIAN) || defined(VEXT_TRAP_DOUBLE_WELL))
+#  error PIMC_HARMONIC_NORMAL_MODES requires an unmodified harmonic trap
+#endif
+
+#if defined(PIMC_HARMONIC_NORMAL_MODES) && !defined(INTERACTION_ABSENT)
+#  error PIMC_HARMONIC_NORMAL_MODES requires INTERACTION_ABSENT
+#endif
 
 // Choose one type of interpolation method
 //#define SPLINES_2D // 2D interpolation: use 2D splines 
@@ -1293,6 +1314,50 @@ extern DOUBLE Rsphere;
 extern DOUBLE Rnow;
 extern DOUBLE sum_of_two_wavefunctions_parameter1, sum_of_two_wavefunctions_parameter2, sum_of_two_wavefunctions_alpha;
 extern DOUBLE numeric_derivative_dr;
+
+/* Variables globales del algoritmo worm */
+#ifdef WORM_ALGORITHM
+extern int worm_open;       /* 0 = sector-Z (anillos cerrados), 1 = sector-G (cadena abierta) */
+extern int worm_bead;       /* índice del bead donde está ira (cabeza del gusano) */
+extern int worm_particle;   /* índice de la partícula del gusano */
+extern int worm_bead_masha; /* índice del bead donde está masha (cola del gusano) */
+extern int worm_particle_masha; /* índice de la partícula donde está masha */
+extern long long worm_count_Z; /* pasos en sector Z */
+extern long long worm_count_G; /* pasos en sector G */
+extern long long worm_try_open;
+extern long long worm_acc_open;
+extern long long worm_try_close;
+extern long long worm_acc_close;
+extern long long worm_try_advance;
+extern long long worm_acc_advance;
+extern long long worm_try_recede;
+extern long long worm_acc_recede;
+extern long long worm_try_iramove;
+extern long long worm_acc_iramove;
+extern long long worm_try_swap;
+extern long long worm_acc_swap;
+extern int worm_max_gap_observed;
+extern long long *worm_gap_histogram;
+extern long long *worm_cycle_histogram;
+extern long long worm_cycle_samples;
+extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
+extern int worm_swap_enabled; /* 1: permutaciones bosónicas (Swap activo), 0: distinguibles (sin Swap) */
+extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
+extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */
+extern DOUBLE worm_obdm_max; /* rango espacial máximo para histograma OBDM [-max, max] */
+extern int worm_obdm_grid;   /* resolución de la matriz OBDM */
+extern long long worm_obdm_samples_gap1; /* muestras acumuladas con gap == 1 */
+extern long long worm_obdm_samples_all;  /* muestras acumuladas con cualquier gap */
+extern long long **worm_obdm_matrix;     /* histograma 2D \rho_1(x, x') con gap == 1 */
+extern long long *worm_obdm_dist;        /* histograma 1D de distancia s = |r_ira - r_masha| */
+extern long long **worm_obdm_radial;     /* histograma 2D radial \rho_1(r_ira, r_masha) */
+extern long long **worm_obdm_matrix_all; /* histograma 2D para todos los gaps */
+extern long long *worm_obdm_dist_all;    /* histograma 1D de distancia para todos los gaps */
+void MeasureWormPermutations(void);
+void SaveWormPermutations(const char *filename);
+void MeasureWormOBDM(void);
+void SaveWormOBDM(const char *filename);
+#endif
 
 void Measure(int, int);
 

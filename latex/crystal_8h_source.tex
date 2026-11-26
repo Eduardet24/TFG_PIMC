@@ -1,0 +1,79 @@
+\doxysection{crystal.\+h}
+\hypertarget{crystal_8h_source}{}\label{crystal_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*crystal.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_CRYSTAL\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_CRYSTAL\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#ifndef\ DOUBLE}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#\ \ define\ DOUBLE\ double}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{keyword}{extern}\ DOUBLE\ crystal\_side\_x;}
+\DoxyCodeLine{00013\ \textcolor{keyword}{extern}\ DOUBLE\ crystal\_side\_y;}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_TRIAL\_TERMS}}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ \textcolor{keyword}{struct\ }Cryst\ \{}
+\DoxyCodeLine{00018\ \ \ DOUBLE\ *x;\ \textcolor{comment}{//\ coordinates\ of\ the\ cells}}
+\DoxyCodeLine{00019\ \ \ DOUBLE\ *y;\ }
+\DoxyCodeLine{00020\ \ \ DOUBLE\ *z;\ }
+\DoxyCodeLine{00021\ \ \ \textcolor{keywordtype}{int}\ size;\ \textcolor{comment}{//\ number\ of\ grid\ cells}}
+\DoxyCodeLine{00022\ \ \ \textcolor{comment}{//\ Solid\ phase}}
+\DoxyCodeLine{00023\ \textcolor{preprocessor}{\#ifdef\ CRYSTAL\_WIDTH\_ARRAY}}
+\DoxyCodeLine{00024\ \ \ DOUBLE\ *Rx;\ \textcolor{comment}{//\ Gaussian\ width\ in\ (x,y,z)\ directions}}
+\DoxyCodeLine{00025\ \ \ DOUBLE\ *Ry;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00026\ \ \ DOUBLE\ *Rz;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00027\ \ \ DOUBLE\ *weight;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00028\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00029\ \ \ DOUBLE\ Rx;\ \textcolor{comment}{//\ Gaussian\ width\ in\ (x,y,z)\ directions}}
+\DoxyCodeLine{00030\ \ \ DOUBLE\ Ry;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00031\ \ \ DOUBLE\ Rz;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00032\ \ \ DOUBLE\ weight;\ \textcolor{comment}{//\ for\ symmetrized\ w.f.}}
+\DoxyCodeLine{00033\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00034\ \ \ DOUBLE\ Rx\_av;\ \textcolor{comment}{//\ (sum\_\{i\}\ Rx[i])\ /\ NCrystal}}
+\DoxyCodeLine{00035\ \ \ DOUBLE\ Ry\_av;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00036\ \ \ DOUBLE\ Rz\_av;\ \textcolor{comment}{//\ }}
+\DoxyCodeLine{00037\ \ \ \textcolor{comment}{//\ Impurities}}
+\DoxyCodeLine{00038\ \ \ DOUBLE\ b;\ \textcolor{comment}{//\ scattering\ length}}
+\DoxyCodeLine{00039\ \ \ DOUBLE\ k;\ \textcolor{comment}{//\ momentum\ (fixed\ by\ Rpar)}}
+\DoxyCodeLine{00040\ \ \ DOUBLE\ k2;}
+\DoxyCodeLine{00041\ \ \ \textcolor{comment}{//\ Non-\/orthogonal\ basis}}
+\DoxyCodeLine{00042\ \ \ DOUBLE\ e1x;}
+\DoxyCodeLine{00043\ \ \ DOUBLE\ e1y;}
+\DoxyCodeLine{00044\ \ \ DOUBLE\ e1abs\_inv2;\ \textcolor{comment}{//\ basis:\ e1\ =\ (e1x,e1y)\ }}
+\DoxyCodeLine{00045\ \ \ DOUBLE\ e2x;}
+\DoxyCodeLine{00046\ \ \ DOUBLE\ e2y;}
+\DoxyCodeLine{00047\ \ \ DOUBLE\ e2abs\_inv2;\ \textcolor{comment}{//\ \ \ \ \ \ \ \ e2\ =\ (e2x,e2y)}}
+\DoxyCodeLine{00048\ \};}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ \textcolor{preprocessor}{\#define\ CRYSTAL\_Zi\ Crystal.z[i]}}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }Cryst\ Crystal;}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ \textcolor{keywordtype}{void}\ ConstructGridCrystal(\textcolor{keyword}{struct}\ Cryst\ *Crystal,\ \textcolor{keywordtype}{int}\ size,\ DOUBLE\ n);}
+\DoxyCodeLine{00055\ \textcolor{keywordtype}{void}\ ConstructGridImpurity(\textcolor{keyword}{struct}\ Cryst\ *Crystal,\ \textcolor{keyword}{const}\ DOUBLE\ R,\ \textcolor{keywordtype}{int}\ size);}
+\DoxyCodeLine{00056\ \textcolor{keywordtype}{void}\ ConstructGridCrystalOneBody(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00057\ }
+\DoxyCodeLine{00058\ \textcolor{preprocessor}{\#ifdef\ ONE\_BODY\_IMPURITY}}
+\DoxyCodeLine{00059\ DOUBLE\ ImpurityInterpolateU(DOUBLE\ x);}
+\DoxyCodeLine{00060\ DOUBLE\ ImpurityInterpolateFp(DOUBLE\ x);}
+\DoxyCodeLine{00061\ DOUBLE\ ImpurityInterpolateE(DOUBLE\ x);}
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\#ifdef\ CHAINS\_PINNED\_TO\_CENTER\_OF\_MASS}}
+\DoxyCodeLine{00065\ \textcolor{keyword}{extern}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structWalker}{Walker}}\ *walker;}
+\DoxyCodeLine{00066\ \textcolor{keywordtype}{int}\ ChainsPinnedCenterMass(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00067\ \textcolor{keywordtype}{void}\ CalculateAllChainsCenterOfMass(DOUBLE**\ R,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00068\ \textcolor{keywordtype}{void}\ CalculateAllChainsCenterOfMassWalker(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structWalker}{Walker}}\ *walker);}
+\DoxyCodeLine{00069\ \textcolor{keywordtype}{void}\ CalculateOneChainCenterOfMass(DOUBLE\ x,\ DOUBLE\ y,\ DOUBLE\ z,\ \textcolor{keywordtype}{int}\ i,\ \textcolor{keywordtype}{int}\ w);}
+\DoxyCodeLine{00070\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00073\ }
+\DoxyCodeLine{00074\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

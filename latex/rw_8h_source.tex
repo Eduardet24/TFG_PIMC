@@ -1,0 +1,73 @@
+\doxysection{rw.\+h}
+\hypertarget{rw_8h_source}{}\label{rw_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*rw.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_RW\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_RW\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{keywordtype}{int}\ LoadParameters(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00009\ \textcolor{keywordtype}{int}\ LoadParticleCoordinates(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00010\ \textcolor{keywordtype}{void}\ LoadParametersSk(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{keywordtype}{void}\ SaveWaveFunction(\textcolor{keyword}{struct}\ \mbox{\hyperlink{structGrid}{Grid}}\ *G,\ \textcolor{keywordtype}{char}\ *file\_name,\ DOUBLE\ min,\ DOUBLE\ max);}
+\DoxyCodeLine{00013\ \textcolor{keywordtype}{void}\ SaveImpurityWaveFunction(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00014\ \textcolor{keywordtype}{int}\ SaveCoordinates(\textcolor{keywordtype}{char}\ *file\_particles);}
+\DoxyCodeLine{00015\ \textcolor{keywordtype}{int}\ SaveEnergyVMC(DOUBLE\ E,\ DOUBLE\ EFF);}
+\DoxyCodeLine{00016\ \textcolor{keywordtype}{int}\ SaveEnergyDMC(DOUBLE\ E);}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{int}\ SaveEnergyCls(DOUBLE\ E);}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{int}\ SaveOBDM(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00019\ \textcolor{keywordtype}{int}\ SaveOBDMpure(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00020\ \textcolor{keywordtype}{int}\ SaveTBDM(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00021\ \textcolor{keywordtype}{int}\ SaveOBDMMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00022\ \textcolor{keywordtype}{int}\ SaveTBDMMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00023\ \textcolor{keywordtype}{int}\ SavePairDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00024\ \textcolor{keywordtype}{int}\ SaveRadialDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00025\ \textcolor{keywordtype}{int}\ SaveRadialZDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{int}\ LoadRadialZDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{int}\ SaveR2(DOUBLE\ f1,\ DOUBLE\ f2);}
+\DoxyCodeLine{00028\ \textcolor{keywordtype}{int}\ SaveZ2(DOUBLE\ f1,\ DOUBLE\ f2);}
+\DoxyCodeLine{00029\ \textcolor{keywordtype}{int}\ SavePureR2(DOUBLE\ f);}
+\DoxyCodeLine{00030\ \textcolor{keywordtype}{int}\ SavePureZ2(DOUBLE\ f);}
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{int}\ SaveSuperfluidDensity(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00032\ \textcolor{comment}{/*int\ SavePureDistribution(void);}}
+\DoxyCodeLine{00033\ \textcolor{comment}{int\ SaveCoordinates(void);}}
+\DoxyCodeLine{00034\ \textcolor{comment}{int\ SaveControlVariables(void);*/}}
+\DoxyCodeLine{00035\ \textcolor{keywordtype}{void}\ SaveBlockData(\textcolor{keywordtype}{int});}
+\DoxyCodeLine{00036\ \textcolor{keywordtype}{void}\ SaveMeanR2(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00037\ \textcolor{keywordtype}{void}\ SaveMeanR2DMC(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{void}\ SaveOrderParameter(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00039\ \textcolor{keywordtype}{int}\ LoadSuperfluidDensityArray(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00040\ \textcolor{keywordtype}{int}\ SaveSuperfluidDensity5Array(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00041\ \textcolor{keywordtype}{int}\ SaveStaticStructureFactor(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00042\ \textcolor{keywordtype}{int}\ SavePairDistribtuionMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00043\ \textcolor{keywordtype}{int}\ SaveMomentumDistributionPure(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00044\ \textcolor{keywordtype}{int}\ SaveRadialDistributionMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00045\ \textcolor{keywordtype}{int}\ LoadCrystalCoordinates(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00046\ \textcolor{keywordtype}{int}\ SaveFormFactor(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00047\ \textcolor{keywordtype}{int}\ SaveDefectBarrier(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00048\ \textcolor{keywordtype}{int}\ SaveMomentumDistributionMatrix(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00049\ \textcolor{keywordtype}{void}\ SaveLattice(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00050\ \textcolor{keywordtype}{void}\ SaveVext(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00051\ \textcolor{keywordtype}{void}\ SaveOneBodyWaveFunction(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00052\ \textcolor{keywordtype}{void}\ SaveThreeBodyWaveFunction(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00053\ \textcolor{keywordtype}{void}\ SaveSpinPolarization(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00054\ \textcolor{keywordtype}{int}\ SaveHyperRadius(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00055\ \textcolor{keywordtype}{int}\ SaveEffectivePotential(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00056\ \textcolor{keywordtype}{void}\ CopyPureCoordinates(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00057\ \textcolor{keywordtype}{int}\ SavePureCoordinates(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00058\ \textcolor{keywordtype}{int}\ SaveEpotPure(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00059\ \textcolor{keywordtype}{int}\ SavePairDistribtuionR2(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \textcolor{preprocessor}{\#define\ Fopen(out,\ fname,\ mode,\ text)\ \(\backslash\)}}
+\DoxyCodeLine{00062\ \textcolor{preprocessor}{\ \ out\ =\ fopen(fname,\ mode);\(\backslash\)}}
+\DoxyCodeLine{00063\ \textcolor{preprocessor}{\ \ if(out\ ==\ NULL)\ \{\ \ \ \ \ \ \ \ \(\backslash\)}}
+\DoxyCodeLine{00064\ \textcolor{preprocessor}{\ \ \ \ perror("{}\(\backslash\)nError:"{});\ \ \ \ \(\backslash\)}}
+\DoxyCodeLine{00065\ \textcolor{preprocessor}{\ \ \ \ Warning("{}Can't\ load/save\ \%s\ from/to\ file\ \%s\(\backslash\)n"{},\ text,\ fname);\(\backslash\)}}
+\DoxyCodeLine{00066\ \textcolor{preprocessor}{\ \ \}}}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

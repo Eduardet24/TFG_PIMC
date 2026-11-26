@@ -20,12 +20,234 @@
 #include "mymath.h"
 #include MATHINCLUDE
 
+DOUBLE Ekin_prim = 0.; // Primitive kinetic energy estimator
+
 /********************************* Energy ************************************/
+/** @brief Calculate the energy of the system.
+ *  @param Epot Pointer to the potential energy.
+ *  @param Ekin Pointer to the kinetic energy.
+ *  @param Eff Pointer to the effective energy.
+ *  @param Edamping Pointer to the damping energy.
+ *  @param Eint Pointer to the interaction energy.
+ *  @param Eext Pointer to the external energy.
+ *  @return The total energy of the system.
+ */
+static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
+                         DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
+  DOUBLE spring = 0.;
+  DOUBLE virial = 0.;
+  DOUBLE centroid_x = 0., centroid_y = 0., centroid_z = 0.;
+  DOUBLE potential = 0.;
+  DOUBLE external = 0.;
+  DOUBLE interaction = 0.;
+  DOUBLE tau = 1. / (T * (DOUBLE) Nwalkers);
+  int bead;
+  int next_bead;
+  int particle;
+  int other_particle;
+  int terms = 0;
+  DOUBLE dr[3];
+  DOUBLE r2;
+
+  for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
+    if(W[bead].status != ALIVE) continue; // skip dead walkers
+    next_bead = bead + 1;
+    if(next_bead == Nwalkers) next_bead = 0; // cyclic condition
+    terms++;
+    centroid_x += W[bead].x[0];
+    centroid_y += W[bead].y[0];
+    centroid_z += W[bead].z[0];
+
+    for(particle=0; particle<N; particle++) { // loop over all particles
+#ifdef WORM_ALGORITHM
+      int next_p = (worm_next != NULL && worm_open == 0) ? worm_next[bead][particle] : particle;
+      if(next_p < 0) next_p = particle;
+#else
+      int next_p = particle;
+#endif
+#ifdef TRIAL_1D 
+      spring += (W[bead].z[particle] - W[next_bead].z[next_p]) *
+                (W[bead].z[particle] - W[next_bead].z[next_p]);
+#elif defined(TRIAL_2D)
+      spring += (W[bead].x[particle] - W[next_bead].x[next_p]) *
+                (W[bead].x[particle] - W[next_bead].x[next_p]);
+      spring += (W[bead].y[particle] - W[next_bead].y[next_p]) *
+                (W[bead].y[particle] - W[next_bead].y[next_p]);
+#else
+      spring += (W[bead].x[particle] - W[next_bead].x[next_p]) *
+                (W[bead].x[particle] - W[next_bead].x[next_p]);
+      spring += (W[bead].y[particle] - W[next_bead].y[next_p]) *
+                (W[bead].y[particle] - W[next_bead].y[next_p]);
+      spring += (W[bead].z[particle] - W[next_bead].z[next_p]) *
+                (W[bead].z[particle] - W[next_bead].z[next_p]);
+#endif
+
+#ifdef EXTERNAL_POTENTIAL
+      external += Vext(W[bead].x[particle], W[bead].y[particle], W[bead].z[particle]); // external potential energy
+#endif
+    }
+
+    for(particle=0; particle<N; particle++) { // loop over all particles
+      for(other_particle=particle+1; other_particle<N; other_particle++) { // loop over all other particles
+        dr[0] = W[bead].x[particle] - W[bead].x[other_particle];
+        dr[1] = W[bead].y[particle] - W[bead].y[other_particle];
+        dr[2] = W[bead].z[particle] - W[bead].z[other_particle];
+        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]); // find the nearest image distance
+        interaction += InteractionEnergy(Sqrt(r2)); // interaction energy
+      }
+    }
+  }
+
+  if(terms == 0) {
+    *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.; // if no alive walkers, return 0
+    return 0.;
+  }
+
+  *Eext = external / ((DOUBLE) terms * N); // average external energy per particle
+  *Eint = interaction / ((DOUBLE) terms * N); // average interaction energy per particle
+  *Epot = *Eext + *Eint; // total potential energy per particle
+  centroid_x /= (DOUBLE) terms;
+  centroid_y /= (DOUBLE) terms;
+  centroid_z /= (DOUBLE) terms;
+  // Primitive kinetic energy estimator (Feynman-Barker formula requested by professor):
+  Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
+#ifdef TRIAL_1D
+  {
+    DOUBLE *cz = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    if(cz != NULL) {
+      for(particle=0; particle<N; particle++) cz[particle] = 0.;
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) cz[particle] += W[bead].z[particle];
+      }
+      for(particle=0; particle<N; particle++) cz[particle] /= (DOUBLE) terms;
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) {
+          virial += (W[bead].z[particle] - cz[particle]) * omega_z2 * W[bead].z[particle];
+        }
+      }
+      free(cz);
+      *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
+    }
+    else {
+      *Ekin = Ekin_prim;
+    }
+  }
+#elif defined(TRIAL_2D)
+  {
+    DOUBLE *cx = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    DOUBLE *cy = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    DOUBLE zero_mode_factor = 1.0;
+    int num_cycles = 0;
+    if(cx != NULL && cy != NULL) {
+#ifdef WORM_ALGORITHM
+      if(worm_next != NULL && worm_open == 0) {
+        int *visited = (int*) calloc(N, sizeof(int));
+        int *ring_p = (int*) malloc(N * Nwalkers * sizeof(int));
+        int *ring_w = (int*) malloc(N * Nwalkers * sizeof(int));
+        if(visited != NULL && ring_p != NULL && ring_w != NULL) {
+          for(particle=0; particle<N; particle++) {
+            if(visited[particle]) continue;
+            num_cycles++;
+            int ring_beads = 0;
+            int curr_p = particle;
+            int curr_w = 0;
+            DOUBLE sum_cx = 0., sum_cy = 0.;
+            do {
+              if(curr_w == 0) visited[curr_p] = 1;
+              ring_p[ring_beads] = curr_p;
+              ring_w[ring_beads] = curr_w;
+              if(W[curr_w].status == ALIVE) {
+                sum_cx += W[curr_w].x[curr_p];
+                sum_cy += W[curr_w].y[curr_p];
+              }
+              ring_beads++;
+              if(ring_beads >= N * Nwalkers) break;
+              curr_p = worm_next[curr_w][curr_p];
+              curr_w = (curr_w + 1) % Nwalkers;
+            } while(!(curr_w == 0 && curr_p == particle));
+
+            if(ring_beads > 0) {
+              sum_cx /= (DOUBLE) ring_beads;
+              sum_cy /= (DOUBLE) ring_beads;
+              for(int n=0; n<ring_beads; n++) {
+                int w = ring_w[n];
+                int p = ring_p[n];
+                if(W[w].status == ALIVE) {
+                  virial += (W[w].x[p] - sum_cx) * omega_x2 * W[w].x[p] +
+                            (W[w].y[p] - sum_cy) * omega_y2 * W[w].y[p];
+                }
+              }
+            }
+          }
+          free(visited);
+          free(ring_p);
+          free(ring_w);
+          zero_mode_factor = (DOUBLE)num_cycles / (DOUBLE)N;
+          *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
+          free(cx);
+          free(cy);
+          return *Epot + *Ekin;
+        }
+        else {
+          if(visited) free(visited);
+          if(ring_p) free(ring_p);
+          if(ring_w) free(ring_w);
+        }
+      }
+#endif
+      {
+        for(particle=0; particle<N; particle++) {
+          cx[particle] = 0.;
+          cy[particle] = 0.;
+        }
+        for(bead=0; bead<Nwalkers; bead++) {
+          if(W[bead].status != ALIVE) continue;
+          for(particle=0; particle<N; particle++) {
+            cx[particle] += W[bead].x[particle];
+            cy[particle] += W[bead].y[particle];
+          }
+        }
+        for(particle=0; particle<N; particle++) {
+          cx[particle] /= (DOUBLE) terms;
+          cy[particle] /= (DOUBLE) terms;
+        }
+      }
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) {
+          virial += (W[bead].x[particle] - cx[particle]) * omega_x2 * W[bead].x[particle] +
+                    (W[bead].y[particle] - cy[particle]) * omega_y2 * W[bead].y[particle];
+        }
+      }
+      free(cx);
+      free(cy);
+      *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
+    }
+    else {
+      if(cx) free(cx);
+      if(cy) free(cy);
+      *Ekin = Ekin_prim;
+    }
+  }
+#else
+  *Ekin = Ekin_prim;
+#endif
+  *Eff = *Edamping = 0.;
+  potential = *Epot + *Ekin;
+  return potential;
+}
+
 // returns energy of the system averaged over all walkers
 DOUBLE Energy(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
   DOUBLE dEpot, dEkin, dEff, dEdamping, dEint, dEext;
   int w;
   int terms = 0;
+
+  if(MC == PIMC) {
+    return EnergyPIMC(Epot, Ekin, Eff, Edamping, Eint, Eext);
+  }
 
   *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.;
   terms = 0;
@@ -1305,9 +1527,13 @@ void MeasureRadialDistributionWalker(struct Walker *W) {
 #endif
 
 #ifdef BC_ABSENT // trap
-    if(fabs(W->z[i])< RD.width) {
+#ifdef TRIAL_1D
+    if(fabs(W->z[i]) < RD.width) {
+#else
+    if(r < RD.width) {
+#endif
 #else // hom. system
-    if(r<RD.width) {
+    if(r < RD.width) {
 #endif
       n = (int) (r/RD.step);
       if(n<RD.size) {

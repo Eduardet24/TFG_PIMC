@@ -1,0 +1,76 @@
+\doxysection{parallel.\+h}
+\hypertarget{parallel_8h_source}{}\label{parallel_8h_source}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{comment}{/*parallel.h*/}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifndef\ \_PARALLEL\_H\_}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#define\ \_PARALLEL\_H\_}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{keywordtype}{void}\ ParallelRandInit(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#ifdef\ MPI}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ <mpi.h>}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#define\ MASTER\ 0}}
+\DoxyCodeLine{00013\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ myid;\ \textcolor{comment}{//\ check\ if\ this\ runs\ is\ a\ mastere\ or\ a\ slave}}
+\DoxyCodeLine{00014\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Nslaves;}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ MSG\_NWALKER\ 1}}
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#define\ MSG\_WALKER\ 2}}
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#define\ MSG\_REPLY\ 3}}
+\DoxyCodeLine{00019\ \textcolor{preprocessor}{\#define\ MSG\_RADIAL\_DISTRIBUTION\ 4}}
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#define\ MSG\_OBDM\ 5}}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00022\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ NwalkersAll;\ \textcolor{comment}{//\ total\ number\ of\ walkers\ on\ all\ machines}}
+\DoxyCodeLine{00023\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{char}\ *buffer;}
+\DoxyCodeLine{00024\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ message\_size;}
+\DoxyCodeLine{00025\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *NwalkersSl;\ \textcolor{comment}{//\ number\ of\ walkers\ at\ a\ given\ machine}}
+\DoxyCodeLine{00026\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ *walker\_indices;\ \textcolor{comment}{//\ original\ indices\ of\ walkers\ distributed\ to\ a\ given\ machine}}
+\DoxyCodeLine{00027\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{double}\ time\_done\_in\_parallel;}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{keyword}{extern}\ MPI\_Status\ mpi\_status;\ \textcolor{comment}{//\ error\ status}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{keywordtype}{void}\ ParallelInitialize(\textcolor{keywordtype}{int}\ argn,\ \textcolor{keywordtype}{char}\ **argv);}
+\DoxyCodeLine{00032\ \textcolor{keywordtype}{void}\ ParallelInitialize2(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00033\ \textcolor{keywordtype}{void}\ ParallelStop(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00034\ \textcolor{keywordtype}{void}\ CollectAllWalkers(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00035\ \textcolor{keywordtype}{void}\ DistributeAllWalkers(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \textcolor{keywordtype}{void}\ ParallelSaveEnergyVMC(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{void}\ ParallelSaveEnergyDMC(DOUBLE\ E);}
+\DoxyCodeLine{00039\ \textcolor{keywordtype}{void}\ ParallelSaveMomentumDistribution(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \textcolor{keywordtype}{void}\ CollectAllWalkersData(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00042\ \textcolor{keywordtype}{int}\ SendWalkers(\textcolor{keywordtype}{int}\ dest,\ \textcolor{keywordtype}{int}\ wmin,\ \textcolor{keywordtype}{int}\ Nwalk,\ \textcolor{keywordtype}{int}\ tag,\ MPI\_Request\ *request);}
+\DoxyCodeLine{00043\ \textcolor{keywordtype}{void}\ ReceiveWalkersData(\textcolor{keywordtype}{int}\ src,\ \textcolor{keywordtype}{int}\ wmin,\ \textcolor{keywordtype}{int}\ tag);}
+\DoxyCodeLine{00044\ \textcolor{keywordtype}{void}\ ReceiveWalkersUnpack(\textcolor{keywordtype}{int}\ src,\ \textcolor{keywordtype}{int}\ wmin);}
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00046\ \textcolor{keywordtype}{void}\ ReceiveWalkers(\textcolor{keywordtype}{int}\ src,\ \textcolor{keywordtype}{int}\ wmin,\ \textcolor{keywordtype}{int}\ tag,\ MPI\_Request\ *request);}
+\DoxyCodeLine{00047\ \textcolor{keywordtype}{int}\ SendWalkersData(\textcolor{keywordtype}{int}\ dest,\ \textcolor{keywordtype}{int}\ wmin,\ \textcolor{keywordtype}{int}\ Nwalk,\ \textcolor{keywordtype}{int}\ tag);}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \textcolor{keywordtype}{void}\ BranchingMPI(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00050\ }
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00052\ }
+\DoxyCodeLine{00053\ \textcolor{comment}{/****************************\ Open\ MP\ ****************************************/}}
+\DoxyCodeLine{00054\ \textcolor{preprocessor}{\#ifdef\ \_OPENMP}}
+\DoxyCodeLine{00055\ }
+\DoxyCodeLine{00056\ \textcolor{preprocessor}{\#include\ <omp.h>}}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\#include\ "{}main.h"{}}}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \textcolor{preprocessor}{\#define\ MASTER\ 0}}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ myid;\ \textcolor{comment}{//\ check\ if\ this\ runs\ is\ a\ mastere\ or\ a\ slave}}
+\DoxyCodeLine{00062\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{int}\ Nslaves;}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \textcolor{keywordtype}{void}\ ParallelInitialize(\textcolor{keywordtype}{int}\ argn,\ \textcolor{keywordtype}{char}\ **argv);}
+\DoxyCodeLine{00065\ DOUBLE\ RandomCritical(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00070\ }
+\DoxyCodeLine{00071\ }
+
+\end{DoxyCode}
