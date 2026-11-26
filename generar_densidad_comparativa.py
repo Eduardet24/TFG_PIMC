@@ -17,6 +17,7 @@ import os
 import sys
 import shutil
 import subprocess
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -87,6 +88,11 @@ def run_pimc_simulation(disable_swap, run_dir):
     if proc.returncode != 0:
         raise RuntimeError(f"Error en simulación {tag}:\n{proc.stdout[-2000:]}")
 
+    return load_pimc_results(run_dir, tag)
+
+
+def load_pimc_results(run_dir, tag="PIMC"):
+    """Lee outrd.dat y oute.dat de un directorio de simulación ya ejecutado."""
     rd_path = os.path.join(run_dir, "outrd.dat")
     data_rd = np.loadtxt(rd_path)
     splits = np.where(np.diff(data_rd[:, 0]) < 0)[0] + 1
@@ -147,15 +153,9 @@ def plot_with_3sigma_subpanel(r_sim, d_sim, err_sim, e_sim,
     print(f"     Puntos dentro de 3-sigma: {pct_3sigma:.1f}%")
 
     # -------------------------------------------------------------------------
-    # Figura 1: Gráfico Principal con Banda 3-sigma sombreada
+    # Figura 1: Gráfico Principal sin banda analítica (errores en los puntos PIMC)
     # -------------------------------------------------------------------------
     fig, ax = plt.subplots(figsize=(8.0, 5.6), dpi=300)
-
-    # Banda de 3 sigmas (99.73% de confianza)
-    ax.fill_between(r_fit, n_exact_points - 3.0 * err_fit, n_exact_points + 3.0 * err_fit,
-                    color=target_color, alpha=0.18, label=r"Banda de confianza $3\sigma$ (99.73%)", zorder=1)
-    ax.fill_between(r_fit, n_exact_points - 1.0 * err_fit, n_exact_points + 1.0 * err_fit,
-                    color=target_color, alpha=0.28, label=r"Banda de confianza $1\sigma$ (68.3%)", zorder=2)
 
     # Curva objetivo analítica
     ax.plot(r_fine, n_target, color=target_color, linestyle="-", linewidth=2.3,
@@ -201,8 +201,6 @@ def plot_with_3sigma_subpanel(r_sim, d_sim, err_sim, e_sim,
     )
 
     # Panel Superior: Densidad n(r)
-    ax_top.fill_between(r_fit, n_exact_points - 3.0 * err_fit, n_exact_points + 3.0 * err_fit,
-                        color=target_color, alpha=0.18, label=r"Banda analítica $3\sigma$ (99.7%)", zorder=1)
     ax_top.plot(r_fine, n_target, color=target_color, linestyle="-", linewidth=2.3, label=target_label, zorder=2)
     ax_top.plot(r_fine, n_ref, color=ref_color, linestyle="--", linewidth=2.0, alpha=0.9, label=ref_label, zorder=2)
     ax_top.errorbar(r_fit, d_fit, yerr=err_fit, fmt="o", color=sim_color, ecolor="black",
@@ -238,11 +236,20 @@ def plot_with_3sigma_subpanel(r_sim, d_sim, err_sim, e_sim,
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--replot", action="store_true",
+                        help="Regenera las gráficas usando los outrd.dat/oute.dat existentes sin re-simular.")
+    args = parser.parse_args()
+
     dir_noswap = os.path.join(OUTPUT_DIR, "sim_noswap")
     dir_swap = os.path.join(OUTPUT_DIR, "sim_swap")
 
-    r_noswap, d_noswap, err_noswap, e_noswap = run_pimc_simulation(disable_swap=True, run_dir=dir_noswap)
-    r_swap, d_swap, err_swap, e_swap = run_pimc_simulation(disable_swap=False, run_dir=dir_swap)
+    if args.replot:
+        r_noswap, d_noswap, err_noswap, e_noswap = load_pimc_results(dir_noswap, "SIN SWAP (Distinguibles)")
+        r_swap, d_swap, err_swap, e_swap = load_pimc_results(dir_swap, "CON SWAP (Bose)")
+    else:
+        r_noswap, d_noswap, err_noswap, e_noswap = run_pimc_simulation(disable_swap=True, run_dir=dir_noswap)
+        r_swap, d_swap, err_swap, e_swap = run_pimc_simulation(disable_swap=False, run_dir=dir_swap)
 
     r_fine = np.linspace(0.001, 3.5, 300)
     n_dist_fine = analytical_distinguishable_density(r_fine, TEMP, OMEGA)
@@ -308,14 +315,6 @@ def main():
              label=rf"Analítico: Bose Canónico ($N={N_PARTICLES}$)", zorder=2)
     ax3.plot(r_fine, n_dist_fine, color="#2b2b2b", linestyle="--", linewidth=2.0, alpha=0.9,
              label="Analítico: Distinguible (referencia Boltzmann)", zorder=2)
-
-    # Bandas 3-sigma para ambas curvas
-    n_bose_pts = analytical_bose_density(r_swap[mask2], N_PARTICLES, TEMP, OMEGA)
-    n_dist_pts = analytical_distinguishable_density(r_noswap[mask1], TEMP, OMEGA)
-    ax3.fill_between(r_swap[mask2], n_bose_pts - 3.0*err_swap[mask2], n_bose_pts + 3.0*err_swap[mask2],
-                     color="#d62728", alpha=0.15, label=r"Banda Bose $\pm 3\sigma$ (99.7%)", zorder=1)
-    ax3.fill_between(r_noswap[mask1], n_dist_pts - 3.0*err_noswap[mask1], n_dist_pts + 3.0*err_noswap[mask1],
-                     color="#1f77b4", alpha=0.15, label=r"Banda Distinguible $\pm 3\sigma$ (99.7%)", zorder=1)
 
     # Datos PIMC
     ax3.errorbar(r_swap[mask2], d_swap[mask2], yerr=err_swap[mask2],
