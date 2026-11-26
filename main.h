@@ -1357,6 +1357,22 @@ void MeasureWormPermutations(void);
 void SaveWormPermutations(const char *filename);
 void MeasureWormOBDM(void);
 void SaveWormOBDM(const char *filename);
+extern long long worm_sf_samples;
+extern DOUBLE worm_sf_A_sum[3];
+extern DOUBLE worm_sf_A2_sum[3];
+extern DOUBLE worm_sf_Icl_sum[3];
+extern DOUBLE worm_sf_W2_sum;
+extern long long worm_sf_block_samples;
+extern DOUBLE worm_sf_block_A_sum[3];
+extern DOUBLE worm_sf_block_A2_sum[3];
+extern DOUBLE worm_sf_block_Icl_sum[3];
+extern DOUBLE worm_sf_block_W2_sum;
+extern long long worm_sf_num_blocks;
+extern DOUBLE worm_sf_rho_block_sum;
+extern DOUBLE worm_sf_rho_block_sum2;
+void MeasureWormSuperfluid(void);
+DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], const DOUBLE A2_sum[3], const DOUBLE Icl_sum[3], DOUBLE W2_sum);
+void SaveWormSuperfluid(const char *filename);
 #endif
 
 void Measure(int, int);

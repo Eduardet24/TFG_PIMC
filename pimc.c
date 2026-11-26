@@ -740,6 +740,22 @@ void InitWorm(void) {
   worm_obdm_dist_all = (long long*) calloc(worm_obdm_grid, sizeof(long long));
   worm_obdm_samples_gap1 = 0;
   worm_obdm_samples_all = 0;
+
+  worm_sf_samples = 0;
+  worm_sf_block_samples = 0;
+  worm_sf_num_blocks = 0;
+  worm_sf_rho_block_sum = 0.0;
+  worm_sf_rho_block_sum2 = 0.0;
+  worm_sf_W2_sum = 0.0;
+  worm_sf_block_W2_sum = 0.0;
+  for(i = 0; i < 3; i++) {
+    worm_sf_A_sum[i] = 0.0;
+    worm_sf_A2_sum[i] = 0.0;
+    worm_sf_Icl_sum[i] = 0.0;
+    worm_sf_block_A_sum[i] = 0.0;
+    worm_sf_block_A2_sum[i] = 0.0;
+    worm_sf_block_Icl_sum[i] = 0.0;
+  }
 }
 
 static int WormSnapshotWrite(int move, const char *phase) {
@@ -1268,10 +1284,15 @@ void WormDiagnostic(void) {
     }
   }
 
-  Message("Worm F4: Z=%lld G=%lld (fG=%.2f) | Op: %.1f%% | Cl: %.1f%% | Adv: %.1f%% | Rec: %.1f%% | Sw: %.1f%% | Ira: %.1f%% | P(1)=%.2f P(2)=%.2f\n",
+  double rhos = 0.0;
+  if(worm_sf_samples > 0) {
+    rhos = (double)ComputeWormSuperfluidFraction(worm_sf_samples, worm_sf_A_sum, worm_sf_A2_sum, worm_sf_Icl_sum, worm_sf_W2_sum);
+  }
+
+  Message("Worm F4: Z=%lld G=%lld (fG=%.2f) | Op: %.1f%% | Cl: %.1f%% | Adv: %.1f%% | Rec: %.1f%% | Sw: %.1f%% | Ira: %.1f%% | P(1)=%.2f P(2)=%.2f | rhos/rho=%.4f\n",
           worm_count_Z, worm_count_G, frac_G,
           rate_open, rate_close, rate_adv, rate_rec, rate_swap, rate_ira,
-          p1, p2);
+          p1, p2, rhos);
 }
 
 void SaveWormGapHistogram(const char *filename) {
@@ -1446,5 +1467,179 @@ void SaveWormOBDM(const char *filename) {
     }
     fclose(f);
   }
+}
+
+DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], const DOUBLE A2_sum[3], const DOUBLE Icl_sum[3], DOUBLE W2_sum) {
+  (void)A_sum;
+  if(samples <= 0 || T <= 0.0 || N <= 0) return 0.0;
+  DOUBLE n_samples = (DOUBLE)samples;
+
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+  DOUBLE A2_mean = A2_sum[2] / n_samples;
+  DOUBLE Icl_mean = Icl_sum[2] / n_samples;
+  if(Icl_mean <= 0.0) return 0.0;
+  return (4.0 * T / Icl_mean) * A2_mean;
+#elif defined(TRIAL_3D)
+  int axis, valid_axes = 0;
+  DOUBLE rhos_sum = 0.0;
+  for(axis = 0; axis < 3; axis++) {
+    DOUBLE A2_mean = A2_sum[axis] / n_samples;
+    DOUBLE Icl_mean = Icl_sum[axis] / n_samples;
+    if(Icl_mean > 0.0) {
+      rhos_sum += (4.0 * T / Icl_mean) * A2_mean;
+      valid_axes++;
+    }
+  }
+  return (valid_axes > 0) ? (rhos_sum / (DOUBLE)valid_axes) : 0.0;
+#else
+  (void)A2_sum; (void)Icl_sum; (void)W2_sum;
+  return 0.0;
+#endif
+#else
+  /* Periodic boundary conditions: winding number estimator rho_s/rho = T * <W^2> / (D * N) */
+  (void)A2_sum; (void)Icl_sum;
+  DOUBLE W2_mean = W2_sum / n_samples;
+  return (T * W2_mean) / ((DOUBLE)D * (DOUBLE)N);
+#endif
+}
+
+void MeasureWormSuperfluid(void) {
+  int w, p;
+
+  if(worm_open != 0 || worm_next == NULL || Nwalkers <= 0 || N <= 0 || T <= 0.0) return;
+
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+  DOUBLE Az = 0.0;
+  DOUBLE Icl = 0.0;
+  for(w = 0; w < Nwalkers; w++) {
+    int w_next = (w + 1) % Nwalkers;
+    for(p = 0; p < N; p++) {
+      int p_next = worm_next[w][p];
+      if(p_next < 0) return;
+      Az += 0.5 * (W[w].x[p] * W[w_next].y[p_next] - W[w].y[p] * W[w_next].x[p_next]);
+      Icl += W[w].x[p] * W[w].x[p] + W[w].y[p] * W[w].y[p];
+    }
+  }
+  Icl /= (DOUBLE)Nwalkers;
+
+  worm_sf_samples++;
+  worm_sf_A_sum[2] += Az;
+  worm_sf_A2_sum[2] += Az * Az;
+  worm_sf_Icl_sum[2] += Icl;
+
+  worm_sf_block_samples++;
+  worm_sf_block_A_sum[2] += Az;
+  worm_sf_block_A2_sum[2] += Az * Az;
+  worm_sf_block_Icl_sum[2] += Icl;
+#elif defined(TRIAL_3D)
+  DOUBLE A[3] = {0.0, 0.0, 0.0};
+  DOUBLE Icl[3] = {0.0, 0.0, 0.0};
+  int axis;
+  for(w = 0; w < Nwalkers; w++) {
+    int w_next = (w + 1) % Nwalkers;
+    for(p = 0; p < N; p++) {
+      int p_next = worm_next[w][p];
+      if(p_next < 0) return;
+      DOUBLE x1 = W[w].x[p], y1 = W[w].y[p], z1 = W[w].z[p];
+      DOUBLE x2 = W[w_next].x[p_next], y2 = W[w_next].y[p_next], z2 = W[w_next].z[p_next];
+      A[0] += 0.5 * (y1 * z2 - z1 * y2);
+      A[1] += 0.5 * (z1 * x2 - x1 * z2);
+      A[2] += 0.5 * (x1 * y2 - y1 * x2);
+      Icl[0] += y1 * y1 + z1 * z1;
+      Icl[1] += z1 * z1 + x1 * x1;
+      Icl[2] += x1 * x1 + y1 * y1;
+    }
+  }
+  worm_sf_samples++;
+  worm_sf_block_samples++;
+  for(axis = 0; axis < 3; axis++) {
+    Icl[axis] /= (DOUBLE)Nwalkers;
+    worm_sf_A_sum[axis] += A[axis];
+    worm_sf_A2_sum[axis] += A[axis] * A[axis];
+    worm_sf_Icl_sum[axis] += Icl[axis];
+    worm_sf_block_A_sum[axis] += A[axis];
+    worm_sf_block_A2_sum[axis] += A[axis] * A[axis];
+    worm_sf_block_Icl_sum[axis] += Icl[axis];
+  }
+#endif
+#else
+  DOUBLE Wx = 0.0, Wy = 0.0, Wz = 0.0;
+  for(w = 0; w < Nwalkers; w++) {
+    int w_next = (w + 1) % Nwalkers;
+    for(p = 0; p < N; p++) {
+      int p_next = worm_next[w][p];
+      if(p_next < 0) return;
+      DOUBLE dr[3] = {
+        W[w_next].x[p_next] - W[w].x[p],
+        W[w_next].y[p_next] - W[w].y[p],
+        W[w_next].z[p_next] - W[w].z[p]
+      };
+      FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      CaseX(Wx += dr[0]);
+      CaseY(Wy += dr[1]);
+      CaseZ(Wz += dr[2]);
+    }
+  }
+  DOUBLE W2 = Wx * Wx + Wy * Wy + Wz * Wz;
+  worm_sf_samples++;
+  worm_sf_W2_sum += W2;
+  worm_sf_block_samples++;
+  worm_sf_block_W2_sum += W2;
+#endif
+}
+
+void SaveWormSuperfluid(const char *filename) {
+  FILE *f;
+  DOUBLE rhos, block_mean = 0.0, block_err = 0.0;
+  DOUBLE n_samples;
+
+  if(worm_sf_samples == 0) return;
+  f = fopen(filename, "w");
+  if(f == NULL) return;
+
+  n_samples = (DOUBLE)worm_sf_samples;
+  rhos = ComputeWormSuperfluidFraction(worm_sf_samples, worm_sf_A_sum, worm_sf_A2_sum, worm_sf_Icl_sum, worm_sf_W2_sum);
+
+  if(worm_sf_num_blocks > 0) {
+    block_mean = worm_sf_rho_block_sum / (DOUBLE)worm_sf_num_blocks;
+    if(worm_sf_num_blocks > 1) {
+      DOUBLE var = (worm_sf_rho_block_sum2 / (DOUBLE)worm_sf_num_blocks) - block_mean * block_mean;
+      if(var < 0.0) var = 0.0;
+      block_err = Sqrt(var / (DOUBLE)(worm_sf_num_blocks - 1));
+    }
+  }
+
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+  fprintf(f, "# WORM_SUPERFLUID_AREA_ESTIMATOR_2D\n");
+  fprintf(f, "# N=%d Nwalkers=%d T=%.15g beta=%.15g swap=%d samples=%lld blocks=%lld\n",
+          N, Nwalkers, T, 1.0 / T, worm_swap_enabled, worm_sf_samples, worm_sf_num_blocks);
+  fprintf(f, "# rho_s_over_rho rho_s_block_mean rho_s_block_err A2_mean A_mean Icl_mean\n");
+  fprintf(f, "%.15e %.15e %.15e %.15e %.15e %.15e\n",
+          rhos, block_mean, block_err,
+          worm_sf_A2_sum[2] / n_samples,
+          worm_sf_A_sum[2] / n_samples,
+          worm_sf_Icl_sum[2] / n_samples);
+#elif defined(TRIAL_3D)
+  fprintf(f, "# WORM_SUPERFLUID_AREA_ESTIMATOR_3D\n");
+  fprintf(f, "# N=%d Nwalkers=%d T=%.15g beta=%.15g swap=%d samples=%lld blocks=%lld\n",
+          N, Nwalkers, T, 1.0 / T, worm_swap_enabled, worm_sf_samples, worm_sf_num_blocks);
+  fprintf(f, "# rho_s_over_rho rho_s_block_mean rho_s_block_err Ax2_mean Ay2_mean Az2_mean Icl_x Icl_y Icl_z\n");
+  fprintf(f, "%.15e %.15e %.15e %.15e %.15e %.15e %.15e %.15e %.15e\n",
+          rhos, block_mean, block_err,
+          worm_sf_A2_sum[0] / n_samples, worm_sf_A2_sum[1] / n_samples, worm_sf_A2_sum[2] / n_samples,
+          worm_sf_Icl_sum[0] / n_samples, worm_sf_Icl_sum[1] / n_samples, worm_sf_Icl_sum[2] / n_samples);
+#endif
+#else
+  fprintf(f, "# WORM_SUPERFLUID_WINDING_NUMBER\n");
+  fprintf(f, "# N=%d Nwalkers=%d T=%.15g beta=%.15g swap=%d samples=%lld blocks=%lld\n",
+          N, Nwalkers, T, 1.0 / T, worm_swap_enabled, worm_sf_samples, worm_sf_num_blocks);
+  fprintf(f, "# rho_s_over_rho rho_s_block_mean rho_s_block_err W2_mean\n");
+  fprintf(f, "%.15e %.15e %.15e %.15e\n",
+          rhos, block_mean, block_err, worm_sf_W2_sum / n_samples);
+#endif
+  fclose(f);
 }
 #endif /* WORM_ALGORITHM */

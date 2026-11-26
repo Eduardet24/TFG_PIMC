@@ -179,6 +179,19 @@ long long *worm_obdm_dist = NULL;        /* histograma 1D de distancia s = |r_ir
 long long **worm_obdm_radial = NULL;     /* histograma 2D radial \rho_1(r_ira, r_masha) */
 long long **worm_obdm_matrix_all = NULL; /* histograma 2D para todos los gaps */
 long long *worm_obdm_dist_all = NULL;    /* histograma 1D de distancia para todos los gaps */
+long long worm_sf_samples = 0;
+DOUBLE worm_sf_A_sum[3] = {0.0, 0.0, 0.0};
+DOUBLE worm_sf_A2_sum[3] = {0.0, 0.0, 0.0};
+DOUBLE worm_sf_Icl_sum[3] = {0.0, 0.0, 0.0};
+DOUBLE worm_sf_W2_sum = 0.0;
+long long worm_sf_block_samples = 0;
+DOUBLE worm_sf_block_A_sum[3] = {0.0, 0.0, 0.0};
+DOUBLE worm_sf_block_A2_sum[3] = {0.0, 0.0, 0.0};
+DOUBLE worm_sf_block_Icl_sum[3] = {0.0, 0.0, 0.0};
+DOUBLE worm_sf_block_W2_sum = 0.0;
+long long worm_sf_num_blocks = 0;
+DOUBLE worm_sf_rho_block_sum = 0.0;
+DOUBLE worm_sf_rho_block_sum2 = 0.0;
 #endif
 
 struct Walker *W, *Wp;
@@ -1240,6 +1253,15 @@ int main(int argn, char **argv) {
       fprintf(worm_block_file, "\n");
       fclose(worm_block_file);
     }
+    worm_block_file = fopen("outworm_superfluid_blocks.dat", "w");
+    if(worm_block_file != NULL) {
+#ifdef BC_ABSENT
+      fprintf(worm_block_file, "# block samples rho_s_over_rho A2_mean A_mean Icl_mean\n");
+#else
+      fprintf(worm_block_file, "# block samples rho_s_over_rho W2_mean\n");
+#endif
+      fclose(worm_block_file);
+    }
   }
 #endif
 
@@ -1256,6 +1278,13 @@ int main(int argn, char **argv) {
     worm_block_energy_sum[1] = 0.;
     worm_block_energy_sum[2] = 0.;
     worm_block_energy_samples = 0;
+    worm_sf_block_samples = 0;
+    worm_sf_block_W2_sum = 0.0;
+    for(w = 0; w < 3; w++) {
+      worm_sf_block_A_sum[w] = 0.0;
+      worm_sf_block_A2_sum[w] = 0.0;
+      worm_sf_block_Icl_sum[w] = 0.0;
+    }
     worm_cycle_samples_block_start = worm_cycle_samples;
     if(worm_cycle_block_start != NULL && worm_cycle_histogram != NULL) {
       for(worm_cycle_length = 0; worm_cycle_length <= N; worm_cycle_length++) {
@@ -1408,6 +1437,7 @@ int main(int argn, char **argv) {
           }
 #endif
           MeasureWormPermutations();
+          MeasureWormSuperfluid();
           time_begin = clock();
           if(video) Picture();
 #ifdef WORM_ALGORITHM
@@ -1449,6 +1479,37 @@ int main(int argn, char **argv) {
           fclose(worm_block_file);
         }
       }
+
+      if(worm_sf_block_samples > 0) {
+        DOUBLE rho_s_block = ComputeWormSuperfluidFraction(
+          worm_sf_block_samples, worm_sf_block_A_sum, worm_sf_block_A2_sum,
+          worm_sf_block_Icl_sum, worm_sf_block_W2_sum);
+        worm_sf_num_blocks++;
+        worm_sf_rho_block_sum += rho_s_block;
+        worm_sf_rho_block_sum2 += rho_s_block * rho_s_block;
+        worm_block_file = fopen("outworm_superfluid_blocks.dat", "a");
+        if(worm_block_file != NULL) {
+          DOUBLE n_blk = (DOUBLE)worm_sf_block_samples;
+#ifdef BC_ABSENT
+#ifdef TRIAL_3D
+          DOUBLE a2_blk = (worm_sf_block_A2_sum[0] + worm_sf_block_A2_sum[1] + worm_sf_block_A2_sum[2]) / (3.0 * n_blk);
+          DOUBLE a_blk = (worm_sf_block_A_sum[0] + worm_sf_block_A_sum[1] + worm_sf_block_A_sum[2]) / (3.0 * n_blk);
+          DOUBLE icl_blk = (worm_sf_block_Icl_sum[0] + worm_sf_block_Icl_sum[1] + worm_sf_block_Icl_sum[2]) / (3.0 * n_blk);
+#else
+          DOUBLE a2_blk = worm_sf_block_A2_sum[2] / n_blk;
+          DOUBLE a_blk = worm_sf_block_A_sum[2] / n_blk;
+          DOUBLE icl_blk = worm_sf_block_Icl_sum[2] / n_blk;
+#endif
+          fprintf(worm_block_file, "%d %lld %.15" LE " %.15" LE " %.15" LE " %.15" LE "\n",
+                  block, worm_sf_block_samples, rho_s_block, a2_blk, a_blk, icl_blk);
+#else
+          fprintf(worm_block_file, "%d %lld %.15" LE " %.15" LE "\n",
+                  block, worm_sf_block_samples, rho_s_block, worm_sf_block_W2_sum / n_blk);
+#endif
+          fclose(worm_block_file);
+        }
+      }
+      SaveWormSuperfluid("outworm_superfluid.dat");
 
       if(measure_RadDistr && RD.times_measured > 0) {
         SaveRadialDistribution();
@@ -1550,6 +1611,7 @@ int main(int argn, char **argv) {
     SaveWormGapHistogram("outworm_gap.dat");
     SaveWormPermutations("outworm_perm.dat");
     SaveWormOBDM("outworm_obdm.dat");
+    SaveWormSuperfluid("outworm_superfluid.dat");
   }
   free(worm_cycle_block_start);
 #endif
