@@ -39,7 +39,10 @@ from generar_graficos_obdm import (
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_OBDM")
 OVERLEAF_IMG_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "overleaf", "imágenes")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(OVERLEAF_IMG_DIR, exist_ok=True)
+try:
+    os.makedirs(OVERLEAF_IMG_DIR, exist_ok=True)
+except OSError:
+    pass
 
 # Parámetros físicos
 N_PARTICLES = get_n_particles(os.path.join(SCRIPT_DIR, "MC.cfg"), "WORM_FASE4_PARTICLES")
@@ -53,8 +56,8 @@ TAU = BETA / BEADS
 WORM_C = 0.1 / (0.40 * N_PARTICLES * BEADS)  # ~0.004167
 
 HEATING_BLOCKS = int(os.environ.get("WORM_OBDM_HEATING", 25))
-MEASURE_BLOCKS = int(os.environ.get("WORM_OBDM_BLOCKS", 100))
-N_ITER = int(os.environ.get("WORM_OBDM_NITER", 500))
+MEASURE_BLOCKS = int(os.environ.get("WORM_OBDM_BLOCKS", 400))
+N_ITER = int(os.environ.get("WORM_OBDM_NITER", 1000))
 
 
 def get_or_compile_executable():
@@ -166,7 +169,7 @@ def main():
         print("\n[3/3] Generando gráficos de publicación y sincronizando con Overleaf...")
         generar_mapa_calor_obdm(x_vals, pimc_norm, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR)
         generar_cortes_obdm(x_vals, pimc_norm, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR)
-        generar_grafico_distancia_extremos(dist_file, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR)
+        generar_grafico_distancia_extremos(dist_file, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR, tau=tau_gap1 or 0.0)
 
         print("\n=================================================================")
         print("  ANÁLISIS DE OBDM COMPLETADO; las discrepancias son comparaciones diagnósticas")

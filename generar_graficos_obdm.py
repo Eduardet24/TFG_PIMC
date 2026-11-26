@@ -17,6 +17,7 @@ Incluye:
 
 import os
 import sys
+import re
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,13 +32,25 @@ from worm_config import get_n_particles
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_OBDM")
 OVERLEAF_IMG_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "overleaf", "imágenes")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(OVERLEAF_IMG_DIR, exist_ok=True)
+try:
+    os.makedirs(OVERLEAF_IMG_DIR, exist_ok=True)
+except OSError:
+    pass
+
+def _get_temp_from_cfg(cfg_path, default=0.5):
+    if os.path.isfile(cfg_path):
+        with open(cfg_path, "r", encoding="utf-8", errors="ignore") as f:
+            match = re.search(r"(?<![A-Za-z0-9_])T\s*=\s*([0-9.eE+-]+)", f.read())
+            if match:
+                return float(match.group(1))
+    return default
+
 
 # Parámetros físicos por defecto
 N_PARTICLES = get_n_particles(os.path.join(SCRIPT_DIR, "MC.cfg"), "WORM_FASE4_PARTICLES")
 if N_PARTICLES < 2 and "WORM_PARTICLES" not in os.environ and "WORM_FASE4_PARTICLES" not in os.environ:
     N_PARTICLES = 2
-TEMP = 0.5
+TEMP = _get_temp_from_cfg(os.path.join(SCRIPT_DIR, "MC.cfg"), 0.5)
 BETA = 1.0 / TEMP
 OMEGA = 1.0
 
@@ -106,6 +119,34 @@ def analytical_distinguishable_obdm_1d(x, xp, n_particles, temp, omega=OMEGA, pe
     beta = 1.0 / temp
     norm = 1.0 if per_particle else float(n_particles)
     return norm * normalized_mehler_1d(x, xp, beta, omega)
+
+
+def analytical_bose_endpoint_dist(s_vals, n_particles, temp, omega=OMEGA, tau=0.0):
+    """
+    Distribución analítica exacta de la separación espacial 2D s = |r_ira - r_masha|
+    en el sector G (gap=1, tiempo efectivo k*beta - tau) para N bosones en trampa armónica 2D.
+    """
+    z_can = canonical_bose_partition(n_particles, temp, omega)
+    beta = 1.0 / temp
+    p_s = np.zeros_like(s_vals, dtype=float)
+    w_sum = 0.0
+    for k in range(1, n_particles + 1):
+        q = np.exp(-k * beta * omega)
+        z2d = 1.0 / (1.0 - q)**2
+        u_eff = max(k * beta - tau, 1e-6) * omega
+        weight = z2d * (z_can[n_particles - k] / z_can[n_particles]) * np.tanh(0.5 * u_eff)
+        sigma2 = 2.0 * np.tanh(0.5 * u_eff) / omega
+        w_sum += weight
+        p_s += weight * (s_vals / sigma2) * np.exp(-s_vals**2 / (2.0 * sigma2))
+    return p_s / w_sum if w_sum > 0 else p_s
+
+
+def analytical_distinguishable_endpoint_dist(s_vals, temp, omega=OMEGA, tau=0.0):
+    """Distribución de separación espacial 2D s para partículas distinguibles (k=1)."""
+    beta = 1.0 / temp
+    u_eff = max(beta - tau, 1e-6) * omega
+    sigma2 = 2.0 * np.tanh(0.5 * u_eff) / omega
+    return (s_vals / sigma2) * np.exp(-s_vals**2 / (2.0 * sigma2))
 
 
 # ==============================================================================
@@ -306,7 +347,7 @@ def generar_cortes_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=TEMP,
         shutil.copy2(out_file, overleaf_file)
 
 
-def generar_grafico_distancia_extremos(dist_path, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR):
+def generar_grafico_distancia_extremos(dist_path, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR, tau=0.0):
     """Grafica la distribución de distancia espacial entre los extremos Ira y Masha."""
     s_vals, p_s = load_worm_dist_data(dist_path)
     if s_vals is None:
@@ -315,8 +356,14 @@ def generar_grafico_distancia_extremos(dist_path, n_particles=N_PARTICLES, temp=
 
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
     mask = s_vals <= 5.0
-    ax.plot(s_vals[mask], p_s[mask], "o-", color="teal", markersize=3.5, linewidth=1.5,
-            label=r"PIMC: $p(s)$ extremos worm (gap == 1)")
+    s_plot = s_vals[mask]
+    p_bose = analytical_bose_endpoint_dist(s_plot, n_particles, temp, tau=tau)
+    p_dist = analytical_distinguishable_endpoint_dist(s_plot, temp, tau=tau)
+
+    ax.plot(s_plot, p_bose, color="crimson", linewidth=2.2, label="Analítico Bose Canónico", zorder=2)
+    ax.plot(s_plot, p_dist, color="black", linestyle="--", linewidth=1.8, label="Distinguibles", zorder=1)
+    ax.plot(s_plot, p_s[mask], "o", color="teal", markersize=4.0, alpha=0.85,
+            label=r"PIMC: $p(s)$ extremos worm (gap == 1)", zorder=3)
     ax.set_title(r"Distribución de Separación de Extremos del Worm $s = |\mathbf{r}_{\mathrm{ira}} - \mathbf{r}_{\mathrm{masha}}|$",
                  fontsize=11, fontweight="bold")
     ax.set_xlabel(r"Distancia de separación $s$ [$a_{\mathrm{ho}}$]", fontsize=10)
@@ -370,7 +417,8 @@ def main():
     generar_cortes_obdm(x_vals, pimc_norm, n_particles=n_part, temp=TEMP, save_dir=OUTPUT_DIR)
 
     # 3. Distribución de Distancia de Extremos
-    generar_grafico_distancia_extremos(dist_file, n_particles=n_part, temp=TEMP, save_dir=OUTPUT_DIR)
+    tau_gap1 = float(meta.get("tau", 0.0))
+    generar_grafico_distancia_extremos(dist_file, n_particles=n_part, temp=TEMP, save_dir=OUTPUT_DIR, tau=tau_gap1)
 
     print(f"==================================================================\n")
     return 0

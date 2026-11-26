@@ -340,15 +340,11 @@ void PIMCMoveOneByOne(int w) {
 #ifdef WORM_ALGORITHM
     int prev_p = (worm_prev != NULL) ? worm_prev[w][i] : i;
     int next_p = (worm_next != NULL) ? worm_next[w][i] : i;
-    if(prev_p < 0) prev_p = i;
-    if(next_p < 0) next_p = i;
+    if(prev_p < 0 && next_p < 0) continue; /* detached bead in open-chain sector */
 #else
     int prev_p = i;
     int next_p = i;
 #endif
-    xm = 0.5*(W[w1].x[prev_p]+W[w2].x[next_p]); // middle point
-    ym = 0.5*(W[w1].y[prev_p]+W[w2].y[next_p]);
-    zm = 0.5*(W[w1].z[prev_p]+W[w2].z[next_p]);
 
     // Wp is the trial position
     RandomNormal3(&dx, &dy, &dz, 0., Sqrt(dt_vmc)); // generate a random number distributed according to Normal distribution
@@ -388,23 +384,49 @@ void PIMCMoveOneByOne(int w) {
     du -= tau*Vext(xp,yp,zp);
     du += tau*Vext(x,y,z);
 
-    // new kinetic energy, (R' - Rm)^2
-    dr[0] = xp - xm;
-    dr[1] = yp - ym;
-    dr[2] = zp - zm;
+    // kinetic energy contribution (two links for interior beads, one link for Ira/Masha)
+    if(prev_p >= 0 && next_p >= 0) {
+      xm = 0.5*(W[w1].x[prev_p]+W[w2].x[next_p]);
+      ym = 0.5*(W[w1].y[prev_p]+W[w2].y[next_p]);
+      zm = 0.5*(W[w1].z[prev_p]+W[w2].z[next_p]);
 
-    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    du -= r2/(2.*sigma);
+      dr[0] = xp - xm;
+      dr[1] = yp - ym;
+      dr[2] = zp - zm;
+      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      du -= r2/(2.*sigma);
 
-    // old kinetic energy
-    dr[0] = x - xm;
-    dr[1] = y - ym;
-    dr[2] = z - zm;
-    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    du += r2/(2.*sigma);
+      dr[0] = x - xm;
+      dr[1] = y - ym;
+      dr[2] = z - zm;
+      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      du += r2/(2.*sigma);
+    } else {
+      int w_conn = (prev_p >= 0) ? w1 : w2;
+      int p_conn = (prev_p >= 0) ? prev_p : next_p;
+      xm = W[w_conn].x[p_conn];
+      ym = W[w_conn].y[p_conn];
+      zm = W[w_conn].z[p_conn];
+
+      dr[0] = xp - xm;
+      dr[1] = yp - ym;
+      dr[2] = zp - zm;
+      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      du -= r2/(2.*tau);
+
+      dr[0] = x - xm;
+      dr[1] = y - ym;
+      dr[2] = z - zm;
+      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      du += r2/(2.*tau);
+    }
 
     for(j=0; j<N; j++) {
+#ifdef WORM_ALGORITHM
+      if(j != i && (worm_prev == NULL || worm_next == NULL || worm_prev[w][j] >= 0 || worm_next[w][j] >= 0)) { // calculate new interaction energy
+#else
       if(j != i) { // calculate new interaction energy
+#endif
         dr[0] = xp - W[w].x[j];
         dr[1] = yp - W[w].y[j];
         dr[2] = zp - W[w].z[j];
@@ -1001,8 +1023,8 @@ static void WormSwapMove(void) {
   sum_weights1 = 0.0;
   for(int c = 0; c < cand_count; c++) {
     k = candidates[c];
-    DOUBLE dx = worm.x_ira - W[w_next].x[k];
-    DOUBLE dy = worm.y_ira - W[w_next].y[k];
+    DOUBLE dx = W[w_curr].x[i_ira] - W[w_next].x[k];
+    DOUBLE dy = W[w_curr].y[i_ira] - W[w_next].y[k];
     d2 = dx * dx + dy * dy;
     weights[c] = Exp(-d2 / (2.0 * tau_local));
     sum_weights1 += weights[c];
