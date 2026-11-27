@@ -32,6 +32,7 @@ from pimc_common import (
     blocked_ratio_stats,
     canonical_bose_partition,
     compile_mc_binary,
+    replace_cfg_line,
 )
 
 
@@ -64,28 +65,24 @@ def run_simulation(binary_path, n_particles, temp, beads, run_dir,
     shutil.copy2(binary_path, run_dir / 'MC')
     cfg_text = TEMPLATE_CFG.read_text(encoding='utf-8', errors='ignore')
 
-    def replace_line(text, key, new_val):
-        pattern = rf'(\b{key}\s*=\s*)[^\s³]+'
-        return re.sub(pattern, rf'\g<1>{new_val}', text)
-
-    cfg_text = replace_line(cfg_text, 'MC', '3')
-    cfg_text = replace_line(cfg_text, 'N', str(n_particles))
-    cfg_text = replace_line(cfg_text, 'T', f'{temp:g}')
-    cfg_text = replace_line(cfg_text, 'Npop', str(beads))
-    cfg_text = replace_line(cfg_text, 'NwalkersMax', str(beads + 20))
-    cfg_text = replace_line(cfg_text, 'omega_x', f'{OMEGA:g}')
-    cfg_text = replace_line(cfg_text, 'omega_y', f'{OMEGA:g}')
-    cfg_text = replace_line(cfg_text, 'alpha_x', '1')
-    cfg_text = replace_line(cfg_text, 'alpha_y', '1')
-    cfg_text = replace_line(cfg_text, 'blck_heating', str(blck_heating))
-    cfg_text = replace_line(cfg_text, 'blck', str(blck))
-    cfg_text = replace_line(cfg_text, 'Niter', str(niter))
-    cfg_text = replace_line(cfg_text, 'Nmeasure', '1')
+    cfg_text = replace_cfg_line(cfg_text, 'MC', '3')
+    cfg_text = replace_cfg_line(cfg_text, 'N', str(n_particles))
+    cfg_text = replace_cfg_line(cfg_text, 'T', f'{temp:g}')
+    cfg_text = replace_cfg_line(cfg_text, 'Npop', str(beads))
+    cfg_text = replace_cfg_line(cfg_text, 'NwalkersMax', str(beads + 20))
+    cfg_text = replace_cfg_line(cfg_text, 'omega_x', f'{OMEGA:g}')
+    cfg_text = replace_cfg_line(cfg_text, 'omega_y', f'{OMEGA:g}')
+    cfg_text = replace_cfg_line(cfg_text, 'alpha_x', '1')
+    cfg_text = replace_cfg_line(cfg_text, 'alpha_y', '1')
+    cfg_text = replace_cfg_line(cfg_text, 'blck_heating', str(blck_heating))
+    cfg_text = replace_cfg_line(cfg_text, 'blck', str(blck))
+    cfg_text = replace_cfg_line(cfg_text, 'Niter', str(niter))
+    cfg_text = replace_cfg_line(cfg_text, 'Nmeasure', '1')
     worm_c = 0.1 / (0.4 * n_particles * beads)
-    cfg_text = replace_line(cfg_text, 'worm_C', f'{worm_c:.6f}')
-    cfg_text = replace_line(cfg_text, 'gridRD', '60')
-    cfg_text = replace_line(cfg_text, 'RDmax', '3.5')
-    cfg_text = replace_line(cfg_text, 'RDwidth', '3.5')
+    cfg_text = replace_cfg_line(cfg_text, 'worm_C', f'{worm_c:.6f}')
+    cfg_text = replace_cfg_line(cfg_text, 'gridRD', '60')
+    cfg_text = replace_cfg_line(cfg_text, 'RDmax', '3.5')
+    cfg_text = replace_cfg_line(cfg_text, 'RDwidth', '3.5')
 
     (run_dir / 'MC.cfg').write_text(cfg_text, encoding='utf-8')
 

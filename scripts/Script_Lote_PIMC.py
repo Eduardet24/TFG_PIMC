@@ -8,6 +8,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from pimc_common import read_cfg_value as read_config_value, replace_cfg_value as replace_setting
+
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
@@ -30,25 +32,6 @@ def parse_values(text, cast):
     if not values:
         raise argparse.ArgumentTypeError('La lista de valores no puede estar vacía')
     return values
-
-
-def replace_setting(config_text, key, value):
-    number = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
-    pattern = rf'(\b{re.escape(key)}\s*=\s*){number}'
-    updated, replacements = re.subn(
-        pattern, lambda match: f'{match.group(1)}{value}', config_text, count=1
-    )
-    if replacements != 1:
-        raise ValueError(f'No se pudo sustituir {key} en MC.cfg')
-    return updated
-
-
-def read_config_value(config_text, key):
-    number = r'([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)'
-    match = re.search(rf'\b{re.escape(key)}\s*=\s*{number}', config_text)
-    if match is None:
-        raise ValueError(f'No se pudo leer {key} de MC.cfg')
-    return float(match.group(1))
 
 
 def configure_run(template, temperature, beads):

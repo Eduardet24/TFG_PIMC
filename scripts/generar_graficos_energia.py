@@ -57,7 +57,6 @@ RESULTS_DIR = SCRIPT_DIR / "Resultados" / "Verificacion_Energia"
 OVERLEAF_DIR = SCRIPT_DIR.parent / "overleaf" / "imágenes"
 
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-OVERLEAF_DIR.mkdir(parents=True, exist_ok=True)
 
 # Paleta cromática científica de alto contraste (ColorBrewer / PRX style)
 COLOR_BOSE = "#d90429"         # Rojo carmesí intenso (Teoría Bose)
@@ -78,6 +77,11 @@ OMEGA = 1.0
 def save_figure(fig, filename_base):
     """Guarda en PNG (300 DPI) y PDF vectorial tanto en Resultados como en Overleaf."""
     for folder in [RESULTS_DIR, OVERLEAF_DIR]:
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            print(f"  [AVISO] No se pudo crear {folder}: {exc}")
+            continue
         png_path = folder / f"{filename_base}.png"
         pdf_path = folder / f"{filename_base}.pdf"
         fig.savefig(png_path, dpi=300, bbox_inches="tight")

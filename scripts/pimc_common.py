@@ -1,6 +1,7 @@
 """Utilidades compartidas para modelos analíticos 2D, estadística de bloques y compilación C."""
 
 import os
+import re
 import subprocess
 from pathlib import Path
 import numpy as np
@@ -129,3 +130,31 @@ def compile_mc_binary(project_dir, output_path, only_if_stale=False, compiler=No
         detail = result.stderr or result.stdout
         raise RuntimeError(f"Error compilando {output.name}:\n{detail[-6000:]}")
     return output
+
+
+_CFG_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+
+
+def read_cfg_value(config_text, key):
+    """Lee un parámetro numérico `key= valor` de un texto MC.cfg."""
+    match = re.search(rf"\b{re.escape(key)}\s*=\s*({_CFG_NUMBER})", config_text)
+    if match is None:
+        raise ValueError(f"No se pudo leer {key} de MC.cfg")
+    return float(match.group(1))
+
+
+def replace_cfg_value(config_text, key, value):
+    """Sustituye un parámetro numérico `key= valor` exactamente una vez en MC.cfg."""
+    pattern = rf"(\b{re.escape(key)}\s*=\s*){_CFG_NUMBER}"
+    updated, replacements = re.subn(
+        pattern, lambda match: f"{match.group(1)}{value}", config_text, count=1
+    )
+    if replacements != 1:
+        raise ValueError(f"No se pudo sustituir {key} en MC.cfg")
+    return updated
+
+
+def replace_cfg_line(config_text, key, new_val):
+    """Sustituye el valor (numérico o texto) de `key=` en una línea de MC.cfg."""
+    pattern = rf"(\b{re.escape(key)}\s*=\s*)[^\s³]+"
+    return re.sub(pattern, rf"\g<1>{new_val}", config_text)

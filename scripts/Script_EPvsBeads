@@ -19,18 +19,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import linregress
 
+from pimc_common import read_cfg_value as config_value
+
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
 OUTPUT_NAME = 'convergencia_energia_potencialvsBeads.png'
 CAMPAIGN_NAME = 'lote_modos_normales_blck1000'
-
-
-def config_value(config_text, key):
-    match = re.search(rf'\b{re.escape(key)}\s*=\s*([0-9.]+)', config_text)
-    if match is None:
-        raise ValueError(f'No se pudo leer {key} de MC.cfg')
-    return float(match.group(1))
 
 
 def read_pimc_observable(energy_file, column=1):

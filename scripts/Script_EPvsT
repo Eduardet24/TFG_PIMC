@@ -1,23 +1,17 @@
 """Compare theoretical oscillator energies with the current PIMC measurement."""
 
-import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+from pimc_common import read_cfg_value as config_value
 
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 CONFIG_FILE = PROJECT_DIR / 'MC.cfg'
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
 CAMPAIGN_NAME = 'lote_modos_normales_blck1000'
-
-
-def config_value(config_text, key):
-	match = re.search(rf'\b{re.escape(key)}\s*=\s*([0-9.eE+-]+)', config_text)
-	if match is None:
-		raise ValueError(f'No se pudo leer {key} de MC.cfg')
-	return float(match.group(1))
 
 
 def read_pimc_potential(energy_file):

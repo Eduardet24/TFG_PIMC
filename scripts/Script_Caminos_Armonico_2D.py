@@ -18,6 +18,8 @@ import shutil
 import subprocess
 
 import matplotlib.pyplot as plt
+
+from pimc_common import replace_cfg_line
 from matplotlib.collections import LineCollection
 import numpy as np
 
@@ -62,23 +64,19 @@ def run_c_simulation(temperature, n_beads, run_dir, binary_path=BINARY_MC, templ
     shutil.copy2(binary_path, run_dir / 'MC')
     cfg_text = template_cfg_path.read_text(encoding='utf-8', errors='ignore')
 
-    def replace_line(text, key, new_val):
-        pattern = rf'(\b{key}\s*=\s*)[^\s³]+'
-        return re.sub(pattern, rf'\g<1>{new_val}', text)
-
-    cfg_text = replace_line(cfg_text, 'MC', '3')
-    cfg_text = replace_line(cfg_text, 'T', f'{temperature:g}')
-    cfg_text = replace_line(cfg_text, 'Npop', str(n_beads))
-    cfg_text = replace_line(cfg_text, 'NwalkersMax', str(n_beads + 20))
-    cfg_text = replace_line(cfg_text, 'N', '1')
-    cfg_text = replace_line(cfg_text, 'omega_x', f'{omega:g}')
-    cfg_text = replace_line(cfg_text, 'omega_y', f'{omega:g}')
-    cfg_text = replace_line(cfg_text, 'alpha_x', '1')
-    cfg_text = replace_line(cfg_text, 'alpha_y', '1')
-    cfg_text = replace_line(cfg_text, 'blck_heating', str(blck_heating))
-    cfg_text = replace_line(cfg_text, 'blck', str(blck))
-    cfg_text = replace_line(cfg_text, 'Niter', str(niter))
-    cfg_text = replace_line(cfg_text, 'file_particles', 'in3Dprev.in')
+    cfg_text = replace_cfg_line(cfg_text, 'MC', '3')
+    cfg_text = replace_cfg_line(cfg_text, 'T', f'{temperature:g}')
+    cfg_text = replace_cfg_line(cfg_text, 'Npop', str(n_beads))
+    cfg_text = replace_cfg_line(cfg_text, 'NwalkersMax', str(n_beads + 20))
+    cfg_text = replace_cfg_line(cfg_text, 'N', '1')
+    cfg_text = replace_cfg_line(cfg_text, 'omega_x', f'{omega:g}')
+    cfg_text = replace_cfg_line(cfg_text, 'omega_y', f'{omega:g}')
+    cfg_text = replace_cfg_line(cfg_text, 'alpha_x', '1')
+    cfg_text = replace_cfg_line(cfg_text, 'alpha_y', '1')
+    cfg_text = replace_cfg_line(cfg_text, 'blck_heating', str(blck_heating))
+    cfg_text = replace_cfg_line(cfg_text, 'blck', str(blck))
+    cfg_text = replace_cfg_line(cfg_text, 'Niter', str(niter))
+    cfg_text = replace_cfg_line(cfg_text, 'file_particles', 'in3Dprev.in')
 
     (run_dir / 'MC.cfg').write_text(cfg_text, encoding='utf-8')
 

@@ -41,8 +41,10 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 ## Carpeta donde se guardan los resultados de esta simulación.
-resultados_dir = os.path.join('Resultados', '1DArmonico', 'ejecucion_actual')
+resultados_dir = os.path.join(PROJECT_DIR, 'Resultados', '1DArmonico', 'ejecucion_actual')
 os.makedirs(resultados_dir, exist_ok=True)
 resultados_txt = os.path.join(resultados_dir, 'resultados_graficas_armonico_1D.txt')
 
@@ -56,7 +58,7 @@ beta = 1.0 / T
 ## Leer la distribución radial 1D generada por PIMC.
 ## Cada bloque de Monte Carlo contiene dos columnas: posición y densidad.
 ## El programa concatena los bloques en el mismo archivo.
-data = np.loadtxt('outrd.dat')
+data = np.loadtxt(os.path.join(PROJECT_DIR, 'outrd.dat'))
 ## Índices donde empieza un bloque nuevo; la posición vuelve a disminuir.
 saltos = np.where(np.diff(data[:, 0]) < 0)[0] + 1
 ## Lista de histogramas individuales, uno por bloque de Monte Carlo.
@@ -109,7 +111,7 @@ e_kin_sim = r2_sim / 2.0
 e_sim = e_kin_sim + e_pot_sim
 
 ## `oute.dat` contiene Etot, Epot y Ekin en PIMC; los archivos antiguos solo Etot.
-energy_data = np.loadtxt('oute.dat', comments='#', ndmin=2)
+energy_data = np.loadtxt(os.path.join(PROJECT_DIR, 'oute.dat'), comments='#', ndmin=2)
 ## Se descarta la primera mitad para reducir el efecto del equilibrio inicial.
 equilibrio_inicio = energy_data.shape[0] // 2
 energy_measurements = energy_data[equilibrio_inicio:]
@@ -189,7 +191,7 @@ plt.savefig(os.path.join(resultados_dir, 'residuo_armonico_1D.png'),
             dpi=300, bbox_inches='tight')
 
 ## Número de beads del cálculo actual, leído de la misma configuración que usa MC.
-with open('MC.cfg', 'r', encoding='utf-8') as configuracion:
+with open(os.path.join(PROJECT_DIR, 'MC.cfg'), 'r', encoding='utf-8') as configuracion:
     configuracion_mc = configuracion.read()
 coincidencia_npop = re.search(r'\bNpop=\s*(\d+)', configuracion_mc)
 if coincidencia_npop is None:
