@@ -65,22 +65,10 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
 #else
       int next_p = particle;
 #endif
-#ifdef TRIAL_1D 
-      spring += (W[bead].z[particle] - W[next_bead].z[next_p]) *
-                (W[bead].z[particle] - W[next_bead].z[next_p]);
-#elif defined(TRIAL_2D)
-      spring += (W[bead].x[particle] - W[next_bead].x[next_p]) *
-                (W[bead].x[particle] - W[next_bead].x[next_p]);
-      spring += (W[bead].y[particle] - W[next_bead].y[next_p]) *
-                (W[bead].y[particle] - W[next_bead].y[next_p]);
-#else
-      spring += (W[bead].x[particle] - W[next_bead].x[next_p]) *
-                (W[bead].x[particle] - W[next_bead].x[next_p]);
-      spring += (W[bead].y[particle] - W[next_bead].y[next_p]) *
-                (W[bead].y[particle] - W[next_bead].y[next_p]);
-      spring += (W[bead].z[particle] - W[next_bead].z[next_p]) *
-                (W[bead].z[particle] - W[next_bead].z[next_p]);
-#endif
+      dr[0] = W[bead].x[particle] - W[next_bead].x[next_p];
+      dr[1] = W[bead].y[particle] - W[next_bead].y[next_p];
+      dr[2] = W[bead].z[particle] - W[next_bead].z[next_p];
+      spring += FindNearestImage(&dr[0], &dr[1], &dr[2]);
 
 #ifdef EXTERNAL_POTENTIAL
       external += Vext(W[bead].x[particle], W[bead].y[particle], W[bead].z[particle]); // external potential energy
@@ -113,40 +101,15 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   centroid_z /= (DOUBLE) terms;
   // Primitive kinetic energy estimator (Feynman-Barker formula requested by professor):
   Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
-#ifdef TRIAL_1D
-  {
-    static DOUBLE *cz = NULL;
-    static int cz_cap = 0;
-    if(N > cz_cap) {
-      DOUBLE *new_cz = (DOUBLE*) realloc(cz, (size_t)N * sizeof(DOUBLE));
-      if(new_cz != NULL) {
-        cz = new_cz;
-        cz_cap = N;
-      }
-    }
-    if(cz != NULL && N <= cz_cap) {
-      for(particle=0; particle<N; particle++) cz[particle] = 0.;
-      for(bead=0; bead<Nwalkers; bead++) {
-        if(W[bead].status != ALIVE) continue;
-        for(particle=0; particle<N; particle++) cz[particle] += W[bead].z[particle];
-      }
-      for(particle=0; particle<N; particle++) cz[particle] /= (DOUBLE) terms;
-      for(bead=0; bead<Nwalkers; bead++) {
-        if(W[bead].status != ALIVE) continue;
-        for(particle=0; particle<N; particle++) {
-          virial += (W[bead].z[particle] - cz[particle]) * omega_z2 * W[bead].z[particle];
-        }
-      }
-      *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
-    }
-    else {
-      *Ekin = Ekin_prim;
-    }
-  }
-#elif defined(TRIAL_2D)
+#if defined(TRAP_POTENTIAL) && defined(BC_ABSENT) && defined(INTERACTION_ABSENT) && \
+    !defined(SPECKLES) && !defined(VEXT_SPLINE_1D) && !defined(VEXT_COS2) && \
+    !defined(VEXT_SOLITON_FIXED_PHASE) && !defined(EXTERNAL_POTENTIAL_Uo_R2) && \
+    !defined(VEXT_IMPURITY_3DSW) && !defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) && \
+    !defined(VEXT_GAUSSIAN) && !defined(VEXT_TRAP_DOUBLE_WELL)
   {
     static DOUBLE *cx = NULL;
     static DOUBLE *cy = NULL;
+    static DOUBLE *cz = NULL;
     static int c_cap = 0;
     DOUBLE zero_mode_factor = 1.0;
     int num_cycles = 0;
@@ -180,14 +143,18 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
           int ring_beads = 0;
           int curr_p = particle;
           int curr_w = 0;
-          DOUBLE sum_cx = 0., sum_cy = 0.;
+          DOUBLE sum_cx = 0., sum_cy = 0., sum_cz = 0.;
+          (void)sum_cx;
+          (void)sum_cy;
+          (void)sum_cz;
           do {
             if(curr_w == 0) visited[curr_p] = 1;
             ring_p[ring_beads] = curr_p;
             ring_w[ring_beads] = curr_w;
             if(W[curr_w].status == ALIVE) {
-              sum_cx += W[curr_w].x[curr_p];
-              sum_cy += W[curr_w].y[curr_p];
+              CaseX(sum_cx += W[curr_w].x[curr_p]);
+              CaseY(sum_cy += W[curr_w].y[curr_p]);
+              CaseZ(sum_cz += W[curr_w].z[curr_p]);
             }
             ring_beads++;
             if(ring_beads >= total_beads) break;
@@ -196,14 +163,16 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
           } while(!(curr_w == 0 && curr_p == particle));
 
           if(ring_beads > 0) {
-            sum_cx /= (DOUBLE) ring_beads;
-            sum_cy /= (DOUBLE) ring_beads;
+            CaseX(sum_cx /= (DOUBLE) ring_beads);
+            CaseY(sum_cy /= (DOUBLE) ring_beads);
+            CaseZ(sum_cz /= (DOUBLE) ring_beads);
             for(int n=0; n<ring_beads; n++) {
               int w = ring_w[n];
               int p = ring_p[n];
               if(W[w].status == ALIVE) {
-                virial += (W[w].x[p] - sum_cx) * omega_x2 * W[w].x[p] +
-                          (W[w].y[p] - sum_cy) * omega_y2 * W[w].y[p];
+                CaseX(virial += (W[w].x[p] - sum_cx) * omega_x2 * W[w].x[p]);
+                CaseY(virial += (W[w].y[p] - sum_cy) * omega_y2 * W[w].y[p]);
+                CaseZ(virial += (W[w].z[p] - sum_cz) * omega_z2 * W[w].z[p]);
               }
             }
           }
@@ -218,31 +187,37 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
     if(N > c_cap) {
       DOUBLE *new_cx = (DOUBLE*) realloc(cx, (size_t)N * sizeof(DOUBLE));
       DOUBLE *new_cy = (DOUBLE*) realloc(cy, (size_t)N * sizeof(DOUBLE));
+      DOUBLE *new_cz = (DOUBLE*) realloc(cz, (size_t)N * sizeof(DOUBLE));
       if(new_cx != NULL) cx = new_cx;
       if(new_cy != NULL) cy = new_cy;
-      if(new_cx != NULL && new_cy != NULL) c_cap = N;
+      if(new_cz != NULL) cz = new_cz;
+      if(new_cx != NULL && new_cy != NULL && new_cz != NULL) c_cap = N;
     }
-    if(cx != NULL && cy != NULL && N <= c_cap) {
+    if(cx != NULL && cy != NULL && cz != NULL && N <= c_cap) {
       for(particle=0; particle<N; particle++) {
         cx[particle] = 0.;
         cy[particle] = 0.;
+        cz[particle] = 0.;
       }
       for(bead=0; bead<Nwalkers; bead++) {
         if(W[bead].status != ALIVE) continue;
         for(particle=0; particle<N; particle++) {
-          cx[particle] += W[bead].x[particle];
-          cy[particle] += W[bead].y[particle];
+          CaseX(cx[particle] += W[bead].x[particle]);
+          CaseY(cy[particle] += W[bead].y[particle]);
+          CaseZ(cz[particle] += W[bead].z[particle]);
         }
       }
       for(particle=0; particle<N; particle++) {
-        cx[particle] /= (DOUBLE) terms;
-        cy[particle] /= (DOUBLE) terms;
+        CaseX(cx[particle] /= (DOUBLE) terms);
+        CaseY(cy[particle] /= (DOUBLE) terms);
+        CaseZ(cz[particle] /= (DOUBLE) terms);
       }
       for(bead=0; bead<Nwalkers; bead++) {
         if(W[bead].status != ALIVE) continue;
         for(particle=0; particle<N; particle++) {
-          virial += (W[bead].x[particle] - cx[particle]) * omega_x2 * W[bead].x[particle] +
-                    (W[bead].y[particle] - cy[particle]) * omega_y2 * W[bead].y[particle];
+          CaseX(virial += (W[bead].x[particle] - cx[particle]) * omega_x2 * W[bead].x[particle]);
+          CaseY(virial += (W[bead].y[particle] - cy[particle]) * omega_y2 * W[bead].y[particle]);
+          CaseZ(virial += (W[bead].z[particle] - cz[particle]) * omega_z2 * W[bead].z[particle]);
         }
       }
       *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);

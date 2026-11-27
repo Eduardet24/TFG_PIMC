@@ -275,12 +275,16 @@
 //#define PAIR_DISTRBUTION_EMPTINESS_FORMATION_PROBABILITY_1D // calculate probability of a gap of size x between in particles in 1D
 
 // select dimensionality
-//#define TRIAL_1D
-#define TRIAL_2D
-//#define TRIAL_3D
+#if !defined(TRIAL_1D) && !defined(TRIAL_2D) && !defined(TRIAL_3D)
+#  define TRIAL_2D
+#endif
 
 /* define ONLY ONE of following boundary conditions */
-#define  BC_ABSENT /* free boundary condition */
+#if !defined(BC_ABSENT) && !defined(BC_1DPBC_Z) && !defined(BC_1DPBC_X) && \
+    !defined(BC_2DPBC_SQUARE) && !defined(BC_2DPBC_HEXAGON) && !defined(BC_2DPBC_NON_ORTHOGONAL) && \
+    !defined(BC_3DPBC_CUBE) && !defined(BC_3DPBC_TRUNCATED_OCTAHEDRON) && !defined(BC_SPHERE)
+#  define BC_ABSENT /* free boundary condition */
+#endif
 //#define  BC_1DPBC_Z   /* boundary condition in Z direction */
 //#define  BC_1DPBC_X   /* boundary condition in X direction */
 //#define  BC_2DPBC_SQUARE     /* boundary condition in (X,Y) plane */
@@ -296,8 +300,8 @@
 /* Exact Fourier-mode sampling for noninteracting particles in a harmonic trap. */
 #define PIMC_HARMONIC_NORMAL_MODES
 
-/* Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose-Einstein.
-   Requiere: PIMC + BC_ABSENT + TRAP_POTENTIAL + INTERACTION_ABSENT.
+/* Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose-Einstein (1D/2D/3D).
+   Requiere: PIMC + INTERACTION_ABSENT (+ BC_ABSENT o PBC ortogonales).
    Descomentar la siguiente línea para activar el worm. */
 #define WORM_ALGORITHM
 
@@ -341,7 +345,7 @@
 //#define SPECKLES // define for applying speckle potential
 
 #if defined(PIMC_HARMONIC_NORMAL_MODES) && \
-  ((!defined(TRIAL_1D) && !defined(TRIAL_2D)) || !defined(TRAP_POTENTIAL) || !defined(BC_ABSENT) || \
+  ((!defined(TRIAL_1D) && !defined(TRIAL_2D) && !defined(TRIAL_3D)) || !defined(TRAP_POTENTIAL) || !defined(BC_ABSENT) || \
    defined(SPECKLES) || defined(VEXT_SPLINE_1D) || defined(VEXT_COS2) || \
    defined(VEXT_SOLITON_FIXED_PHASE) || defined(EXTERNAL_POTENTIAL_Uo_R2) || \
    defined(VEXT_IMPURITY_3DSW) || defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) || \
@@ -351,6 +355,16 @@
 
 #if defined(PIMC_HARMONIC_NORMAL_MODES) && !defined(INTERACTION_ABSENT)
 #  error PIMC_HARMONIC_NORMAL_MODES requires INTERACTION_ABSENT
+#endif
+
+#if defined(WORM_ALGORITHM) && !defined(INTERACTION_ABSENT)
+#  error WORM_ALGORITHM requires INTERACTION_ABSENT
+#endif
+
+#if defined(WORM_ALGORITHM) && \
+  (defined(BC_SPHERE) || defined(BC_2DPBC_HEXAGON) || defined(BC_2DPBC_NON_ORTHOGONAL) || \
+   defined(BC_3DPBC_TRUNCATED_OCTAHEDRON))
+#  error WORM_ALGORITHM requires BC_ABSENT or orthogonal periodic boundary conditions
 #endif
 
 // Choose one type of interpolation method

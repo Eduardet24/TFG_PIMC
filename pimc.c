@@ -24,6 +24,7 @@ static int *worm_ring_p = NULL;
 static int *worm_ring_w = NULL;
 static DOUBLE *worm_ring_x = NULL;
 static DOUBLE *worm_ring_y = NULL;
+static DOUBLE *worm_ring_z = NULL;
 static int worm_ring_cap_n = 0;
 static int worm_ring_cap_total = 0;
 
@@ -39,11 +40,13 @@ static int EnsureWormRingScratch(int n_particles, int total_beads) {
     int *new_w = (int*) realloc(worm_ring_w, (size_t)total_beads * sizeof(int));
     DOUBLE *new_x = (DOUBLE*) realloc(worm_ring_x, (size_t)total_beads * sizeof(DOUBLE));
     DOUBLE *new_y = (DOUBLE*) realloc(worm_ring_y, (size_t)total_beads * sizeof(DOUBLE));
+    DOUBLE *new_z = (DOUBLE*) realloc(worm_ring_z, (size_t)total_beads * sizeof(DOUBLE));
     if(new_p != NULL) worm_ring_p = new_p;
     if(new_w != NULL) worm_ring_w = new_w;
     if(new_x != NULL) worm_ring_x = new_x;
     if(new_y != NULL) worm_ring_y = new_y;
-    if(new_p == NULL || new_w == NULL || new_x == NULL || new_y == NULL) return 0;
+    if(new_z != NULL) worm_ring_z = new_z;
+    if(new_p == NULL || new_w == NULL || new_x == NULL || new_y == NULL || new_z == NULL) return 0;
     worm_ring_cap_total = total_beads;
   }
   return 1;
@@ -218,24 +221,12 @@ void PIMCMoveHarmonicNormalModes(void) {
     plain_ring_cap = beads;
   }
 
-#ifdef TRIAL_1D
-  if(N < 1 || beads < 1 || T <= 0. || omega_z2 <= 0.) {
-    Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_z>0\n");
+  if(N < 1 || beads < 1 || T <= 0.) {
+    Error("Harmonic normal-mode sampling requires N>=1, Nwalkers>=1, and T>0\n");
   }
-
-  tau = 1. / (T * (DOUBLE)beads);
-  for(particle = 0; particle < N; particle++) {
-    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_z2, 2);
-    for(bead = 0; bead < beads; bead++) {
-      W[bead].x[particle] = 0.;
-      W[bead].y[particle] = 0.;
-      W[bead].z[particle] = plain_ring[bead];
-    }
-  }
-#elif defined(TRIAL_2D)
-  if(N < 1 || beads < 1 || T <= 0. || omega_x2 <= 0. || omega_y2 <= 0.) {
-    Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_x>0, omega_y>0\n");
-  }
+  CaseX(if(omega_x2 <= 0.) Error("Harmonic normal-mode sampling requires omega_x>0\n"));
+  CaseY(if(omega_y2 <= 0.) Error("Harmonic normal-mode sampling requires omega_y>0\n"));
+  CaseZ(if(omega_z2 <= 0.) Error("Harmonic normal-mode sampling requires omega_z>0\n"));
 
   tau = 1. / (T * (DOUBLE)beads);
 
@@ -247,6 +238,10 @@ void PIMCMoveHarmonicNormalModes(void) {
       int *ring_w = worm_ring_w;
       DOUBLE *ring_x = worm_ring_x;
       DOUBLE *ring_y = worm_ring_y;
+      DOUBLE *ring_z = worm_ring_z;
+      (void)ring_x;
+      (void)ring_y;
+      (void)ring_z;
       memset(visited, 0, (size_t)N * sizeof(int));
 
       for(particle = 0; particle < N; particle++) {
@@ -266,14 +261,29 @@ void PIMCMoveHarmonicNormalModes(void) {
           curr_w = (curr_w + 1) % beads;
         } while(!(curr_w == 0 && curr_p == particle));
 
-        SampleHarmonicNormalRing1D(ring_x, ring_beads, tau, omega_x2, 0);
-        SampleHarmonicNormalRing1D(ring_y, ring_beads, tau, omega_y2, 1);
+        CaseX(SampleHarmonicNormalRing1D(ring_x, ring_beads, tau, omega_x2, 0));
+        CaseY(SampleHarmonicNormalRing1D(ring_y, ring_beads, tau, omega_y2, 1));
+        CaseZ(SampleHarmonicNormalRing1D(ring_z, ring_beads, tau, omega_z2, 2));
 
         /* Asignar las coordenadas calculadas a las cuentas físicas */
         for(int n = 0; n < ring_beads; n++) {
-          W[ring_w[n]].x[ring_p[n]] = ring_x[n];
-          W[ring_w[n]].y[ring_p[n]] = ring_y[n];
-          W[ring_w[n]].z[ring_p[n]] = 0.;
+          int rw = ring_w[n];
+          int rp = ring_p[n];
+#ifdef MOVE_IN_X
+          W[rw].x[rp] = ring_x[n];
+#else
+          W[rw].x[rp] = 0.;
+#endif
+#ifdef MOVE_IN_Y
+          W[rw].y[rp] = ring_y[n];
+#else
+          W[rw].y[rp] = 0.;
+#endif
+#ifdef MOVE_IN_Z
+          W[rw].z[rp] = ring_z[n];
+#else
+          W[rw].z[rp] = 0.;
+#endif
         }
       }
 
@@ -283,16 +293,27 @@ void PIMCMoveHarmonicNormalModes(void) {
 #endif
 
   for(particle = 0; particle < N; particle++) {
+#ifdef MOVE_IN_X
     SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_x2, 0);
     for(bead = 0; bead < beads; bead++) W[bead].x[particle] = plain_ring[bead];
-
-    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_y2, 1);
-    for(bead = 0; bead < beads; bead++) {
-      W[bead].y[particle] = plain_ring[bead];
-      W[bead].z[particle] = 0.;
-    }
-  }
+#else
+    for(bead = 0; bead < beads; bead++) W[bead].x[particle] = 0.;
 #endif
+
+#ifdef MOVE_IN_Y
+    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_y2, 1);
+    for(bead = 0; bead < beads; bead++) W[bead].y[particle] = plain_ring[bead];
+#else
+    for(bead = 0; bead < beads; bead++) W[bead].y[particle] = 0.;
+#endif
+
+#ifdef MOVE_IN_Z
+    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_z2, 2);
+    for(bead = 0; bead < beads; bead++) W[bead].z[particle] = plain_ring[bead];
+#else
+    for(bead = 0; bead < beads; bead++) W[bead].z[particle] = 0.;
+#endif
+  }
 }
 #endif
 
@@ -731,6 +752,10 @@ void FreeWorm(void) {
     free(worm_ring_y);
     worm_ring_y = NULL;
   }
+  if(worm_ring_z != NULL) {
+    free(worm_ring_z);
+    worm_ring_z = NULL;
+  }
   worm_ring_cap_n = 0;
   worm_ring_cap_total = 0;
   if(worm_swap_candidates != NULL) {
@@ -867,8 +892,13 @@ static int WormSnapshotWrite(int move, const char *phase) {
           worm_bead, worm_particle, worm_bead_masha, worm_particle_masha);
   for(bead = 0; bead < Nwalkers; bead++) {
     for(particle = 0; particle < N; particle++) {
+#if defined(TRIAL_1D) && !defined(BC_1DPBC_X)
+      DOUBLE coord_primary = W[bead].z[particle];
+#else
+      DOUBLE coord_primary = W[bead].x[particle];
+#endif
       fprintf(snapshot_file, "BEAD %d %d %.17g %.17g %d %d\n",
-              bead, particle, (double)W[bead].x[particle], (double)W[bead].y[particle],
+              bead, particle, (double)coord_primary, (double)W[bead].y[particle],
               worm_next[bead][particle], worm_prev[bead][particle]);
     }
   }
@@ -903,9 +933,31 @@ static void WormSnapshotAfter(int move) {
 #define WORM_PROB_SWAP_N_GAP1    0.20
 #define WORM_PROB_SPATIAL_N_GAP1 0.20
 
+INLINE DOUBLE WormSegmentDistance2(int w1, int p1, int w2, int p2) {
+  DOUBLE dx = W[w2].x[p2] - W[w1].x[p1];
+  DOUBLE dy = W[w2].y[p2] - W[w1].y[p1];
+  DOUBLE dz = W[w2].z[p2] - W[w1].z[p1];
+  return FindNearestImage(&dx, &dy, &dz);
+}
+
+INLINE void WormStepPosition(DOUBLE x, DOUBLE y, DOUBLE z,
+                             DOUBLE dx, DOUBLE dy, DOUBLE dz,
+                             DOUBLE *xp, DOUBLE *yp, DOUBLE *zp) {
+  (void)dx;
+  (void)dy;
+  (void)dz;
+  *xp = x;
+  *yp = y;
+  *zp = z;
+  CaseX(*xp += dx);
+  CaseY(*yp += dy);
+  CaseZ(*zp += dz);
+  ReduceToTheBoxXYZ(xp, yp, zp);
+}
+
 static void WormOpenMove(void) {
   int w_cut, i_cut, j_cut, w_next;
-  DOUBLE dx, dy, r2, tau_local, acc, p_close;
+  DOUBLE r2, tau_local, acc, p_close;
 
   worm_try_open++;
 
@@ -918,9 +970,7 @@ static void WormOpenMove(void) {
   j_cut = worm_next[w_cut][i_cut];
   if(j_cut < 0) return; /* ya abierto */
 
-  dx = W[w_next].x[j_cut] - W[w_cut].x[i_cut];
-  dy = W[w_next].y[j_cut] - W[w_cut].y[i_cut];
-  r2 = dx * dx + dy * dy;
+  r2 = WormSegmentDistance2(w_cut, i_cut, w_next, j_cut);
 
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
   p_close = (N > 1 && worm_swap_enabled) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
@@ -938,11 +988,13 @@ static void WormOpenMove(void) {
     worm.i = i_cut;
     worm.x_ira = W[w_cut].x[i_cut];
     worm.y_ira = W[w_cut].y[i_cut];
+    worm.z_ira = W[w_cut].z[i_cut];
 
     worm_bead_masha = w_next;
     worm_particle_masha = j_cut;
     worm.x_masha = W[w_next].x[j_cut];
     worm.y_masha = W[w_next].y[j_cut];
+    worm.z_masha = W[w_next].z[j_cut];
 
     worm_next[w_cut][i_cut] = -1;
     worm_prev[w_next][j_cut] = -1;
@@ -954,7 +1006,7 @@ static void WormOpenMove(void) {
 
 static void WormCloseMove(void) {
   int w_masha_expected;
-  DOUBLE dx, dy, r2, tau_local, acc, p_close;
+  DOUBLE r2, tau_local, acc, p_close;
 
   worm_try_close++;
 
@@ -963,9 +1015,7 @@ static void WormCloseMove(void) {
     return; /* solo se puede cerrar si los beads son contiguos (gap == 1) */
   }
 
-  dx = W[worm_bead_masha].x[worm_particle_masha] - W[worm_bead].x[worm_particle];
-  dy = W[worm_bead_masha].y[worm_particle_masha] - W[worm_bead].y[worm_particle];
-  r2 = dx * dx + dy * dy;
+  r2 = WormSegmentDistance2(worm_bead, worm_particle, worm_bead_masha, worm_particle_masha);
 
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
   p_close = (N > 1 && worm_swap_enabled) ? WORM_PROB_CLOSE_N_GT1 : WORM_PROB_CLOSE_GAP1;
@@ -984,6 +1034,14 @@ static void WormCloseMove(void) {
     worm_particle = -1;
     worm_bead_masha = -1;
     worm_particle_masha = -1;
+    worm.w = -1;
+    worm.i = -1;
+    worm.x_ira = 0.;
+    worm.y_ira = 0.;
+    worm.z_ira = 0.;
+    worm.x_masha = 0.;
+    worm.y_masha = 0.;
+    worm.z_masha = 0.;
 
     worm_acc_close++;
     if(record_snapshot) WormSnapshotAfter(1);
@@ -992,7 +1050,7 @@ static void WormCloseMove(void) {
 
 static void WormAdvanceMove(void) {
   int w_curr, w_next, p_idx, p_next, gap, particle, candidate_count;
-  DOUBLE dx, dy, dummy_z, x_new, y_new, dV, acc, tau_local, proposal_ratio;
+  DOUBLE dx = 0., dy = 0., dz = 0., x_new, y_new, z_new, dV, acc, tau_local, proposal_ratio;
   DOUBLE p_advance, p_recede_reverse;
 
   worm_try_advance++;
@@ -1021,12 +1079,12 @@ static void WormAdvanceMove(void) {
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
 
   /* Muestreo gaussiano del propagador cinético libre desde Ira */
-  RandomNormal3(&dx, &dy, &dummy_z, 0., Sqrt(tau_local));
-  x_new = W[w_curr].x[p_idx] + dx;
-  y_new = W[w_curr].y[p_idx] + dy;
+  RandomNormal3(&dx, &dy, &dz, 0., Sqrt(tau_local));
+  WormStepPosition(W[w_curr].x[p_idx], W[w_curr].y[p_idx], W[w_curr].z[p_idx],
+                   dx, dy, dz, &x_new, &y_new, &z_new);
 
   /* Cambio en la acción potencial en el nuevo bead */
-  dV = Vext(x_new, y_new, 0.);
+  dV = Vext(x_new, y_new, z_new);
   p_advance = (N > 1 && worm_swap_enabled) ? WORM_PROB_ADVANCE_N_GT1 : WORM_PROB_ADVANCE_GAP_GT1;
   if(gap == 2) {
     p_recede_reverse = (N > 1 && worm_swap_enabled) ? WORM_PROB_RECEDE_N_GAP1 : WORM_PROB_RECEDE_GAP1;
@@ -1040,6 +1098,7 @@ static void WormAdvanceMove(void) {
     int record_snapshot = WormSnapshotBefore(2);
     W[w_next].x[p_next] = x_new;
     W[w_next].y[p_next] = y_new;
+    W[w_next].z[p_next] = z_new;
 
     worm_next[w_curr][p_idx] = p_next;
     worm_prev[w_next][p_next] = p_idx;
@@ -1050,6 +1109,7 @@ static void WormAdvanceMove(void) {
     worm.i = p_next;
     worm.x_ira = x_new;
     worm.y_ira = y_new;
+    worm.z_ira = z_new;
 
     worm_next[w_next][p_next] = -1;
 
@@ -1078,7 +1138,7 @@ static void WormRecedeMove(void) {
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
 
   /* Al borrar el bead de Ira, se elimina su potencial */
-  dV = Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.);
+  dV = Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], W[w_curr].z[p_idx]);
   p_advance_reverse = (N > 1 && worm_swap_enabled) ? WORM_PROB_ADVANCE_N_GT1 : WORM_PROB_ADVANCE_GAP_GT1;
   if(gap == 1) {
     p_recede = (N > 1 && worm_swap_enabled) ? WORM_PROB_RECEDE_N_GAP1 : WORM_PROB_RECEDE_GAP1;
@@ -1099,6 +1159,7 @@ static void WormRecedeMove(void) {
     worm.i = p_prev;
     worm.x_ira = W[w_prev].x[p_prev];
     worm.y_ira = W[w_prev].y[p_prev];
+    worm.z_ira = W[w_prev].z[p_prev];
 
     worm_acc_recede++;
     if(record_snapshot) WormSnapshotAfter(3);
@@ -1137,9 +1198,7 @@ static void WormSwapMove(void) {
   sum_weights1 = 0.0;
   for(int c = 0; c < cand_count; c++) {
     k = candidates[c];
-    DOUBLE dx = W[w_curr].x[i_ira] - W[w_next].x[k];
-    DOUBLE dy = W[w_curr].y[i_ira] - W[w_next].y[k];
-    d2 = dx * dx + dy * dy;
+    d2 = WormSegmentDistance2(w_curr, i_ira, w_next, k);
     weights[c] = Exp(-d2 / (2.0 * tau_local));
     sum_weights1 += weights[c];
   }
@@ -1164,9 +1223,7 @@ static void WormSwapMove(void) {
   sum_weights2 = 0.0;
   for(int c = 0; c < cand_count; c++) {
     k = candidates[c];
-    DOUBLE dx = W[w_curr].x[p_old] - W[w_next].x[k];
-    DOUBLE dy = W[w_curr].y[p_old] - W[w_next].y[k];
-    d2 = dx * dx + dy * dy;
+    d2 = WormSegmentDistance2(w_curr, p_old, w_next, k);
     sum_weights2 += Exp(-d2 / (2.0 * tau_local));
   }
 
@@ -1189,6 +1246,7 @@ static void WormSwapMove(void) {
     worm.i = p_old;
     worm.x_ira = W[w_curr].x[p_old];
     worm.y_ira = W[w_curr].y[p_old];
+    worm.z_ira = W[w_curr].z[p_old];
 
     worm_acc_swap++;
     if(record_snapshot) WormSnapshotAfter(4);
@@ -1197,8 +1255,8 @@ static void WormSwapMove(void) {
 
 static void WormIraSpatialMove(void) {
   int w_curr, w_prev, p_idx;
-  DOUBLE dx, dy, dummy_z, x_new, y_new, dV_kin, dV_ext, dS, acc, tau_local;
-  DOUBLE dx_old, dy_old, dx_new, dy_new;
+  DOUBLE dx = 0., dy = 0., dz = 0., x_new, y_new, z_new, dV_kin, dV_ext, dS, acc, tau_local;
+  DOUBLE dx_old, dy_old, dz_old, dx_new, dy_new, dz_new, d2_old, d2_new;
 
   worm_try_iramove++;
 
@@ -1209,19 +1267,25 @@ static void WormIraSpatialMove(void) {
   tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
 
   /* Desplazamiento gaussiano local */
-  RandomNormal3(&dx, &dy, &dummy_z, 0., Sqrt(dt_vmc > 0 ? dt_vmc : tau_local));
-  x_new = W[w_curr].x[p_idx] + dx;
-  y_new = W[w_curr].y[p_idx] + dy;
+  RandomNormal3(&dx, &dy, &dz, 0., Sqrt(dt_vmc > 0 ? dt_vmc : tau_local));
+  WormStepPosition(W[w_curr].x[p_idx], W[w_curr].y[p_idx], W[w_curr].z[p_idx],
+                   dx, dy, dz, &x_new, &y_new, &z_new);
 
   /* Cambio cinético con el bead anterior */
   int p_in = (worm_prev != NULL && worm_prev[w_curr][p_idx] >= 0) ? worm_prev[w_curr][p_idx] : p_idx;
   dx_old = W[w_curr].x[p_idx] - W[w_prev].x[p_in];
   dy_old = W[w_curr].y[p_idx] - W[w_prev].y[p_in];
+  dz_old = W[w_curr].z[p_idx] - W[w_prev].z[p_in];
+  d2_old = FindNearestImage(&dx_old, &dy_old, &dz_old);
+
   dx_new = x_new - W[w_prev].x[p_in];
   dy_new = y_new - W[w_prev].y[p_in];
+  dz_new = z_new - W[w_prev].z[p_in];
+  d2_new = FindNearestImage(&dx_new, &dy_new, &dz_new);
 
-  dV_kin = ((dx_new*dx_new + dy_new*dy_new) - (dx_old*dx_old + dy_old*dy_old)) / (2.0 * tau_local);
-  dV_ext = tau_local * (Vext(x_new, y_new, 0.) - Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], 0.));
+  dV_kin = (d2_new - d2_old) / (2.0 * tau_local);
+  dV_ext = tau_local * (Vext(x_new, y_new, z_new)
+                        - Vext(W[w_curr].x[p_idx], W[w_curr].y[p_idx], W[w_curr].z[p_idx]));
 
   dS = -(dV_kin + dV_ext);
   acc = Exp(dS);
@@ -1230,8 +1294,10 @@ static void WormIraSpatialMove(void) {
     int record_snapshot = WormSnapshotBefore(5);
     W[w_curr].x[p_idx] = x_new;
     W[w_curr].y[p_idx] = y_new;
+    W[w_curr].z[p_idx] = z_new;
     worm.x_ira = x_new;
     worm.y_ira = y_new;
+    worm.z_ira = z_new;
     worm_acc_iramove++;
     if(record_snapshot) WormSnapshotAfter(5);
   }
@@ -1406,8 +1472,8 @@ void SaveWormGapHistogram(const char *filename) {
 }
 
 void MeasureWormOBDM(void) {
-  int gap, ix1, ix2, iy1, iy2, ir1, ir2, is;
-  DOUBLE x1, y1, x2, y2, r1, r2, s;
+  int gap, ix1, ix2, is;
+  DOUBLE x1, y1, z1, x2, y2, z2, dx, dy, dz, s;
   DOUBLE step_x, step_r, step_s, s_max;
 
   if(worm_open == 0 || worm_obdm_matrix == NULL) return;
@@ -1416,25 +1482,40 @@ void MeasureWormOBDM(void) {
 
   x1 = W[worm_bead_masha].x[worm_particle_masha]; /* cola: \hat{\Psi}^\dagger */
   y1 = W[worm_bead_masha].y[worm_particle_masha];
+  z1 = W[worm_bead_masha].z[worm_particle_masha];
   x2 = W[worm_bead].x[worm_particle];             /* cabeza: \hat{\Psi} */
   y2 = W[worm_bead].y[worm_particle];
+  z2 = W[worm_bead].z[worm_particle];
 
   step_x = (2.0 * worm_obdm_max) / (DOUBLE)worm_obdm_grid;
   step_r = worm_obdm_max / (DOUBLE)worm_obdm_grid;
   s_max = 2.0 * worm_obdm_max;
   step_s = s_max / (DOUBLE)worm_obdm_grid;
 
+#ifdef TRIAL_1D
+#ifdef BC_1DPBC_X
+  ix1 = (int)floor((x1 + worm_obdm_max) / step_x);
+  ix2 = (int)floor((x2 + worm_obdm_max) / step_x);
+#else
+  ix1 = (int)floor((z1 + worm_obdm_max) / step_x);
+  ix2 = (int)floor((z2 + worm_obdm_max) / step_x);
+#endif
+#else
+  int iy1, iy2;
   ix1 = (int)floor((x1 + worm_obdm_max) / step_x);
   ix2 = (int)floor((x2 + worm_obdm_max) / step_x);
   iy1 = (int)floor((y1 + worm_obdm_max) / step_x);
   iy2 = (int)floor((y2 + worm_obdm_max) / step_x);
+#ifdef TRIAL_3D
+  int iz1 = (int)floor((z1 + worm_obdm_max) / step_x);
+  int iz2 = (int)floor((z2 + worm_obdm_max) / step_x);
+#endif
+#endif
 
-  r1 = Sqrt(x1 * x1 + y1 * y1);
-  r2 = Sqrt(x2 * x2 + y2 * y2);
-  ir1 = (int)floor(r1 / step_r);
-  ir2 = (int)floor(r2 / step_r);
-
-  s = Sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+  dx = x1 - x2;
+  dy = y1 - y2;
+  dz = z1 - z2;
+  s = Sqrt(FindNearestImage(&dx, &dy, &dz));
   is = (int)floor(s / step_s);
 
   worm_obdm_samples_all++;
@@ -1442,24 +1523,60 @@ void MeasureWormOBDM(void) {
     worm_obdm_matrix_all[ix1][ix2]++;
     worm_obdm_matrix_all[ix2][ix1]++;
   }
+#ifndef TRIAL_1D
   if(iy1 >= 0 && iy1 < worm_obdm_grid && iy2 >= 0 && iy2 < worm_obdm_grid) {
     worm_obdm_matrix_all[iy1][iy2]++;
     worm_obdm_matrix_all[iy2][iy1]++;
   }
+#ifdef TRIAL_3D
+  if(iz1 >= 0 && iz1 < worm_obdm_grid && iz2 >= 0 && iz2 < worm_obdm_grid) {
+    worm_obdm_matrix_all[iz1][iz2]++;
+    worm_obdm_matrix_all[iz2][iz1]++;
+  }
+#endif
+#endif
   if(is >= 0 && is < worm_obdm_grid) {
     worm_obdm_dist_all[is]++;
   }
 
   if(gap == 1) {
+    DOUBLE r1, r2;
+    int ir1, ir2;
+#ifdef TRIAL_1D
+#ifdef BC_1DPBC_X
+    r1 = fabs(x1);
+    r2 = fabs(x2);
+#else
+    r1 = fabs(z1);
+    r2 = fabs(z2);
+#endif
+#elif defined(TRIAL_2D)
+    r1 = Sqrt(x1 * x1 + y1 * y1);
+    r2 = Sqrt(x2 * x2 + y2 * y2);
+#else
+    r1 = Sqrt(x1 * x1 + y1 * y1 + z1 * z1);
+    r2 = Sqrt(x2 * x2 + y2 * y2 + z2 * z2);
+#endif
+    ir1 = (int)floor(r1 / step_r);
+    ir2 = (int)floor(r2 / step_r);
+
     worm_obdm_samples_gap1++;
     if(ix1 >= 0 && ix1 < worm_obdm_grid && ix2 >= 0 && ix2 < worm_obdm_grid) {
       worm_obdm_matrix[ix1][ix2]++;
       worm_obdm_matrix[ix2][ix1]++;
     }
+#ifndef TRIAL_1D
     if(iy1 >= 0 && iy1 < worm_obdm_grid && iy2 >= 0 && iy2 < worm_obdm_grid) {
       worm_obdm_matrix[iy1][iy2]++;
       worm_obdm_matrix[iy2][iy1]++;
     }
+#ifdef TRIAL_3D
+    if(iz1 >= 0 && iz1 < worm_obdm_grid && iz2 >= 0 && iz2 < worm_obdm_grid) {
+      worm_obdm_matrix[iz1][iz2]++;
+      worm_obdm_matrix[iz2][iz1]++;
+    }
+#endif
+#endif
     if(ir1 >= 0 && ir1 < worm_obdm_grid && ir2 >= 0 && ir2 < worm_obdm_grid) {
       worm_obdm_radial[ir1][ir2]++;
       worm_obdm_radial[ir2][ir1]++;
