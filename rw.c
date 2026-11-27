@@ -1,6 +1,7 @@
 /*rw.c*/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "rw.h"
 #include "main.h"
@@ -261,9 +262,11 @@ int LoadParameters(void) {
     CHECK("sum_of_two_wavefunctions_parameter2=", "%" LF "", &sum_of_two_wavefunctions_parameter2);
     CHECK("sum_of_two_wavefunctions_alpha=", "%" LF "", &sum_of_two_wavefunctions_alpha);
     CHECK("numeric_derivative_dr=", "%" LF "", &numeric_derivative_dr);
+    CHECK("save_energy_iter=", "%i", &save_energy_iter);
 #ifdef WORM_ALGORITHM
     CHECK("worm_C=", "%" LF "", &worm_C);
     CHECK("worm_swap=", "%i", &worm_swap_enabled);
+    CHECK("worm_save_snapshots=", "%i", &worm_save_snapshots);
     CHECK("worm_obdm_max=", "%" LF "", &worm_obdm_max);
     CHECK("worm_obdm_grid=", "%i", &worm_obdm_grid);
 #endif
@@ -969,49 +972,74 @@ int SaveEnergyCls(DOUBLE E) {
 }
 
 /******************************** Save Energy PIMC **************************/
+static FILE *pimc_energy_out = NULL;
+static int pimc_energy_initialized = OFF;
+static int pimc_energy_atexit_registered = OFF;
+
+void FlushEnergyPIMC(void) {
+  if(pimc_energy_out != NULL) {
+    fflush(pimc_energy_out);
+  }
+}
+
+void CloseEnergyPIMC(void) {
+  if(pimc_energy_out != NULL) {
+    fclose(pimc_energy_out);
+    pimc_energy_out = NULL;
+  }
+}
+
 int SaveEnergyPIMC(DOUBLE E, DOUBLE Epot, DOUBLE Ekin, DOUBLE Ekin_prim) {
-  FILE *out;
-  static int first_time = ON;
   char header[128];
   const char *header_text = "# Etot Epot Ekin Ekin_prim";
 
-  if(first_time && file_append) out = fopen(file_energy, "a+");
-  else out = fopen(file_energy, (first_time) ? "w" : "a");
-  if(out == NULL) {
-    perror("\nError:");
-    Warning("can't write to energy file %s\n", file_energy);
-    return 1;
-  }
+  if(!save_energy_iter) return 0;
 
-  if(first_time) {
+  if(!pimc_energy_initialized) {
+    pimc_energy_initialized = ON;
+    if(file_append) pimc_energy_out = fopen(file_energy, "a+");
+    else pimc_energy_out = fopen(file_energy, "w");
+    if(pimc_energy_out == NULL) {
+      perror("\nError:");
+      Warning("can't write to energy file %s\n", file_energy);
+      return 1;
+    }
+
     if(file_append) {
-      if(fseek(out, 0, SEEK_END) != 0) {
-        fclose(out);
+      if(fseek(pimc_energy_out, 0, SEEK_END) != 0) {
+        CloseEnergyPIMC();
         Warning("can't seek energy file %s\n", file_energy);
         return 1;
       }
-      if(ftell(out) == 0) {
-        fprintf(out, "%s\n", header_text);
+      if(ftell(pimc_energy_out) == 0) {
+        fprintf(pimc_energy_out, "%s\n", header_text);
       }
       else {
-        rewind(out);
-        if(fgets(header, sizeof(header), out) == NULL ||
-           strncmp(header, header_text, strlen(header_text)) != 0) {
-          fclose(out);
+        rewind(pimc_energy_out);
+        if(fgets(header, sizeof(header), pimc_energy_out) == NULL ||
+           strncmp(header, header_text, strlen(header_text)) != 0 ||
+           fseek(pimc_energy_out, 0, SEEK_END) != 0) {
+          CloseEnergyPIMC();
           Warning("can't append PIMC columns to incompatible energy file %s\n", file_energy);
           return 1;
         }
       }
     }
     else {
-      fprintf(out, "%s\n", header_text);
+      fprintf(pimc_energy_out, "%s\n", header_text);
     }
-    first_time = OFF;
+
+    setvbuf(pimc_energy_out, NULL, _IOFBF, 65536);
+    if(!pimc_energy_atexit_registered) {
+      atexit(CloseEnergyPIMC);
+      pimc_energy_atexit_registered = ON;
+    }
   }
 
-  fprintf(out, "%.15" LE " %.15" LE " %.15" LE " %.15" LE "\n",
+  if(pimc_energy_out == NULL) return 1;
+
+  fprintf(pimc_energy_out, "%.15" LE " %.15" LE " %.15" LE " %.15" LE "\n",
           E*energy_unit, Epot*energy_unit, Ekin*energy_unit, Ekin_prim*energy_unit);
-  fclose(out);
   return 0;
 }
 
@@ -1352,10 +1380,24 @@ int SavePairDistribtuionR2(void) {
 }
 
 /*********************** Save Radial Distribution ****************************/
+static FILE *rd_out = NULL;
+static FILE *rd_out_pure = NULL;
+static int rd_atexit_registered = OFF;
+
+void CloseRadialDistribution(void) {
+  if(rd_out != NULL) {
+    fclose(rd_out);
+    rd_out = NULL;
+  }
+  if(rd_out_pure != NULL) {
+    fclose(rd_out_pure);
+    rd_out_pure = NULL;
+  }
+}
+
 int SaveRadialDistribution(void) {
   int i;
   DOUBLE r;
-  FILE *out, *out2 = NULL;
   int save_pure = ON;
   char file_name[40], file_name_pure[40];
   DOUBLE normalization, normalization2;
@@ -1381,11 +1423,18 @@ int SaveRadialDistribution(void) {
   strcpy(file_name, "outrdx.dat");
 #endif
 
-  out = fopen(file_name, (initialized || file_append)?"a":"w");
-  if(out == NULL) {
-    perror("\nError:");
-    Warning("can't save radial distribution function to file %s\n", file_name);
-    return 1;
+  if(rd_out == NULL) {
+    rd_out = fopen(file_name, (initialized || file_append)?"a":"w");
+    if(rd_out == NULL) {
+      perror("\nError:");
+      Warning("can't save radial distribution function to file %s\n", file_name);
+      return 1;
+    }
+    setvbuf(rd_out, NULL, _IOFBF, 65536);
+    if(!rd_atexit_registered) {
+      atexit(CloseRadialDistribution);
+      rd_atexit_registered = ON;
+    }
   }
 
   if(MC != DIFFUSION) save_pure = OFF;
@@ -1395,17 +1444,23 @@ int SaveRadialDistribution(void) {
       Warning("Attempt to save pure radial distribution function without any measurement\n");
       save_pure = OFF;
     }
+  }
+
+  if(save_pure) {
 #ifdef BC_ABSENT
     strcpy(file_name_pure, file_RD_pure);
 #else
     strcpy(file_name_pure, "outrdxp.dat");
 #endif
 
-    out2 = fopen(file_name_pure, (initialized || file_append)?"a":"w");
-    if(out2 == NULL) {
-      perror("\nError:");
-      Warning("can't save pure radial distribution function to file %s\n", file_name_pure);
-      return 1;
+    if(rd_out_pure == NULL) {
+      rd_out_pure = fopen(file_name_pure, (initialized || file_append)?"a":"w");
+      if(rd_out_pure == NULL) {
+        perror("\nError:");
+        Warning("can't save pure radial distribution function to file %s\n", file_name_pure);
+        return 1;
+      }
+      setvbuf(rd_out_pure, NULL, _IOFBF, 65536);
     }
   }
 
@@ -1426,16 +1481,16 @@ int SaveRadialDistribution(void) {
   for(i=0; i<RD.size; i++) {
     r = RD.min + (DOUBLE) (i+0.5) * RD.step;
 #ifdef TRIAL_1D
-    fprintf(out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]);
-    if(save_pure) fprintf(out2, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]);
+    fprintf(rd_out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]);
+    if(save_pure) fprintf(rd_out_pure, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]);
 #endif
 #ifdef TRIAL_2D
-    fprintf(out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]/r);
-    if(save_pure) fprintf(out2, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]/r);
+    fprintf(rd_out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]/r);
+    if(save_pure) fprintf(rd_out_pure, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]/r);
 #endif
 #ifdef TRIAL_3D
-    fprintf(out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]/(r*r));
-    if(save_pure) fprintf(out2, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]/(r*r));
+    fprintf(rd_out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]/(r*r));
+    if(save_pure) fprintf(rd_out_pure, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]/(r*r));
 #endif
 }
 
@@ -1445,8 +1500,8 @@ int SaveRadialDistribution(void) {
 
   for(i=0; i<RD.size; i++) {
     r = RD.min + (DOUBLE) (i+0.5) * RD.step;
-    fprintf(out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]);
-    if(save_pure) fprintf(out2, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]);
+    fprintf(rd_out, "%" LF " %.15" LE "\n", r, normalization*(DOUBLE)RD.N[i]);
+    if(save_pure) fprintf(rd_out_pure, "%" LF " %.15" LE "\n", r, normalization2*(DOUBLE)RD_pure.N[i]);
   }
 #endif
 
@@ -1455,8 +1510,8 @@ int SaveRadialDistribution(void) {
     RD_pure.times_measured = 0;
   }
 
-  fclose(out);
-  if(save_pure) fclose(out2);
+  fflush(rd_out);
+  if(save_pure && rd_out_pure != NULL) fflush(rd_out_pure);
 
   initialized = ON;
 

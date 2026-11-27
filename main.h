@@ -1321,6 +1321,7 @@ extern int Kurbakov_BC;
 extern DOUBLE Kurbakov_softcore;
 extern DOUBLE m_mu;
 extern int check_kinetic_energy;
+extern int save_energy_iter;
 extern DOUBLE one_body_momentum_i;
 extern DOUBLE one_body_momentum_k;
 extern DOUBLE E_from_growth_estimator;
@@ -1356,6 +1357,7 @@ extern long long *worm_cycle_histogram;
 extern long long worm_cycle_samples;
 extern DOUBLE worm_C;       /* parámetro de fugacidad efectiva */
 extern int worm_swap_enabled; /* 1: permutaciones bosónicas (Swap activo), 0: distinguibles (sin Swap) */
+extern int worm_save_snapshots; /* 1: guarda outworm_snapshots.dat, 0: desactivado por defecto */
 extern int **worm_next;     /* puntero al siguiente en tiempo imaginario */
 extern int **worm_prev;     /* puntero al anterior en tiempo imaginario */
 extern DOUBLE worm_obdm_max; /* rango espacial máximo para histograma OBDM [-max, max] */

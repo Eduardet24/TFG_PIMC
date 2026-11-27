@@ -815,16 +815,21 @@ void InitWorm(void) {
   if(getenv("WORM_DISABLE_SWAP") != NULL && atoi(getenv("WORM_DISABLE_SWAP")) != 0) {
     worm_swap_enabled = 0;
   }
+  if(getenv("WORM_SAVE_SNAPSHOTS") != NULL) {
+    worm_save_snapshots = (atoi(getenv("WORM_SAVE_SNAPSHOTS")) != 0);
+  }
 
   atexit(FreeWorm);
 
   {
-    FILE *snapshot_file = fopen("outworm_snapshots.dat", "w");
     int move;
     for(move = 0; move < 6; move++) worm_snapshot_seen[move] = 0;
-    if(snapshot_file != NULL) {
-      fprintf(snapshot_file, "# worm_snapshot_v1\n");
-      fclose(snapshot_file);
+    if(worm_save_snapshots) {
+      FILE *snapshot_file = fopen("outworm_snapshots.dat", "w");
+      if(snapshot_file != NULL) {
+        fprintf(snapshot_file, "# worm_snapshot_v1\n");
+        fclose(snapshot_file);
+      }
     }
   }
 
@@ -910,11 +915,12 @@ static int WormSnapshotWrite(int move, const char *phase) {
 }
 
 static int WormSnapshotBefore(int move) {
-  if(move < 0 || move >= 6 || worm_snapshot_seen[move]) return 0;
+  if(!worm_save_snapshots || move < 0 || move >= 6 || worm_snapshot_seen[move]) return 0;
   return WormSnapshotWrite(move, "before");
 }
 
 static void WormSnapshotAfter(int move) {
+  if(!worm_save_snapshots) return;
   if(WormSnapshotWrite(move, "after")) worm_snapshot_seen[move] = 1;
 }
 

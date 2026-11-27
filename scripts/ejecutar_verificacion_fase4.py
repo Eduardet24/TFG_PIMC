@@ -103,7 +103,9 @@ try:
     print(f"  -> Ejecutable: {executable}")
     cmd = [executable, "MC.cfg"]
     run_started = time.time()
-    proc = subprocess.run(cmd, cwd=RUN_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    env = os.environ.copy()
+    env["WORM_SAVE_SNAPSHOTS"] = "1"
+    proc = subprocess.run(cmd, cwd=RUN_DIR, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     log_path = os.path.join(OUTPUT_DIR, "simulacion_terminal.log")
     with open(log_path, "w") as f:

@@ -140,6 +140,7 @@ int measure_pure_coordinates = OFF;
 int measure_tVMC = OFF;
 int measure_Hessian_matrix = OFF;
 int check_kinetic_energy = ON;
+int save_energy_iter = ON;
 
 /* Variables globales del algoritmo worm (Prokof'ev-Svistunov) */
 #ifdef WORM_ALGORITHM
@@ -168,6 +169,7 @@ long long *worm_cycle_histogram = NULL;
 long long worm_cycle_samples = 0;
 DOUBLE worm_C = 1.0;        /* parámetro de fugacidad efectiva (tunable) */
 int worm_swap_enabled = 1;  /* 1 = Swap activo (Bosones), 0 = Swap inactivo (Distinguibles) */
+int worm_save_snapshots = 0; /* 1 = guardar outworm_snapshots.dat, 0 = desactivado */
 int **worm_next = NULL;     /* enlaces hacia delante: worm_next[w][i] */
 int **worm_prev = NULL;     /* enlaces hacia atrás: worm_prev[w][i] */
 DOUBLE worm_obdm_max = 3.5; /* rango espacial máximo para histograma OBDM [-max, max] */
@@ -315,7 +317,9 @@ int main(int argn, char **argv) {
   long long worm_cycle_samples_block;
   int worm_cycle_length;
   int worm_saved_coords = 0;
-  FILE *worm_block_file;
+  FILE *worm_energy_block_file = NULL;
+  FILE *worm_cycle_block_file = NULL;
+  FILE *worm_sf_block_file = NULL;
 #endif
 
   time_start = clock();
@@ -1242,28 +1246,31 @@ int main(int argn, char **argv) {
 #ifdef WORM_ALGORITHM
   if(MC == PIMC) {
     worm_cycle_block_start = (long long*) calloc(N + 1, sizeof(long long));
-    worm_block_file = fopen("outworm_energy_blocks.dat", "w");
-    if(worm_block_file != NULL) {
-      fprintf(worm_block_file, "# block samples Etot Epot Ekin\n");
-      fclose(worm_block_file);
+    worm_energy_block_file = fopen("outworm_energy_blocks.dat", "w");
+    if(worm_energy_block_file != NULL) {
+      setvbuf(worm_energy_block_file, NULL, _IOFBF, 16384);
+      fprintf(worm_energy_block_file, "# block samples Etot Epot Ekin\n");
+      fflush(worm_energy_block_file);
     }
-    worm_block_file = fopen("outworm_cycle_blocks.dat", "w");
-    if(worm_block_file != NULL) {
-      fprintf(worm_block_file, "# block samples");
+    worm_cycle_block_file = fopen("outworm_cycle_blocks.dat", "w");
+    if(worm_cycle_block_file != NULL) {
+      setvbuf(worm_cycle_block_file, NULL, _IOFBF, 16384);
+      fprintf(worm_cycle_block_file, "# block samples");
       for(worm_cycle_length = 1; worm_cycle_length <= N; worm_cycle_length++) {
-        fprintf(worm_block_file, " P%d", worm_cycle_length);
+        fprintf(worm_cycle_block_file, " P%d", worm_cycle_length);
       }
-      fprintf(worm_block_file, "\n");
-      fclose(worm_block_file);
+      fprintf(worm_cycle_block_file, "\n");
+      fflush(worm_cycle_block_file);
     }
-    worm_block_file = fopen("outworm_superfluid_blocks.dat", "w");
-    if(worm_block_file != NULL) {
+    worm_sf_block_file = fopen("outworm_superfluid_blocks.dat", "w");
+    if(worm_sf_block_file != NULL) {
+      setvbuf(worm_sf_block_file, NULL, _IOFBF, 16384);
 #ifdef BC_ABSENT
-      fprintf(worm_block_file, "# block samples rho_s_over_rho A2_mean A_mean Icl_mean\n");
+      fprintf(worm_sf_block_file, "# block samples rho_s_over_rho A2_mean A_mean Icl_mean\n");
 #else
-      fprintf(worm_block_file, "# block samples rho_s_over_rho W2_mean\n");
+      fprintf(worm_sf_block_file, "# block samples rho_s_over_rho W2_mean\n");
 #endif
-      fclose(worm_block_file);
+      fflush(worm_sf_block_file);
     }
   }
 #endif
@@ -1457,31 +1464,30 @@ int main(int argn, char **argv) {
 
 #ifdef WORM_ALGORITHM
     if(MC == PIMC && block >= 0) {
-      worm_block_file = fopen("outworm_energy_blocks.dat", "a");
-      if(worm_block_file != NULL) {
+      FlushEnergyPIMC();
+      if(worm_energy_block_file != NULL) {
         DOUBLE sample_divisor = worm_block_energy_samples > 0 ? (DOUBLE)worm_block_energy_samples : 1.;
-        fprintf(worm_block_file, "%d %lu %.15" LE " %.15" LE " %.15" LE "\n",
+        fprintf(worm_energy_block_file, "%d %lu %.15" LE " %.15" LE " %.15" LE "\n",
                 block, worm_block_energy_samples,
                 energy_unit * worm_block_energy_sum[0] / sample_divisor,
                 energy_unit * worm_block_energy_sum[1] / sample_divisor,
                 energy_unit * worm_block_energy_sum[2] / sample_divisor);
-        fclose(worm_block_file);
+        fflush(worm_energy_block_file);
       }
 
       if(worm_cycle_block_start != NULL && worm_cycle_histogram != NULL) {
         worm_cycle_samples_block = worm_cycle_samples - worm_cycle_samples_block_start;
-        worm_block_file = fopen("outworm_cycle_blocks.dat", "a");
-        if(worm_block_file != NULL) {
-          fprintf(worm_block_file, "%d %lld", block, worm_cycle_samples_block);
+        if(worm_cycle_block_file != NULL) {
+          fprintf(worm_cycle_block_file, "%d %lld", block, worm_cycle_samples_block);
           for(worm_cycle_length = 1; worm_cycle_length <= N; worm_cycle_length++) {
             DOUBLE cycle_fraction = worm_cycle_samples_block > 0
               ? (DOUBLE)(worm_cycle_histogram[worm_cycle_length] - worm_cycle_block_start[worm_cycle_length])
                 / ((DOUBLE)worm_cycle_samples_block * (DOUBLE)N)
               : 0.;
-            fprintf(worm_block_file, " %.15g", cycle_fraction);
+            fprintf(worm_cycle_block_file, " %.15g", cycle_fraction);
           }
-          fprintf(worm_block_file, "\n");
-          fclose(worm_block_file);
+          fprintf(worm_cycle_block_file, "\n");
+          fflush(worm_cycle_block_file);
         }
       }
 
@@ -1490,8 +1496,7 @@ int main(int argn, char **argv) {
           worm_sf_block_samples, worm_sf_block_A_sum, worm_sf_block_A2_sum,
           worm_sf_block_Icl_sum, worm_sf_block_W2_sum);
         AccumulateWormSuperfluidBlock(worm_sf_block_samples, rho_s_block);
-        worm_block_file = fopen("outworm_superfluid_blocks.dat", "a");
-        if(worm_block_file != NULL) {
+        if(worm_sf_block_file != NULL) {
           DOUBLE n_blk = (DOUBLE)worm_sf_block_samples;
 #ifdef BC_ABSENT
 #ifdef TRIAL_3D
@@ -1503,13 +1508,13 @@ int main(int argn, char **argv) {
           DOUBLE a_blk = worm_sf_block_A_sum[2] / n_blk;
           DOUBLE icl_blk = worm_sf_block_Icl_sum[2] / n_blk;
 #endif
-          fprintf(worm_block_file, "%d %lld %.15" LE " %.15" LE " %.15" LE " %.15" LE "\n",
+          fprintf(worm_sf_block_file, "%d %lld %.15" LE " %.15" LE " %.15" LE " %.15" LE "\n",
                   block, worm_sf_block_samples, rho_s_block, a2_blk, a_blk, icl_blk);
 #else
-          fprintf(worm_block_file, "%d %lld %.15" LE " %.15" LE "\n",
+          fprintf(worm_sf_block_file, "%d %lld %.15" LE " %.15" LE "\n",
                   block, worm_sf_block_samples, rho_s_block, worm_sf_block_W2_sum / n_blk);
 #endif
-          fclose(worm_block_file);
+          fflush(worm_sf_block_file);
         }
       }
       if(measure_RadDistr && RD.times_measured > 0) {
@@ -1519,7 +1524,6 @@ int main(int argn, char **argv) {
         SaveCoordinates(file_particles);
         worm_saved_coords = 1;
       }
-      EmptyDistributionArrays();
     }
 #endif
 
@@ -1612,6 +1616,18 @@ int main(int argn, char **argv) {
 #endif
 
 #ifdef WORM_ALGORITHM
+  if(worm_energy_block_file != NULL) {
+    fclose(worm_energy_block_file);
+    worm_energy_block_file = NULL;
+  }
+  if(worm_cycle_block_file != NULL) {
+    fclose(worm_cycle_block_file);
+    worm_cycle_block_file = NULL;
+  }
+  if(worm_sf_block_file != NULL) {
+    fclose(worm_sf_block_file);
+    worm_sf_block_file = NULL;
+  }
   if(MC == PIMC) {
     if(!worm_saved_coords) {
       SaveCoordinates(file_particles);
@@ -1623,6 +1639,9 @@ int main(int argn, char **argv) {
   }
   free(worm_cycle_block_start);
 #endif
+
+  CloseEnergyPIMC();
+  CloseRadialDistribution();
 
   Message("done\n");
   return 0;
