@@ -413,6 +413,7 @@ void PIMCMoveOneByOne(int w) {
       du += r2/(2.*tau);
     }
 
+#ifndef INTERACTION_ABSENT
     for(j=0; j<N; j++) {
 #ifdef WORM_ALGORITHM
       if(j != i && (worm_prev == NULL || worm_next == NULL || worm_prev[w][j] >= 0 || worm_next[w][j] >= 0)) { // calculate new interaction energy
@@ -457,6 +458,7 @@ void PIMCMoveOneByOne(int w) {
         du += tau*InteractionEnergy(sqrt(r2));
       }
     }
+#endif
 
     // The Metropolis code
     // f = Exp(u), p = Exp(up-u)
@@ -930,6 +932,7 @@ static void WormAdvanceMove(void) {
     if(worm_prev[w_next][particle] < 0 && worm_next[w_next][particle] < 0) {
       p_next = particle;
       candidate_count++;
+      if(candidate_count > 1) return;
     }
   }
   if(candidate_count != 1) return;

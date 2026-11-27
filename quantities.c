@@ -87,6 +87,7 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
 #endif
     }
 
+#ifndef INTERACTION_ABSENT
     for(particle=0; particle<N; particle++) { // loop over all particles
       for(other_particle=particle+1; other_particle<N; other_particle++) { // loop over all other particles
         dr[0] = W[bead].x[particle] - W[bead].x[other_particle];
@@ -96,6 +97,7 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
         interaction += InteractionEnergy(Sqrt(r2)); // interaction energy
       }
     }
+#endif
   }
 
   if(terms == 0) {
