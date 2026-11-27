@@ -421,16 +421,14 @@ static void PIMCMoveSingleBeadParticle(int w, int i, int w1, int w2,
 #endif
   DOUBLE du = 0.;
   DOUBLE xi;
-  DOUBLE dx, dy, dz;
-  DOUBLE x, y, z;
-  DOUBLE xp, yp, zp;
+  DOUBLE x = 0., y = 0., z = 0.;
+  DOUBLE xp = 0., yp = 0., zp = 0.;
   DOUBLE dr[3];
   DOUBLE xm, ym, zm;
-  DOUBLE r2;
 
-  x = W[w].x[i];
-  y = W[w].y[i];
-  z = W[w].z[i];
+  CaseX(x = W[w].x[i]);
+  CaseY(y = W[w].y[i]);
+  CaseZ(z = W[w].z[i]);
 #ifdef WORM_ALGORITHM
   int prev_p = (worm_prev != NULL) ? worm_prev[w][i] : i;
   int next_p = (worm_next != NULL) ? worm_next[w][i] : i;
@@ -440,66 +438,65 @@ static void PIMCMoveSingleBeadParticle(int w, int i, int w1, int w2,
   int next_p = i;
 #endif
 
-  RandomNormal3(&dx, &dy, &dz, 0., step_sigma);
-
 #ifdef TRIAL_3D
-  xp = x + dx;
-  yp = y + dy;
-  zp = z + dz;
-#endif
-
-#ifdef TRIAL_2D
-  xp = x + dx;
-  yp = y + dy;
-  zp = 0.;
-#endif
-
-#ifdef TRIAL_1D
-  xp = 0.;
-  yp = 0.;
-  zp = z + dz;
+  {
+    DOUBLE dx, dy, dz;
+    RandomNormal(&dx, &dy, 0., step_sigma);
+    RandomNormal(&dz, &xi, 0., step_sigma);
+    xp = x + dx;
+    yp = y + dy;
+    zp = z + dz;
+  }
+#elif defined(TRIAL_2D)
+  {
+    DOUBLE dx, dy;
+    RandomNormal(&dx, &dy, 0., step_sigma);
+    xp = x + dx;
+    yp = y + dy;
+  }
+#else
+  {
+    DOUBLE dx, dz;
+    RandomNormal(&dz, &dx, 0., step_sigma);
+    zp = z + dz;
+  }
 #endif
 
   ReduceToTheBoxXYZ(&xp, &yp, &zp);
 
-  du -= tau * Vext(xp, yp, zp);
-  du += tau * Vext(x, y, z);
+  du += tau * (Vext(x, y, z) - Vext(xp, yp, zp));
 
   /* kinetic energy contribution (two links for interior beads, one link for Ira/Masha) */
   if(prev_p >= 0 && next_p >= 0) {
-    xm = 0.5 * (W[w1].x[prev_p] + W[w2].x[next_p]);
-    ym = 0.5 * (W[w1].y[prev_p] + W[w2].y[next_p]);
-    zm = 0.5 * (W[w1].z[prev_p] + W[w2].z[next_p]);
+    DOUBLE r2_new, r2_old;
+    xm = ym = zm = 0.;
+    dr[0] = dr[1] = dr[2] = 0.;
+    CaseX(xm = 0.5 * (W[w1].x[prev_p] + W[w2].x[next_p]); dr[0] = xp - xm);
+    CaseY(ym = 0.5 * (W[w1].y[prev_p] + W[w2].y[next_p]); dr[1] = yp - ym);
+    CaseZ(zm = 0.5 * (W[w1].z[prev_p] + W[w2].z[next_p]); dr[2] = zp - zm);
+    r2_new = FindNearestImage(&dr[0], &dr[1], &dr[2]);
 
-    dr[0] = xp - xm;
-    dr[1] = yp - ym;
-    dr[2] = zp - zm;
-    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    du -= r2 * inv_tau;
-
-    dr[0] = x - xm;
-    dr[1] = y - ym;
-    dr[2] = z - zm;
-    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    du += r2 * inv_tau;
+    CaseX(dr[0] = x - xm);
+    CaseY(dr[1] = y - ym);
+    CaseZ(dr[2] = z - zm);
+    r2_old = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+    du -= (r2_new - r2_old) * inv_tau;
   } else {
     int w_conn = (prev_p >= 0) ? w1 : w2;
     int p_conn = (prev_p >= 0) ? prev_p : next_p;
-    xm = W[w_conn].x[p_conn];
-    ym = W[w_conn].y[p_conn];
-    zm = W[w_conn].z[p_conn];
+    DOUBLE r2_new, r2_old;
+    xm = ym = zm = 0.;
+    dr[0] = dr[1] = dr[2] = 0.;
+    CaseX(xm = W[w_conn].x[p_conn]; dr[0] = xp - xm);
+    CaseY(ym = W[w_conn].y[p_conn]; dr[1] = yp - ym);
+    CaseZ(zm = W[w_conn].z[p_conn]; dr[2] = zp - zm);
+    r2_new = FindNearestImage(&dr[0], &dr[1], &dr[2]);
 
-    dr[0] = xp - xm;
-    dr[1] = yp - ym;
-    dr[2] = zp - zm;
-    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    du -= r2 * inv_2tau;
-
-    dr[0] = x - xm;
-    dr[1] = y - ym;
-    dr[2] = z - zm;
-    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-    du += r2 * inv_2tau;
+    CaseX(dr[0] = x - xm);
+    CaseY(dr[1] = y - ym);
+    CaseZ(dr[2] = z - zm);
+    r2_old = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+    du -= (r2_new - r2_old) * inv_2tau;
   }
 
 #ifndef INTERACTION_ABSENT
@@ -509,6 +506,7 @@ static void PIMCMoveSingleBeadParticle(int w, int i, int w1, int w2,
 #else
     if(j != i) {
 #endif
+      DOUBLE r2;
       dr[0] = xp - W[w].x[j];
       dr[1] = yp - W[w].y[j];
       dr[2] = zp - W[w].z[j];
@@ -525,18 +523,16 @@ static void PIMCMoveSingleBeadParticle(int w, int i, int w1, int w2,
 #endif
 
   if(du > 0.) {
-    W[w].x[i] = xp;
-    W[w].y[i] = yp;
-    W[w].z[i] = zp;
-    W[w].U -= du;
+    CaseX(W[w].x[i] = xp);
+    CaseY(W[w].y[i] = yp);
+    CaseZ(W[w].z[i] = zp);
     (*local_accepted)++;
   } else {
     xi = Random();
     if(xi < Exp(du)) {
-      W[w].x[i] = xp;
-      W[w].y[i] = yp;
-      W[w].z[i] = zp;
-      W[w].U -= du;
+      CaseX(W[w].x[i] = xp);
+      CaseY(W[w].y[i] = yp);
+      CaseZ(W[w].z[i] = zp);
       (*local_accepted)++;
     } else {
       (*local_rejected)++;
@@ -820,8 +816,76 @@ static const char *worm_snapshot_names[6] = {
 static int *worm_swap_candidates = NULL;
 static DOUBLE *worm_swap_weights = NULL;
 
+static DOUBLE worm_obdm_inv_step_x = 0.0;
+static DOUBLE worm_obdm_inv_step_r = 0.0;
+static DOUBLE worm_obdm_inv_step_s = 0.0;
+static DOUBLE worm_obdm_max2 = 0.0;
+static DOUBLE worm_obdm_smax2 = 0.0;
+static int worm_obdm_geom_grid = -1;
+static DOUBLE worm_obdm_geom_max = -1.0;
+
+static void SyncWormOBDMGeometry(void) {
+  if(worm_obdm_geom_grid == worm_obdm_grid && worm_obdm_geom_max == worm_obdm_max) {
+    return;
+  }
+  worm_obdm_inv_step_x = (DOUBLE)worm_obdm_grid / (2.0 * worm_obdm_max);
+  worm_obdm_inv_step_r = (DOUBLE)worm_obdm_grid / worm_obdm_max;
+  worm_obdm_inv_step_s = (DOUBLE)worm_obdm_grid / (2.0 * worm_obdm_max);
+  worm_obdm_max2 = worm_obdm_max * worm_obdm_max;
+  worm_obdm_smax2 = 4.0 * worm_obdm_max2;
+  worm_obdm_geom_grid = worm_obdm_grid;
+  worm_obdm_geom_max = worm_obdm_max;
+}
+
+static int** AllocContiguous2DInt(int rows, int cols, const char *name) {
+  int **arr = (int**) malloc((size_t)rows * sizeof(int*));
+  int *data;
+  int r;
+  if(arr == NULL) Error("Out of memory allocating %s pointers\n", name);
+  data = (int*) calloc((size_t)rows * (size_t)cols, sizeof(int));
+  if(data == NULL) {
+    free(arr);
+    Error("Out of memory allocating %s data\n", name);
+  }
+  for(r = 0; r < rows; r++) {
+    arr[r] = data + (size_t)r * (size_t)cols;
+  }
+  return arr;
+}
+
+static void FreeContiguous2DInt(int ***arr) {
+  if(*arr != NULL) {
+    free((*arr)[0]);
+    free(*arr);
+    *arr = NULL;
+  }
+}
+
+static long long** AllocContiguous2DLL(int rows, int cols, const char *name) {
+  long long **arr = (long long**) malloc((size_t)rows * sizeof(long long*));
+  long long *data;
+  int r;
+  if(arr == NULL) Error("Out of memory allocating %s pointers\n", name);
+  data = (long long*) calloc((size_t)rows * (size_t)cols, sizeof(long long));
+  if(data == NULL) {
+    free(arr);
+    Error("Out of memory allocating %s data\n", name);
+  }
+  for(r = 0; r < rows; r++) {
+    arr[r] = data + (size_t)r * (size_t)cols;
+  }
+  return arr;
+}
+
+static void FreeContiguous2DLL(long long ***arr) {
+  if(*arr != NULL) {
+    free((*arr)[0]);
+    free(*arr);
+    *arr = NULL;
+  }
+}
+
 void FreeWorm(void) {
-  int w;
   if(worm_ring_visited != NULL) {
     free(worm_ring_visited);
     worm_ring_visited = NULL;
@@ -864,20 +928,11 @@ void FreeWorm(void) {
     free(worm_cycle_histogram);
     worm_cycle_histogram = NULL;
   }
-  if(worm_obdm_matrix != NULL) {
-    int k;
-    for(k = 0; k < worm_obdm_grid; k++) {
-      if(worm_obdm_matrix[k]) free(worm_obdm_matrix[k]);
-      if(worm_obdm_radial[k]) free(worm_obdm_radial[k]);
-      if(worm_obdm_matrix_all[k]) free(worm_obdm_matrix_all[k]);
-    }
-    free(worm_obdm_matrix);
-    free(worm_obdm_radial);
-    free(worm_obdm_matrix_all);
-    worm_obdm_matrix = NULL;
-    worm_obdm_radial = NULL;
-    worm_obdm_matrix_all = NULL;
-  }
+  FreeContiguous2DLL(&worm_obdm_matrix);
+  FreeContiguous2DLL(&worm_obdm_radial);
+  FreeContiguous2DLL(&worm_obdm_matrix_all);
+  worm_obdm_geom_grid = -1;
+  worm_obdm_geom_max = -1.0;
   if(worm_obdm_dist != NULL) {
     free(worm_obdm_dist);
     worm_obdm_dist = NULL;
@@ -886,16 +941,8 @@ void FreeWorm(void) {
     free(worm_obdm_dist_all);
     worm_obdm_dist_all = NULL;
   }
-  if(worm_next != NULL) {
-    for(w = 0; w < NwalkersMax; w++) {
-      if(worm_next[w]) free(worm_next[w]);
-      if(worm_prev[w]) free(worm_prev[w]);
-    }
-    free(worm_next);
-    free(worm_prev);
-    worm_next = NULL;
-    worm_prev = NULL;
-  }
+  FreeContiguous2DInt(&worm_next);
+  FreeContiguous2DInt(&worm_prev);
 }
 
 void InitWorm(void) {
@@ -923,38 +970,39 @@ void InitWorm(void) {
     }
   }
 
-  worm_next = (int**) malloc(NwalkersMax * sizeof(int*));
-  worm_prev = (int**) malloc(NwalkersMax * sizeof(int*));
+  worm_next = AllocContiguous2DInt(NwalkersMax, N, "worm_next");
+  worm_prev = AllocContiguous2DInt(NwalkersMax, N, "worm_prev");
   for(w = 0; w < NwalkersMax; w++) {
-    worm_next[w] = (int*) malloc(N * sizeof(int));
-    worm_prev[w] = (int*) malloc(N * sizeof(int));
     for(i = 0; i < N; i++) {
       worm_next[w][i] = i;
       worm_prev[w][i] = i;
     }
   }
 
-  worm_swap_candidates = (int*) malloc(N * sizeof(int));
-  worm_swap_weights = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+  worm_swap_candidates = (int*) malloc((size_t)N * sizeof(int));
+  worm_swap_weights = (DOUBLE*) malloc((size_t)N * sizeof(DOUBLE));
+  if(worm_swap_candidates == NULL || worm_swap_weights == NULL) {
+    Error("Out of memory allocating worm_swap scratch\n");
+  }
 
-  worm_gap_histogram = (long long*) calloc(NwalkersMax + 1, sizeof(long long));
+  worm_gap_histogram = (long long*) calloc((size_t)(NwalkersMax + 1), sizeof(long long));
   worm_max_gap_observed = 0;
 
-  worm_cycle_histogram = (long long*) calloc(N + 1, sizeof(long long));
+  worm_cycle_histogram = (long long*) calloc((size_t)(N + 1), sizeof(long long));
   worm_cycle_samples = 0;
 
   if(worm_obdm_grid < 10) worm_obdm_grid = 100;
 
-  worm_obdm_matrix = (long long**) malloc(worm_obdm_grid * sizeof(long long*));
-  worm_obdm_radial = (long long**) malloc(worm_obdm_grid * sizeof(long long*));
-  worm_obdm_matrix_all = (long long**) malloc(worm_obdm_grid * sizeof(long long*));
-  for(i = 0; i < worm_obdm_grid; i++) {
-    worm_obdm_matrix[i] = (long long*) calloc(worm_obdm_grid, sizeof(long long));
-    worm_obdm_radial[i] = (long long*) calloc(worm_obdm_grid, sizeof(long long));
-    worm_obdm_matrix_all[i] = (long long*) calloc(worm_obdm_grid, sizeof(long long));
+  worm_obdm_matrix = AllocContiguous2DLL(worm_obdm_grid, worm_obdm_grid, "worm_obdm_matrix");
+  worm_obdm_radial = AllocContiguous2DLL(worm_obdm_grid, worm_obdm_grid, "worm_obdm_radial");
+  worm_obdm_matrix_all = AllocContiguous2DLL(worm_obdm_grid, worm_obdm_grid, "worm_obdm_matrix_all");
+  worm_obdm_dist = (long long*) calloc((size_t)worm_obdm_grid, sizeof(long long));
+  worm_obdm_dist_all = (long long*) calloc((size_t)worm_obdm_grid, sizeof(long long));
+  if(worm_gap_histogram == NULL || worm_cycle_histogram == NULL ||
+     worm_obdm_dist == NULL || worm_obdm_dist_all == NULL) {
+    Error("Out of memory allocating worm histograms\n");
   }
-  worm_obdm_dist = (long long*) calloc(worm_obdm_grid, sizeof(long long));
-  worm_obdm_dist_all = (long long*) calloc(worm_obdm_grid, sizeof(long long));
+  SyncWormOBDMGeometry();
   worm_obdm_samples_gap1 = 0;
   worm_obdm_samples_all = 0;
 
@@ -1268,8 +1316,12 @@ static void WormSwapMove(void) {
   int w_curr, w_next, i_ira, k, p_old, cand_count;
   int *candidates = worm_swap_candidates;
   DOUBLE *weights = worm_swap_weights;
+  const int *prev_next;
+  const DOUBLE *wx_next, *wy_next, *wz_next;
+  DOUBLE x_ira = 0., y_ira = 0., z_ira = 0.;
+  DOUBLE x_old = 0., y_old = 0., z_old = 0.;
   DOUBLE sum_weights1, sum_weights2, r, cum, acc;
-  DOUBLE tau_local, d2;
+  DOUBLE inv_2tau, d2;
   int chosen_idx, chosen_k;
 
   worm_try_swap++;
@@ -1279,29 +1331,39 @@ static void WormSwapMove(void) {
 
   w_curr = worm_bead;
   i_ira = worm_particle;
-  w_next = (w_curr + 1) % Nwalkers;
-  tau_local = 1.0 / (T * (DOUBLE)Nwalkers);
+  w_next = (w_curr + 1 < Nwalkers) ? (w_curr + 1) : 0;
+  inv_2tau = 0.5 * T * (DOUBLE)Nwalkers;
 
-  /* 1. Candidatos en slice w_next con enlace entrante válido (excluye Masha si está en w_next) */
+  prev_next = worm_prev[w_next];
+  wx_next = W[w_next].x;
+  wy_next = W[w_next].y;
+  wz_next = W[w_next].z;
+  CaseX(x_ira = W[w_curr].x[i_ira]);
+  CaseY(y_ira = W[w_curr].y[i_ira]);
+  CaseZ(z_ira = W[w_curr].z[i_ira]);
+  (void)x_ira; (void)y_ira; (void)z_ira;
+  (void)wx_next; (void)wy_next; (void)wz_next;
+
+  /* 1 & 2. Filtrar candidatos con enlace entrante válido y acumular chi_1(k) en una sola pasada */
   cand_count = 0;
+  sum_weights1 = 0.0;
   for(k = 0; k < N; k++) {
-    if(worm_prev[w_next][k] >= 0) {
-      candidates[cand_count++] = k;
+    if(prev_next[k] >= 0) {
+      DOUBLE dx = 0., dy = 0., dz = 0.;
+      DOUBLE w_val;
+      CaseX(dx = wx_next[k] - x_ira);
+      CaseY(dy = wy_next[k] - y_ira);
+      CaseZ(dz = wz_next[k] - z_ira);
+      d2 = FindNearestImage(&dx, &dy, &dz);
+      w_val = Exp(-d2 * inv_2tau);
+      candidates[cand_count] = k;
+      weights[cand_count] = w_val;
+      sum_weights1 += w_val;
+      cand_count++;
     }
   }
 
-  if(cand_count == 0) return;
-
-  /* 2. Calcular chi_1(k) = exp(-|r_ira - r_{k, next}|^2 / (2*tau)) */
-  sum_weights1 = 0.0;
-  for(int c = 0; c < cand_count; c++) {
-    k = candidates[c];
-    d2 = WormSegmentDistance2(w_curr, i_ira, w_next, k);
-    weights[c] = Exp(-d2 / (2.0 * tau_local));
-    sum_weights1 += weights[c];
-  }
-
-  if(sum_weights1 <= 0.0) return;
+  if(cand_count == 0 || sum_weights1 <= 0.0) return;
 
   /* 3. Elegir candidato k con probabilidad P(k) = chi_1(k) / Sigma_1 */
   r = Random() * sum_weights1;
@@ -1315,14 +1377,21 @@ static void WormSwapMove(void) {
     }
   }
   chosen_k = candidates[chosen_idx];
-  p_old = worm_prev[w_next][chosen_k];
+  p_old = prev_next[chosen_k];
 
   /* 4. Calcular Sigma_2 para el movimiento inverso desde la nueva cabeza Ira (w_curr, p_old) */
+  CaseX(x_old = W[w_curr].x[p_old]);
+  CaseY(y_old = W[w_curr].y[p_old]);
+  CaseZ(z_old = W[w_curr].z[p_old]);
   sum_weights2 = 0.0;
   for(int c = 0; c < cand_count; c++) {
+    DOUBLE dx = 0., dy = 0., dz = 0.;
     k = candidates[c];
-    d2 = WormSegmentDistance2(w_curr, p_old, w_next, k);
-    sum_weights2 += Exp(-d2 / (2.0 * tau_local));
+    CaseX(dx = wx_next[k] - x_old);
+    CaseY(dy = wy_next[k] - y_old);
+    CaseZ(dz = wz_next[k] - z_old);
+    d2 = FindNearestImage(&dx, &dy, &dz);
+    sum_weights2 += Exp(-d2 * inv_2tau);
   }
 
   if(sum_weights2 <= 0.0) return;
@@ -1342,9 +1411,9 @@ static void WormSwapMove(void) {
     worm_particle = p_old;
     worm.w = w_curr;
     worm.i = p_old;
-    worm.x_ira = W[w_curr].x[p_old];
-    worm.y_ira = W[w_curr].y[p_old];
-    worm.z_ira = W[w_curr].z[p_old];
+    worm.x_ira = x_old;
+    worm.y_ira = y_old;
+    worm.z_ira = z_old;
 
     worm_acc_swap++;
     if(record_snapshot) WormSnapshotAfter(4);
@@ -1571,50 +1640,45 @@ void SaveWormGapHistogram(const char *filename) {
 
 void MeasureWormOBDM(void) {
   int gap, ix1, ix2, is;
-  DOUBLE x1, y1, z1, x2, y2, z2, dx, dy, dz, s;
-  DOUBLE step_x, step_r, step_s, s_max;
+  DOUBLE x1 = 0., y1 = 0., z1 = 0., x2 = 0., y2 = 0., z2 = 0.;
+  DOUBLE dx, dy, dz, s2;
 
   if(worm_open == 0 || worm_obdm_matrix == NULL) return;
 
-  gap = (worm_bead_masha - worm_bead + Nwalkers) % Nwalkers;
+  SyncWormOBDMGeometry();
 
-  x1 = W[worm_bead_masha].x[worm_particle_masha]; /* cola: \hat{\Psi}^\dagger */
-  y1 = W[worm_bead_masha].y[worm_particle_masha];
-  z1 = W[worm_bead_masha].z[worm_particle_masha];
-  x2 = W[worm_bead].x[worm_particle];             /* cabeza: \hat{\Psi} */
-  y2 = W[worm_bead].y[worm_particle];
-  z2 = W[worm_bead].z[worm_particle];
+  gap = worm_bead_masha - worm_bead;
+  if(gap < 0) gap += Nwalkers;
 
-  step_x = (2.0 * worm_obdm_max) / (DOUBLE)worm_obdm_grid;
-  step_r = worm_obdm_max / (DOUBLE)worm_obdm_grid;
-  s_max = 2.0 * worm_obdm_max;
-  step_s = s_max / (DOUBLE)worm_obdm_grid;
+  CaseX(x1 = W[worm_bead_masha].x[worm_particle_masha]; x2 = W[worm_bead].x[worm_particle]);
+  CaseY(y1 = W[worm_bead_masha].y[worm_particle_masha]; y2 = W[worm_bead].y[worm_particle]);
+  CaseZ(z1 = W[worm_bead_masha].z[worm_particle_masha]; z2 = W[worm_bead].z[worm_particle]);
 
 #ifdef TRIAL_1D
 #ifdef BC_1DPBC_X
-  ix1 = (int)floor((x1 + worm_obdm_max) / step_x);
-  ix2 = (int)floor((x2 + worm_obdm_max) / step_x);
+  ix1 = (int)floor((x1 + worm_obdm_max) * worm_obdm_inv_step_x);
+  ix2 = (int)floor((x2 + worm_obdm_max) * worm_obdm_inv_step_x);
 #else
-  ix1 = (int)floor((z1 + worm_obdm_max) / step_x);
-  ix2 = (int)floor((z2 + worm_obdm_max) / step_x);
+  ix1 = (int)floor((z1 + worm_obdm_max) * worm_obdm_inv_step_x);
+  ix2 = (int)floor((z2 + worm_obdm_max) * worm_obdm_inv_step_x);
 #endif
 #else
   int iy1, iy2;
-  ix1 = (int)floor((x1 + worm_obdm_max) / step_x);
-  ix2 = (int)floor((x2 + worm_obdm_max) / step_x);
-  iy1 = (int)floor((y1 + worm_obdm_max) / step_x);
-  iy2 = (int)floor((y2 + worm_obdm_max) / step_x);
+  ix1 = (int)floor((x1 + worm_obdm_max) * worm_obdm_inv_step_x);
+  ix2 = (int)floor((x2 + worm_obdm_max) * worm_obdm_inv_step_x);
+  iy1 = (int)floor((y1 + worm_obdm_max) * worm_obdm_inv_step_x);
+  iy2 = (int)floor((y2 + worm_obdm_max) * worm_obdm_inv_step_x);
 #ifdef TRIAL_3D
-  int iz1 = (int)floor((z1 + worm_obdm_max) / step_x);
-  int iz2 = (int)floor((z2 + worm_obdm_max) / step_x);
+  int iz1 = (int)floor((z1 + worm_obdm_max) * worm_obdm_inv_step_x);
+  int iz2 = (int)floor((z2 + worm_obdm_max) * worm_obdm_inv_step_x);
 #endif
 #endif
 
   dx = x1 - x2;
   dy = y1 - y2;
   dz = z1 - z2;
-  s = Sqrt(FindNearestImage(&dx, &dy, &dz));
-  is = (int)floor(s / step_s);
+  s2 = FindNearestImage(&dx, &dy, &dz);
+  is = (s2 < worm_obdm_smax2) ? (int)floor(Sqrt(s2) * worm_obdm_inv_step_s) : worm_obdm_grid;
 
   worm_obdm_samples_all++;
   if(ix1 >= 0 && ix1 < worm_obdm_grid && ix2 >= 0 && ix2 < worm_obdm_grid) {
@@ -1638,25 +1702,26 @@ void MeasureWormOBDM(void) {
   }
 
   if(gap == 1) {
-    DOUBLE r1, r2;
     int ir1, ir2;
 #ifdef TRIAL_1D
 #ifdef BC_1DPBC_X
-    r1 = fabs(x1);
-    r2 = fabs(x2);
+    ir1 = (int)floor(fabs(x1) * worm_obdm_inv_step_r);
+    ir2 = (int)floor(fabs(x2) * worm_obdm_inv_step_r);
 #else
-    r1 = fabs(z1);
-    r2 = fabs(z2);
+    ir1 = (int)floor(fabs(z1) * worm_obdm_inv_step_r);
+    ir2 = (int)floor(fabs(z2) * worm_obdm_inv_step_r);
 #endif
 #elif defined(TRIAL_2D)
-    r1 = Sqrt(x1 * x1 + y1 * y1);
-    r2 = Sqrt(x2 * x2 + y2 * y2);
+    DOUBLE r1_2 = x1 * x1 + y1 * y1;
+    DOUBLE r2_2 = x2 * x2 + y2 * y2;
+    ir1 = (r1_2 < worm_obdm_max2) ? (int)floor(Sqrt(r1_2) * worm_obdm_inv_step_r) : worm_obdm_grid;
+    ir2 = (r2_2 < worm_obdm_max2) ? (int)floor(Sqrt(r2_2) * worm_obdm_inv_step_r) : worm_obdm_grid;
 #else
-    r1 = Sqrt(x1 * x1 + y1 * y1 + z1 * z1);
-    r2 = Sqrt(x2 * x2 + y2 * y2 + z2 * z2);
+    DOUBLE r1_2 = x1 * x1 + y1 * y1 + z1 * z1;
+    DOUBLE r2_2 = x2 * x2 + y2 * y2 + z2 * z2;
+    ir1 = (r1_2 < worm_obdm_max2) ? (int)floor(Sqrt(r1_2) * worm_obdm_inv_step_r) : worm_obdm_grid;
+    ir2 = (r2_2 < worm_obdm_max2) ? (int)floor(Sqrt(r2_2) * worm_obdm_inv_step_r) : worm_obdm_grid;
 #endif
-    ir1 = (int)floor(r1 / step_r);
-    ir2 = (int)floor(r2 / step_r);
 
     worm_obdm_samples_gap1++;
     if(ix1 >= 0 && ix1 < worm_obdm_grid && ix2 >= 0 && ix2 < worm_obdm_grid) {

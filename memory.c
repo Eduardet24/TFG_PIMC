@@ -53,9 +53,9 @@ void AllocateSingleWalker(struct Walker* W) {
   // data which is copied by CopyWalker
   // 1)
 #ifndef NPARTICLES // i.e. allocate dynamically
-  W->x = (DOUBLE*) Calloc("W->x", N, sizeof(DOUBLE));
-  W->y = (DOUBLE*) Calloc("W->y", N, sizeof(DOUBLE));
-  W->z = (DOUBLE*) Calloc("W->z", N, sizeof(DOUBLE));
+  W->x = (DOUBLE*) Calloc("W->xyz", 3 * N, sizeof(DOUBLE));
+  W->y = W->x + N;
+  W->z = W->y + N;
   W->spin = (int*) Calloc("W->spin", N, sizeof(int));
 #ifdef SPINFULL
     W->psiT_sigma_inv = (DOUBLE*) Calloc("W->psiT_sigma_inv", N, sizeof(DOUBLE));
@@ -736,6 +736,7 @@ void* CallocContiguous2D(const char* name, unsigned dim1, unsigned dim2, char *t
   DOUBLE **pDOUBLE;
   double **pdouble;
   float **pfloat;
+  unsigned long int **pulong;
   int **pint;
   unsigned i;
 
@@ -756,6 +757,12 @@ void* CallocContiguous2D(const char* name, unsigned dim1, unsigned dim2, char *t
     pfloat[0] = (float*) Calloc(name, dim1*dim2, sizeof(float)); // allocate contiguous memory
     for(i=1; i<dim1; i++) pfloat[i] = pfloat[0] + i*dim2; // set pointers
     return pfloat;
+  }
+  else if(strcmp(type, "unsigned long int") == 0) {
+    pulong = (unsigned long int**) Calloc(name, dim1, sizeof(unsigned long int*));
+    pulong[0] = (unsigned long int*) Calloc(name, dim1*dim2, sizeof(unsigned long int)); // allocate contiguous memory
+    for(i=1; i<dim1; i++) pulong[i] = pulong[0] + i*dim2; // set pointers
+    return pulong;
   }
   else { //if(strcmp(type, "int") == 0) {
     pint = (int**) Calloc(name, dim1, sizeof(int*));

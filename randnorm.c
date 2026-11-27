@@ -384,10 +384,16 @@ DOUBLE ran2(long *idum) {
 
 /**************************** Ran2 parallel **********************************/
 typedef struct {
+   long idum;
    long idum2;
    long iy;
    int initialized;
    long iv[NTAB];
+} Ran2ThreadStateCore;
+
+typedef struct {
+   Ran2ThreadStateCore core;
+   char cache_pad[64 - (sizeof(Ran2ThreadStateCore) % 64)];
 } Ran2ThreadState;
 
 static Ran2ThreadState ran2_state_parallel[OPENMP_MAX_NPROC];
@@ -397,33 +403,37 @@ DOUBLE ran2parallel(long *idum) {
    long k;
    DOUBLE temp;
    int myid = omp_get_thread_num();
-   Ran2ThreadState *st = &ran2_state_parallel[myid];
+   Ran2ThreadStateCore *st = &ran2_state_parallel[myid].core;
 
    if (*idum <= 0 || !st->initialized) {
-      if (*idum == 0) {
-         *idum=1;
+      long seed = *idum;
+      if (seed == 0) {
+         seed = 1;
       }
-      else if (*idum < 0) {
-         *idum=-(*idum);
+      else if (seed < 0) {
+         seed = -seed;
       } /* if */
-      st->idum2=(*idum);
+      st->idum = seed;
+      st->idum2 = seed;
       for (j=NTAB+7; j>=0; j--) {
-         k=(*idum)/IQ1;
-         *idum=IA1*(*idum-k*IQ1)-k*IR1;
-         if (*idum < 0) {
-            *idum += IM1;
+         k=st->idum/IQ1;
+         st->idum=IA1*(st->idum-k*IQ1)-k*IR1;
+         if (st->idum < 0) {
+            st->idum += IM1;
          } /* if */
          if (j < NTAB) {
-            st->iv[j]=*idum;
+            st->iv[j]=st->idum;
          } /* if */
       } /* for j */
       st->iy=st->iv[0];
       st->initialized=1;
+      /* Clear negative reseed marker once so hot calls do not write to shared rand_seed_parallel[] */
+      if (*idum <= 0) *idum = 1;
    } /* if */
-   k=(*idum)/IQ1;
-   *idum=IA1*(*idum-k*IQ1)-k*IR1;
-   if (*idum < 0) {
-      *idum += IM1;
+   k=st->idum/IQ1;
+   st->idum=IA1*(st->idum-k*IQ1)-k*IR1;
+   if (st->idum < 0) {
+      st->idum += IM1;
    } /* if */
    k=st->idum2/IQ2;
    st->idum2=IA2*(st->idum2-k*IQ2)-k*IR2;
@@ -432,7 +442,7 @@ DOUBLE ran2parallel(long *idum) {
    } /* if */
    j=st->iy/NDIV;
    st->iy=st->iv[j]-st->idum2;
-   st->iv[j] = *idum;
+   st->iv[j] = st->idum;
    if (st->iy < 1) {
       st->iy += IMM1;
    } /* if */

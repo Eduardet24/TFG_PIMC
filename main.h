@@ -20,7 +20,7 @@
 
 //#define CALCULATE_DERIVATIVES_NUMERICALLY // only log of w.f. is needed
 
-//#define MEMORY_CONTIGUOUS // use static allocation for walkers, otherwise dynamic array
+#define MEMORY_CONTIGUOUS // use contiguous allocation for 2D/3D walker arrays
 //#define BRANCHING_ALWAYS_STABLE // force branching that cannot collapse
 //#define BRANCHING_FIXED_NUMBER_OF_WALKERS
 #define MEASURE_CORRELATION_FUNCTIONS_IN_THE_MIDDLE_OF_DRIFT

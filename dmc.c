@@ -285,9 +285,7 @@ void DMCLinearMetropolisMove(int w) {
   DOUBLE dexp = 0.;
   DOUBLE xi,dx,dy,dz;
   int move_accepted;
-#ifndef MEMORY_CONTIGUOUS
-  int i,j;
-#endif
+  int i;
   //DOUBLE WE, WEFF, WEpot, WEkin; // store energy calculated in the middle of drift
 
 #ifdef MEASURE_CORRELATION_FUNCTIONS_IN_THE_MIDDLE_OF_DRIFT
@@ -404,9 +402,7 @@ void DMCQuadraticMetropolisMove(int w) {
   DOUBLE dexp=0., xi, Up;
   DOUBLE dx,dy,dz;
   int move_accepted;
-#ifndef MEMORY_CONTIGUOUS
-  int i,j;
-#endif
+  int i;
   //DOUBLE WE, WEFF, WEpot, WEkin; // store energy calculated in the middle of drift
 
 #ifdef MEASURE_CORRELATION_FUNCTIONS_IN_THE_MIDDLE_OF_DRIFT

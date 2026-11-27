@@ -24,6 +24,8 @@ extern void* CallocContiguous3D(const char* name, unsigned dim1, unsigned dim2, 
 #ifdef MEMORY_CONTIGUOUS
 #define ArrayCalloc2D(p2D, name, i, dim1, dim2, type_static, type_dynamic) \
    p2D = (type_static**) CallocContiguous2D(name, dim1, dim2, type_dynamic)
+#define ArrayCalloc3D(p3D, name, i, dim1, j, dim2, dim3, type_static, type_dynamic) \
+   p3D = (type_static***) CallocContiguous3D(name, dim1, dim2, dim3, type_dynamic)
 #else 
 #define ArrayCalloc2D(p2D, name, i, dim1, dim2, type_static, type_dynamic) { \
   p2D = (type_static**) Calloc(name, dim1, sizeof(type_static*)); \
