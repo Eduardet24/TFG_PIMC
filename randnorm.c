@@ -11,12 +11,11 @@
 #include "parallel.h"
 #endif
 
-long int rand_seed = 1023;
+long int rand_seed = -1023;
 
 #ifdef _OPENMP
 //long int rand_seed_parallel[OPENMP_MAX_NPROC];
 //#define rand_seed_parallel_length 2048 // number of elements
-int rand_seed_parallel_length = 2048;
 long rand_seed_parallel[] = {101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 
 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 
 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 
@@ -47,7 +46,7 @@ long rand_seed_parallel[] = {101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 1
 7351, 7369, 7393, 7411, 7417, 7433, 7451, 7457, 7459, 7477, 7481, 7487, 7489, 7499, 7507, 7517, 7523, 7529, 7537, 7541, 7547, 7549, 7559, 7561, 7573, 7577, 7583, 7589, 7591, 7603, 7607, 7621, 7639, 
 7643, 7649, 7669, 7673, 7681, 7687, 7691, 7699, 7703, 7717, 7723, 7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823, 7829, 7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919, 7927, 7933, 
 7937, 7949, 7951, 7963, 7993, 8009, 8011, 8017, 8039, 8053, 8059, 8069, 8081, 8087, 8089, 8093, 8101, 8111, 8117, 8123, 8147, 8161, 8167, 8171, 8179, 8191, 8209, 8219, 8221, 8231, 8233, 8237, 8243, 
-.8263, 8269, 8273, 8287, 8291, 8293, 8297, 8311, 8317, 8329, 8353, 8363, 8369, 8377, 8387, 8389, 8419, 8423, 8429, 8431, 8443, 8447, 8461, 8467, 8501, 8513, 8521, 8527, 8537, 8539, 8543, 8563, 8573, 
+8263, 8269, 8273, 8287, 8291, 8293, 8297, 8311, 8317, 8329, 8353, 8363, 8369, 8377, 8387, 8389, 8419, 8423, 8429, 8431, 8443, 8447, 8461, 8467, 8501, 8513, 8521, 8527, 8537, 8539, 8543, 8563, 8573, 
 8581, 8597, 8599, 8609, 8623, 8627, 8629, 8641, 8647, 8663, 8669, 8677, 8681, 8689, 8693, 8699, 8707, 8713, 8719, 8731, 8737, 8741, 8747, 8753, 8761, 8779, 8783, 8803, 8807, 8819, 8821, 8831, 8837, 
 8839, 8849, 8861, 8863, 8867, 8887, 8893, 8923, 8929, 8933, 8941, 8951, 8963, 8969, 8971, 8999, 9001, 9007, 9011, 9013, 9029, 9041, 9043, 9049, 9059, 9067, 9091, 9103, 9109, 9127, 9133, 9137, 9151, 
 9157, 9161, 9173, 9181, 9187, 9199, 9203, 9209, 9221, 9227, 9239, 9241, 9257, 9277, 9281, 9283, 9293, 9311, 9319, 9323, 9337, 9341, 9343, 9349, 9371, 9377, 9391, 9397, 9403, 9413, 9419, 9421, 9431, 
@@ -82,6 +81,7 @@ long rand_seed_parallel[] = {101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 1
 17293, 17299, 17317, 17321, 17327, 17333, 17341, 17351, 17359, 17377, 17383, 17387, 17389, 17393, 17401, 17417, 17419, 17431, 17443, 17449, 17467, 17471, 17477, 17483, 17489, 17491, 17497, 17509, 17519, 
 17539, 17551, 17569, 17573, 17579, 17581, 17597, 17599, 17609, 17623, 17627, 17657, 17659, 17669, 17681, 17683, 17707, 17713, 17729, 17737, 17747, 17749, 17761, 17783, 17789, 17791, 17807, 17827, 17837, 
 17839, 17851, 17863, 17881, 17891, 17903, 17909, 17911, 17921, 17923, 17929, 17939, 17957, 17959, 17971, 17977, 17981, 17987, 17989, 18013, 18041, 18043, 18047, 18049, 18059, 18061, 18077, 18089};
+int rand_seed_parallel_length = (int)(sizeof(rand_seed_parallel) / sizeof(rand_seed_parallel[0]));
 #endif
 
 
@@ -186,8 +186,9 @@ double genrand(void) {
 /*********************** Initialize random generator **************************/
 void RandInit(void) {
 #ifdef USE_RAN2_GENERATOR
-  rand_seed = 1023;
-  Message(" Ran2() random number generator started with seed %i\n", rand_seed);
+  rand_seed = (RAN2_SEED > 0) ? -(long int)RAN2_SEED : ((RAN2_SEED < 0) ? (long int)RAN2_SEED : -1023L);
+  Message(" Ran2() random number generator started with seed %li\n", rand_seed);
+  (void)ran2(&rand_seed);
 #else 
   srand((unsigned)time(NULL));
   Message(" System random number generator is used\n");
@@ -324,13 +325,14 @@ DOUBLE ran2(long *idum) {
    static long idum2=123456789;
    static long iy=0; 
    static long iv[NTAB];
+   static int initialized=0;
    DOUBLE temp;
 
-   if (*idum <= 0) {
-      if (-(*idum) < 1) {
+   if (*idum <= 0 || !initialized) {
+      if (*idum == 0) {
          *idum=1;
       }
-      else {
+      else if (*idum < 0) {
          *idum=-(*idum);
       } /* if */
       idum2=(*idum);
@@ -345,6 +347,7 @@ DOUBLE ran2(long *idum) {
          } /* if */
       } /* for j */
       iy=iv[0];
+      initialized=1;
    } /* if */
    k=(*idum)/IQ1;
    *idum=IA1*(*idum-k*IQ1)-k*IR1;
@@ -373,25 +376,30 @@ DOUBLE ran2(long *idum) {
 } /* ran2 */
 
 /**************************** Ran2 parallel **********************************/
+typedef struct {
+   long idum2;
+   long iy;
+   int initialized;
+   long iv[NTAB];
+} Ran2ThreadState;
+
+static Ran2ThreadState ran2_state_parallel[OPENMP_MAX_NPROC];
+
 DOUBLE ran2parallel(long *idum) {
    int j;
    long k;
-   static long idum2_parallel[OPENMP_MAX_NPROC]={123456789};
-   static long iy_parallel[OPENMP_MAX_NPROC]={0}; 
-   static long iv_parallel[OPENMP_MAX_NPROC][NTAB];
    DOUBLE temp;
-   int myid;
+   int myid = omp_get_thread_num();
+   Ran2ThreadState *st = &ran2_state_parallel[myid];
 
-   myid = omp_get_thread_num();
-
-   if (*idum <= 0) {
-      if (-(*idum) < 1) {
+   if (*idum <= 0 || !st->initialized) {
+      if (*idum == 0) {
          *idum=1;
       }
-      else {
+      else if (*idum < 0) {
          *idum=-(*idum);
       } /* if */
-      idum2_parallel[myid]=(*idum);
+      st->idum2=(*idum);
       for (j=NTAB+7; j>=0; j--) {
          k=(*idum)/IQ1;
          *idum=IA1*(*idum-k*IQ1)-k*IR1;
@@ -399,28 +407,29 @@ DOUBLE ran2parallel(long *idum) {
             *idum += IM1;
          } /* if */
          if (j < NTAB) {
-            iv_parallel[myid][j]=*idum;
+            st->iv[j]=*idum;
          } /* if */
       } /* for j */
-      iy_parallel[myid]=iv_parallel[myid][0];
+      st->iy=st->iv[0];
+      st->initialized=1;
    } /* if */
    k=(*idum)/IQ1;
    *idum=IA1*(*idum-k*IQ1)-k*IR1;
    if (*idum < 0) {
       *idum += IM1;
    } /* if */
-   k=idum2_parallel[myid]/IQ2;
-   idum2_parallel[myid]=IA2*(idum2_parallel[myid]-k*IQ2)-k*IR2;
-   if (idum2_parallel[myid] < 0) {
-      idum2_parallel[myid] += IM2;
+   k=st->idum2/IQ2;
+   st->idum2=IA2*(st->idum2-k*IQ2)-k*IR2;
+   if (st->idum2 < 0) {
+      st->idum2 += IM2;
    } /* if */
-   j=iy_parallel[myid]/NDIV;
-   iy_parallel[myid]=iv_parallel[myid][j]-idum2_parallel[myid];
-   iv_parallel[myid][j] = *idum;
-   if (iy_parallel[myid] < 1) {
-      iy_parallel[myid] += IMM1;
+   j=st->iy/NDIV;
+   st->iy=st->iv[j]-st->idum2;
+   st->iv[j] = *idum;
+   if (st->iy < 1) {
+      st->iy += IMM1;
    } /* if */
-   temp=AM*(DOUBLE)(iy_parallel[myid]);
+   temp=AM*(DOUBLE)(st->iy);
    if (temp > RNMX) {
       return(RNMX);
    }

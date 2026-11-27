@@ -176,9 +176,10 @@ void ParallelRandInit(void) {
 #ifndef USE_RAN2_GENERATOR
   Error("define USE_RAN2_GENERATOR");
 #endif
-  rand_seed = (long int)(pow(2.,myid+3.)-1.);
+  rand_seed = -(long int)(pow(2.,myid+3.)-1.);
 
-  Message(" Ran2() random number generator started with seed %i\n", rand_seed);
+  Message(" Ran2() random number generator started with seed %li\n", rand_seed);
+  (void)ran2(&rand_seed);
 
   if(RandomSys()<0) Error("bad implementation of RandomSys(). It should not produce negative numbers");
   if(RandomSys()>1) Error("bad implementation of RandomSys(). It should not produce numbers larger than 1");
@@ -1234,14 +1235,23 @@ void ParallelRandInit(void) {
 
 #pragma omp parallel
   {
-  myid = omp_get_thread_num();
-  //rand_seed_parallel[myid] = (long int)(pow(2.,myid+3.)-1.);
-  if(myid > rand_seed_parallel_length) Error("  Not enough seeds for parallel random number generator, %i > %i, recompile\n", myid, rand_seed_parallel_length);
-  Message(" node %i, Ran2() random number generator started with seed %i\n", myid, rand_seed_parallel[myid]);
+    int tid = omp_get_thread_num();
+    if(tid >= rand_seed_parallel_length || tid >= OPENMP_MAX_NPROC) {
+#pragma omp critical
+      Error("  Not enough seeds for parallel random number generator, %i >= %i, recompile\n",
+            tid, rand_seed_parallel_length < OPENMP_MAX_NPROC ? rand_seed_parallel_length : OPENMP_MAX_NPROC);
+    }
+    if(rand_seed_parallel[tid] > 0) rand_seed_parallel[tid] = -rand_seed_parallel[tid];
+    if(rand_seed_parallel[tid] == 0) rand_seed_parallel[tid] = -(long)(tid + 1);
+#pragma omp critical
+    {
+      Message(" node %i, Ran2() random number generator started with seed %li\n", tid, rand_seed_parallel[tid]);
+    }
+    (void)ran2parallel(&rand_seed_parallel[tid]);
 
-  if(RandomSys()<0) Error("bad implementation of RandomSys(). It should not produce negative numbers");
-  if(RandomSys()>1) Error("bad implementation of RandomSys(). It should not produce numbers larger than 1");
-}
+    if(RandomSys()<0) Error("bad implementation of RandomSys(). It should not produce negative numbers");
+    if(RandomSys()>1) Error("bad implementation of RandomSys(). It should not produce numbers larger than 1");
+  }
 }
 
 #endif
