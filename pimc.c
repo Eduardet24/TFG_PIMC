@@ -52,72 +52,187 @@ static int EnsureWormRingScratch(int n_particles, int total_beads) {
 
 #ifdef PIMC_HARMONIC_NORMAL_MODES
 /******************* Exact Harmonic PIMC Normal-Mode Draw ******************/
-void PIMCMoveHarmonicNormalModes(void) {
-  int bead, mode;
-  int beads = Nwalkers;
-  DOUBLE tau, omega2, eigenvalue;
-  DOUBLE dx, dy, dz;
-  DOUBLE q0, q_cos, q_sin;
-  DOUBLE amplitude, angle, step, cosine, sine;
-  DOUBLE step_cosine, step_sine;
+#define NM_CACHE_SLOTS 16
 
-#ifdef TRIAL_1D
-  int particle;
-  if(N < 1 || beads < 1 || T <= 0. || omega_z2 <= 0.) {
-    Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_z>0\n");
-  }
+typedef struct {
+  int ring_beads;
+  DOUBLE tau;
+  DOUBLE omega2;
+  DOUBLE inv_sqrt_n;
+  DOUBLE amp_mode;
+  DOUBLE sigma0;
+  DOUBLE sigma_nyq;
+  int n_modes;
+  int cap_modes;
+  DOUBLE *sigma_mode;
+  DOUBLE *step_cos;
+  DOUBLE *step_sin;
+} NormalModeCache1D;
 
-  tau = 1. / (T * (DOUBLE)beads);
-  omega2 = omega_z2;
-  for(bead=0; bead<beads; bead++) {
-    for(particle=0; particle<N; particle++) {
-      W[bead].x[particle] = 0.;
-      W[bead].y[particle] = 0.;
-      W[bead].z[particle] = 0.;
+static NormalModeCache1D nm_cache[NM_CACHE_SLOTS];
+static int nm_cache_next = 0;
+
+static const NormalModeCache1D* GetNormalModeCache(int ring_beads, DOUBLE tau, DOUBLE omega2) {
+  int i, mode;
+  int n_modes = (ring_beads - 1) / 2;
+  NormalModeCache1D *slot = NULL;
+
+  for(i = 0; i < NM_CACHE_SLOTS; i++) {
+    if(nm_cache[i].ring_beads == ring_beads &&
+       nm_cache[i].tau == tau &&
+       nm_cache[i].omega2 == omega2) {
+      return &nm_cache[i];
+    }
+    if(nm_cache[i].ring_beads == 0 && slot == NULL) {
+      slot = &nm_cache[i];
     }
   }
 
-  for(particle=0; particle<N; particle++) {
-    // Eigenvalues of the primitive cyclic action's quadratic form.
-    eigenvalue = tau * omega2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q0 = dz;
-    amplitude = q0 / Sqrt((DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) W[bead].z[particle] += amplitude;
+  if(slot == NULL) {
+    slot = &nm_cache[nm_cache_next];
+    nm_cache_next = (nm_cache_next + 1) % NM_CACHE_SLOTS;
+  }
 
-    for(mode=1; mode<=(beads-1)/2; mode++) {
-      step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
-      step_cosine = Cos(step);
-      step_sine = Sin(step);
-      eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega2;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_cos = dz;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_sin = dz;
+  if(n_modes > slot->cap_modes) {
+    DOUBLE *new_sig = (DOUBLE*) realloc(slot->sigma_mode, (size_t)n_modes * sizeof(DOUBLE));
+    DOUBLE *new_cos = (DOUBLE*) realloc(slot->step_cos, (size_t)n_modes * sizeof(DOUBLE));
+    DOUBLE *new_sin = (DOUBLE*) realloc(slot->step_sin, (size_t)n_modes * sizeof(DOUBLE));
+    if(new_sig != NULL) slot->sigma_mode = new_sig;
+    if(new_cos != NULL) slot->step_cos = new_cos;
+    if(new_sin != NULL) slot->step_sin = new_sin;
+    if(new_sig == NULL || new_cos == NULL || new_sin == NULL) return NULL;
+    slot->cap_modes = n_modes;
+  }
+
+  slot->ring_beads = ring_beads;
+  slot->tau = tau;
+  slot->omega2 = omega2;
+  slot->n_modes = n_modes;
+  slot->inv_sqrt_n = 1.0 / Sqrt((DOUBLE)ring_beads);
+  slot->amp_mode = Sqrt(2.0 / (DOUBLE)ring_beads);
+  slot->sigma0 = 1.0 / Sqrt(tau * omega2);
+  slot->sigma_nyq = (ring_beads % 2 == 0) ? (1.0 / Sqrt(4.0 / tau + tau * omega2)) : 0.0;
+
+  for(mode = 1; mode <= n_modes; mode++) {
+    DOUBLE step = 2.0 * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
+    DOUBLE half_sin = Sin(0.5 * step);
+    DOUBLE eigenvalue = 4.0 * half_sin * half_sin / tau + tau * omega2;
+    slot->step_cos[mode - 1] = Cos(step);
+    slot->step_sin[mode - 1] = Sin(step);
+    slot->sigma_mode[mode - 1] = 1.0 / Sqrt(eigenvalue);
+  }
+
+  return slot;
+}
+
+static void SampleHarmonicNormalRing1D(DOUBLE *ring_out, int ring_beads, DOUBLE tau, DOUBLE omega2, int axis) {
+  int n, mode;
+  DOUBLE dx, dy, dz, q0, q_cos, q_sin, amplitude, angle, cosine, sine;
+  const NormalModeCache1D *c = GetNormalModeCache(ring_beads, tau, omega2);
+
+  for(n = 0; n < ring_beads; n++) ring_out[n] = 0.;
+
+  if(c != NULL) {
+    RandomNormal3(&dx, &dy, &dz, 0., c->sigma0);
+    q0 = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
+    amplitude = q0 * c->inv_sqrt_n;
+    for(n = 0; n < ring_beads; n++) ring_out[n] += amplitude;
+
+    for(mode = 0; mode < c->n_modes; mode++) {
+      DOUBLE sig = c->sigma_mode[mode];
+      DOUBLE step_cosine = c->step_cos[mode];
+      DOUBLE step_sine = c->step_sin[mode];
+      RandomNormal3(&dx, &dy, &dz, 0., sig);
+      q_cos = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
+      RandomNormal3(&dx, &dy, &dz, 0., sig);
+      q_sin = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
 
       cosine = 1.;
       sine = 0.;
-      amplitude = Sqrt(2. / (DOUBLE)beads);
-      for(bead=0; bead<beads; bead++) {
-        W[bead].z[particle] += amplitude * (q_cos * cosine + q_sin * sine);
+      amplitude = c->amp_mode;
+      for(n = 0; n < ring_beads; n++) {
+        ring_out[n] += amplitude * (q_cos * cosine + q_sin * sine);
         angle = cosine * step_cosine - sine * step_sine;
         sine = sine * step_cosine + cosine * step_sine;
         cosine = angle;
       }
     }
 
-    if(beads % 2 == 0) {
-      mode = beads / 2;
-      eigenvalue = 4. / tau + tau * omega2;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_cos = dz / Sqrt((DOUBLE)beads);
-      for(bead=0; bead<beads; bead++) {
-        W[bead].z[particle] += (bead % 2 == 0) ? q_cos : -q_cos;
+    if(ring_beads % 2 == 0) {
+      RandomNormal3(&dx, &dy, &dz, 0., c->sigma_nyq);
+      q_cos = ((axis == 0) ? dx : ((axis == 1) ? dy : dz)) * c->inv_sqrt_n;
+      for(n = 0; n < ring_beads; n++) {
+        ring_out[n] += (n % 2 == 0) ? q_cos : -q_cos;
       }
+    }
+    return;
+  }
+
+  /* Fallback sin caché en caso de fallo de memoria */
+  RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(tau * omega2));
+  q0 = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
+  amplitude = q0 / Sqrt((DOUBLE)ring_beads);
+  for(n = 0; n < ring_beads; n++) ring_out[n] += amplitude;
+
+  for(mode = 1; mode <= (ring_beads - 1) / 2; mode++) {
+    DOUBLE step = 2. * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
+    DOUBLE step_cosine = Cos(step);
+    DOUBLE step_sine = Sin(step);
+    DOUBLE eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega2;
+    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+    q_cos = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
+    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
+    q_sin = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
+
+    cosine = 1.;
+    sine = 0.;
+    amplitude = Sqrt(2. / (DOUBLE)ring_beads);
+    for(n = 0; n < ring_beads; n++) {
+      ring_out[n] += amplitude * (q_cos * cosine + q_sin * sine);
+      angle = cosine * step_cosine - sine * step_sine;
+      sine = sine * step_cosine + cosine * step_sine;
+      cosine = angle;
+    }
+  }
+
+  if(ring_beads % 2 == 0) {
+    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(4. / tau + tau * omega2));
+    q_cos = ((axis == 0) ? dx : ((axis == 1) ? dy : dz)) / Sqrt((DOUBLE)ring_beads);
+    for(n = 0; n < ring_beads; n++) {
+      ring_out[n] += (n % 2 == 0) ? q_cos : -q_cos;
+    }
+  }
+}
+
+void PIMCMoveHarmonicNormalModes(void) {
+  int bead, particle;
+  int beads = Nwalkers;
+  DOUBLE tau;
+  static DOUBLE *plain_ring = NULL;
+  static int plain_ring_cap = 0;
+
+  if(beads > plain_ring_cap) {
+    DOUBLE *new_ring = (DOUBLE*) realloc(plain_ring, (size_t)beads * sizeof(DOUBLE));
+    if(new_ring == NULL) Error("Out of memory in PIMCMoveHarmonicNormalModes\n");
+    plain_ring = new_ring;
+    plain_ring_cap = beads;
+  }
+
+#ifdef TRIAL_1D
+  if(N < 1 || beads < 1 || T <= 0. || omega_z2 <= 0.) {
+    Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_z>0\n");
+  }
+
+  tau = 1. / (T * (DOUBLE)beads);
+  for(particle = 0; particle < N; particle++) {
+    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_z2, 2);
+    for(bead = 0; bead < beads; bead++) {
+      W[bead].x[particle] = 0.;
+      W[bead].y[particle] = 0.;
+      W[bead].z[particle] = plain_ring[bead];
     }
   }
 #elif defined(TRIAL_2D)
-  int particle;
   if(N < 1 || beads < 1 || T <= 0. || omega_x2 <= 0. || omega_y2 <= 0.) {
     Error("Harmonic normal-mode sampling requires N>=1, T>0, and omega_x>0, omega_y>0\n");
   }
@@ -145,90 +260,17 @@ void PIMCMoveHarmonicNormalModes(void) {
           if(curr_w == 0) visited[curr_p] = 1;
           ring_p[ring_beads] = curr_p;
           ring_w[ring_beads] = curr_w;
-          ring_x[ring_beads] = 0.;
-          ring_y[ring_beads] = 0.;
           ring_beads++;
           if(ring_beads >= N * beads) break;
           curr_p = worm_next[curr_w][curr_p];
           curr_w = (curr_w + 1) % beads;
         } while(!(curr_w == 0 && curr_p == particle));
 
-        /* --- Muestreo X para el anillo de ring_beads --- */
-        eigenvalue = tau * omega_x2;
-        RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-        q0 = dx;
-        amplitude = q0 / Sqrt((DOUBLE)ring_beads);
-        for(int n=0; n<ring_beads; n++) ring_x[n] += amplitude;
-
-        for(mode=1; mode<=(ring_beads-1)/2; mode++) {
-          step = 2. * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
-          step_cosine = Cos(step);
-          step_sine = Sin(step);
-          eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_x2;
-          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-          q_cos = dx;
-          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-          q_sin = dx;
-
-          cosine = 1.;
-          sine = 0.;
-          amplitude = Sqrt(2. / (DOUBLE)ring_beads);
-          for(int n=0; n<ring_beads; n++) {
-            ring_x[n] += amplitude * (q_cos * cosine + q_sin * sine);
-            angle = cosine * step_cosine - sine * step_sine;
-            sine = sine * step_cosine + cosine * step_sine;
-            cosine = angle;
-          }
-        }
-
-        if(ring_beads % 2 == 0) {
-          eigenvalue = 4. / tau + tau * omega_x2;
-          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-          q_cos = dx / Sqrt((DOUBLE)ring_beads);
-          for(int n=0; n<ring_beads; n++) {
-            ring_x[n] += (n % 2 == 0) ? q_cos : -q_cos;
-          }
-        }
-
-        /* --- Muestreo Y para el anillo de ring_beads --- */
-        eigenvalue = tau * omega_y2;
-        RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-        q0 = dy;
-        amplitude = q0 / Sqrt((DOUBLE)ring_beads);
-        for(int n=0; n<ring_beads; n++) ring_y[n] += amplitude;
-
-        for(mode=1; mode<=(ring_beads-1)/2; mode++) {
-          step = 2. * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
-          step_cosine = Cos(step);
-          step_sine = Sin(step);
-          eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_y2;
-          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-          q_cos = dy;
-          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-          q_sin = dy;
-
-          cosine = 1.;
-          sine = 0.;
-          amplitude = Sqrt(2. / (DOUBLE)ring_beads);
-          for(int n=0; n<ring_beads; n++) {
-            ring_y[n] += amplitude * (q_cos * cosine + q_sin * sine);
-            angle = cosine * step_cosine - sine * step_sine;
-            sine = sine * step_cosine + cosine * step_sine;
-            cosine = angle;
-          }
-        }
-
-        if(ring_beads % 2 == 0) {
-          eigenvalue = 4. / tau + tau * omega_y2;
-          RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-          q_cos = dy / Sqrt((DOUBLE)ring_beads);
-          for(int n=0; n<ring_beads; n++) {
-            ring_y[n] += (n % 2 == 0) ? q_cos : -q_cos;
-          }
-        }
+        SampleHarmonicNormalRing1D(ring_x, ring_beads, tau, omega_x2, 0);
+        SampleHarmonicNormalRing1D(ring_y, ring_beads, tau, omega_y2, 1);
 
         /* Asignar las coordenadas calculadas a las cuentas físicas */
-        for(int n=0; n<ring_beads; n++) {
+        for(int n = 0; n < ring_beads; n++) {
           W[ring_w[n]].x[ring_p[n]] = ring_x[n];
           W[ring_w[n]].y[ring_p[n]] = ring_y[n];
           W[ring_w[n]].z[ring_p[n]] = 0.;
@@ -240,87 +282,14 @@ void PIMCMoveHarmonicNormalModes(void) {
   }
 #endif
 
-  for(bead=0; bead<beads; bead++) {
-    for(particle=0; particle<N; particle++) {
-      W[bead].x[particle] = 0.;
-      W[bead].y[particle] = 0.;
+  for(particle = 0; particle < N; particle++) {
+    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_x2, 0);
+    for(bead = 0; bead < beads; bead++) W[bead].x[particle] = plain_ring[bead];
+
+    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_y2, 1);
+    for(bead = 0; bead < beads; bead++) {
+      W[bead].y[particle] = plain_ring[bead];
       W[bead].z[particle] = 0.;
-    }
-  }
-
-  for(particle=0; particle<N; particle++) {
-    // --- Muestreo X ---
-    eigenvalue = tau * omega_x2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q0 = dx;
-    amplitude = q0 / Sqrt((DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) W[bead].x[particle] += amplitude;
-
-    for(mode=1; mode<=(beads-1)/2; mode++) {
-      step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
-      step_cosine = Cos(step);
-      step_sine = Sin(step);
-      eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_x2;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_cos = dx;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_sin = dx;
-
-      cosine = 1.;
-      sine = 0.;
-      amplitude = Sqrt(2. / (DOUBLE)beads);
-      for(bead=0; bead<beads; bead++) {
-        W[bead].x[particle] += amplitude * (q_cos * cosine + q_sin * sine);
-        angle = cosine * step_cosine - sine * step_sine;
-        sine = sine * step_cosine + cosine * step_sine;
-        cosine = angle;
-      }
-    }
-
-    if(beads % 2 == 0) {
-      eigenvalue = 4. / tau + tau * omega_x2;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_cos = dx / Sqrt((DOUBLE)beads);
-      for(bead=0; bead<beads; bead++) {
-        W[bead].x[particle] += (bead % 2 == 0) ? q_cos : -q_cos;
-      }
-    }
-
-    // --- Muestreo Y ---
-    eigenvalue = tau * omega_y2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q0 = dy;
-    amplitude = q0 / Sqrt((DOUBLE)beads);
-    for(bead=0; bead<beads; bead++) W[bead].y[particle] += amplitude;
-
-    for(mode=1; mode<=(beads-1)/2; mode++) {
-      step = 2. * PI * (DOUBLE)mode / (DOUBLE)beads;
-      step_cosine = Cos(step);
-      step_sine = Sin(step);
-      eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega_y2;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_cos = dy;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_sin = dy;
-
-      cosine = 1.;
-      sine = 0.;
-      amplitude = Sqrt(2. / (DOUBLE)beads);
-      for(bead=0; bead<beads; bead++) {
-        W[bead].y[particle] += amplitude * (q_cos * cosine + q_sin * sine);
-        angle = cosine * step_cosine - sine * step_sine;
-        sine = sine * step_cosine + cosine * step_sine;
-        cosine = angle;
-      }
-    }
-
-    if(beads % 2 == 0) {
-      eigenvalue = 4. / tau + tau * omega_y2;
-      RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-      q_cos = dy / Sqrt((DOUBLE)beads);
-      for(bead=0; bead<beads; bead++) {
-        W[bead].y[particle] += (bead % 2 == 0) ? q_cos : -q_cos;
-      }
     }
   }
 #endif

@@ -1645,12 +1645,14 @@ void Measure(int block, int iter) {
   if(measure_TBDM) MeasureTBDM();
   if(measure_effective_potential) MeasureEffectivePotential();
 
+  if((MC != PIMC && measure_RadDistr) || measure_Sk || measure_FormFactor || measure_OBDM) {
 #pragma omp parallel for
-  for(w=0; w<Nwalkers; w++) {
-    if(MC != PIMC && measure_RadDistr) MeasureRadialDistributionWalker(&W[w]);
-    if(measure_Sk) MeasureStaticStructureFactor(w);
-    if(measure_FormFactor) MeasureFormFactor(w);
-    if(measure_OBDM) MeasureOBDM(w);
+    for(w=0; w<Nwalkers; w++) {
+      if(MC != PIMC && measure_RadDistr) MeasureRadialDistributionWalker(&W[w]);
+      if(measure_Sk) MeasureStaticStructureFactor(w);
+      if(measure_FormFactor) MeasureFormFactor(w);
+      if(measure_OBDM) MeasureOBDM(w);
+    }
   }
 
   if(MC == VARIATIONAL) {
