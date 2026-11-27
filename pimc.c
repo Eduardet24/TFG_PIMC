@@ -297,11 +297,16 @@ void PIMCMoveHarmonicNormalModes(void) {
 #endif
 
 /************************** PIMC Move One By One ****************************/
-/** @brief Perform a single PIMC move for one bead.
+/** @brief Perform a single PIMC move for one bead and return local accept/reject counts.
  *  @param w Index of the bead to be moved.
-*/
-void PIMCMoveOneByOne(int w) {
-  int i,j;
+ *  @param accepted_out Output count of accepted single-particle moves.
+ *  @param rejected_out Output count of rejected single-particle moves.
+ */
+static void PIMCMoveOneByOneBead(int w, int *accepted_out, int *rejected_out) {
+  int i;
+#ifndef INTERACTION_ABSENT
+  int j;
+#endif
   int w1,w2; // index of the walker with [w-1] and [w+1]
   DOUBLE du;
   DOUBLE xi;
@@ -313,6 +318,9 @@ void PIMCMoveOneByOne(int w) {
   DOUBLE r2;
   DOUBLE tau;
   DOUBLE sigma;
+  DOUBLE step_sigma;
+  int local_accepted = 0;
+  int local_rejected = 0;
 
   w1 = w-1; // previous bead number
   w2 = w+1; // next bead number
@@ -321,6 +329,7 @@ void PIMCMoveOneByOne(int w) {
 
   tau = 1./(T*(DOUBLE)Nwalkers); // inverse temperature on a single bead (epsilon)
   sigma = 0.5*tau;
+  step_sigma = Sqrt(dt_vmc);
 
   // Move particle i of the bead
   for(i=0; i<N; i++) { // loop over particles
@@ -339,7 +348,7 @@ void PIMCMoveOneByOne(int w) {
 #endif
 
     // Wp is the trial position
-    RandomNormal3(&dx, &dy, &dz, 0., Sqrt(dt_vmc)); // generate a random number distributed according to Normal distribution
+    RandomNormal3(&dx, &dy, &dz, 0., step_sigma); // generate a random number distributed according to Normal distribution
 
 /** @brief Generate a random number distributed according to a Normal distribution.
  *  @param dx Pointer to the x-component of the random vector.
@@ -467,7 +476,7 @@ void PIMCMoveOneByOne(int w) {
       W[w].y[i] = yp;
       W[w].z[i] = zp;
       W[w].U -= du;
-      accepted++;
+      local_accepted++;
     }
     else {
       xi = Random(); // generate a number between (0,1)
@@ -476,13 +485,85 @@ void PIMCMoveOneByOne(int w) {
         W[w].y[i] = yp;
         W[w].z[i] = zp;
         W[w].U -= du;
-        accepted++;
+        local_accepted++;
       }
       else {
-        rejected++;
+        local_rejected++;
       }
     }
   }
+
+  *accepted_out = local_accepted;
+  *rejected_out = local_rejected;
+}
+
+/** @brief Perform a single PIMC move for one bead.
+ *  @param w Index of the bead to be moved.
+ */
+void PIMCMoveOneByOne(int w) {
+  int local_accepted = 0;
+  int local_rejected = 0;
+
+  PIMCMoveOneByOneBead(w, &local_accepted, &local_rejected);
+
+#pragma omp atomic
+  accepted += local_accepted;
+#pragma omp atomic
+  rejected += local_rejected;
+}
+
+/** @brief Perform a race-free parallel PIMC sweep across all beads using checkerboard coloring. */
+void PIMCMoveOneByOneSweep(void) {
+  int w;
+  int acc_sum = 0;
+  int rej_sum = 0;
+
+  if(Nwalkers <= 0) return;
+
+  if(Nwalkers < 3) {
+    for(w = 0; w < Nwalkers; w++) {
+      int local_acc = 0, local_rej = 0;
+      PIMCMoveOneByOneBead(w, &local_acc, &local_rej);
+      acc_sum += local_acc;
+      rej_sum += local_rej;
+    }
+    accepted += acc_sum;
+    rejected += rej_sum;
+    return;
+  }
+
+  /* For odd Nwalkers, bead Nwalkers-1 neighbors both 0 and Nwalkers-2, so isolate it in a 3rd step. */
+  int count_even = (Nwalkers % 2 == 0) ? (Nwalkers / 2) : ((Nwalkers - 1) / 2);
+  int count_odd = Nwalkers / 2;
+
+#pragma omp parallel reduction(+:acc_sum, rej_sum)
+  {
+    int idx;
+#pragma omp for
+    for(idx = 0; idx < count_even; idx++) {
+      int local_acc = 0, local_rej = 0;
+      PIMCMoveOneByOneBead(2 * idx, &local_acc, &local_rej);
+      acc_sum += local_acc;
+      rej_sum += local_rej;
+    }
+#pragma omp for
+    for(idx = 0; idx < count_odd; idx++) {
+      int local_acc = 0, local_rej = 0;
+      PIMCMoveOneByOneBead(2 * idx + 1, &local_acc, &local_rej);
+      acc_sum += local_acc;
+      rej_sum += local_rej;
+    }
+  }
+
+  if(Nwalkers % 2 == 1) {
+    int local_acc = 0, local_rej = 0;
+    PIMCMoveOneByOneBead(Nwalkers - 1, &local_acc, &local_rej);
+    acc_sum += local_acc;
+    rej_sum += local_rej;
+  }
+
+  accepted += acc_sum;
+  rejected += rej_sum;
 }
 
 

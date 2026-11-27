@@ -1309,25 +1309,28 @@ int main(int argn, char **argv) {
 #endif
       iteration_global++;
 
-#ifdef PIMC_HARMONIC_NORMAL_MODES
   if(MC == PIMC) {
-#ifdef WORM_ALGORITHM
+#ifdef PIMC_HARMONIC_NORMAL_MODES
+#  ifdef WORM_ALGORITHM
     /* Muestrear modos normales cuando los caminos son cerrados (sector Z);
        en el sector G mover las cuentas activas (incluidas Ira y Masha) con PIMC */
     if(worm_open == 0) {
       PIMCMoveHarmonicNormalModes();
     } else {
-      for(w = 0; w < Nwalkers; w++) {
-        PIMCMoveOneByOne(w);
-      }
+      PIMCMoveOneByOneSweep();
     }
     PIMCWormMoves(); /* actualización del algoritmo worm */
-#else
+#  else
     PIMCMoveHarmonicNormalModes();
+#  endif
+#else
+    PIMCMoveOneByOneSweep();
+#  ifdef WORM_ALGORITHM
+    PIMCWormMoves();
+#  endif
 #endif
   }
   else
-#endif
   {
 #pragma omp parallel for
       for(w=0; w<Nwalkers+Nwalkers_pure; w++) {
@@ -1377,12 +1380,6 @@ int main(int argn, char **argv) {
         }
         else if(MC == CLASSICAL) { // classical Monte Carlo
           ClassicalMoveOneByOne(w);
-        }
-        else if(MC == PIMC) {
-          PIMCMoveOneByOne(w);
-          //PIMCPseudopotentialMoveOneByOne(w);
-          //PathIntegralMoveAll();
-          //PathIntegralPseudopotentialStaging();
         }
 
         if(MC == CLASSICAL && Tannealing != 1.) {

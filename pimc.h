@@ -6,6 +6,7 @@
 
 // one component
 void PIMCMoveOneByOne(int w);
+void PIMCMoveOneByOneSweep(void);
 void PIMCPseudopotentialMoveOneByOne(int w);
 #ifdef PIMC_HARMONIC_NORMAL_MODES
 void PIMCMoveHarmonicNormalModes(void);

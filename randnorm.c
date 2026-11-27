@@ -234,6 +234,12 @@ void RandomNormal(DOUBLE *x1, DOUBLE *x2, const DOUBLE dummy, const DOUBLE sigma
 #ifdef TRIAL_3D
 // return (x,y,z)
 void RandomNormal3(DOUBLE *x1, DOUBLE *x2, DOUBLE *x3, const DOUBLE dummy, const DOUBLE sigma) {
+#ifdef _OPENMP
+  DOUBLE unused;
+
+  RandomNormal(x1, x2, dummy, sigma);
+  RandomNormal(x3, &unused, dummy, sigma);
+#else
   static int empty = ON;
   static DOUBLE x;
 
@@ -256,6 +262,7 @@ void RandomNormal3(DOUBLE *x1, DOUBLE *x2, DOUBLE *x3, const DOUBLE dummy, const
 
   *x2 = R*Cos(phi);
   *x3 = R*Sin(phi);
+#endif
 }
 #endif
 
