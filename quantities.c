@@ -1441,7 +1441,7 @@ void MeasureRadialDistribution(void) {
   i=0;
 
   RD.r2recent = RD.r4 = 0.;
-  if(measure_RDz) RDz.r2recent = RDz.r4 = 0.;
+  RDz.r2recent = RDz.r4 = 0.;
 
   for(w=0; w<Nwalkers; w++) {
     MeasureRadialDistributionWalker(&W[w]);
@@ -1453,13 +1453,11 @@ void MeasureRadialDistribution(void) {
   //RD.r4 = Sqrt(RD.r4);
   RD.r4 = RD.r4 / (DOUBLE) (Nwalkers * N);
 
-  if(measure_RDz) {
-    RDz.r2recent = RDz.r2recent / (DOUBLE) (Nwalkers * N);
-    //RDz.r4 = RDz.r4 / (DOUBLE) (Nwalkers * N) - RDz.r2recent*RDz.r2recent;
-    RDz.r4 = RDz.r4 / (DOUBLE) (Nwalkers * N);
-    //RDz.r2recent = Sqrt(RDz.r2recent);
-    //RDz.r4 = Sqrt(RDz.r4);
-  }
+  RDz.r2recent = RDz.r2recent / (DOUBLE) (Nwalkers * N);
+  //RDz.r4 = RDz.r4 / (DOUBLE) (Nwalkers * N) - RDz.r2recent*RDz.r2recent;
+  RDz.r4 = RDz.r4 / (DOUBLE) (Nwalkers * N);
+  //RDz.r2recent = Sqrt(RDz.r2recent);
+  //RDz.r4 = Sqrt(RDz.r4);
 }
 
 /**************************** radial distribution walker **********************/
@@ -1536,12 +1534,6 @@ void MeasureRadialDistributionWalker(struct Walker *W) {
     r = Sqrt(r2);
 
 #ifndef BC_SPHERE // on a sphere measure CM r2
-#pragma omp atomic
-    RD.r2 += r2;
-#pragma omp atomic
-    RD.r4 += r2*r2;
-#pragma omp atomic
-    RD.r2recent += r2;
     R2 += r2;
     R4 += r2*r2;
 #endif
@@ -1556,7 +1548,7 @@ void MeasureRadialDistributionWalker(struct Walker *W) {
     if(r < RD.width) {
 #endif
       n = (int) (r/RD.step);
-      if(n<RD.size) {
+      if(n >= 0 && n < RD.size) {
 #pragma omp atomic
         RD.N[n]++;
         if(MC == DIFFUSION) W->RD[W->RD_position][n]++; // pure estimator
@@ -1585,25 +1577,34 @@ void MeasureRadialDistributionWalker(struct Walker *W) {
       //RDz.r2recent += z2;
       //RDz.r4 += z2*z2;
       n = (int) (Sqrt(z2)/RDz.step);
-      if(n<RDz.size) {
+      if(n >= 0 && n < RDz.size) {
 #pragma omp atomic
         RDz.N[n]++;
         if(MC == DIFFUSION) W->RDz[W->RD_position][n]++; // pure estimator
       }
     }
+  }
+
+#ifndef BC_SPHERE // on a sphere measure CM r2
+#pragma omp atomic
+  RD.r2 += R2;
+#pragma omp atomic
+  RD.r4 += R4;
+#pragma omp atomic
+  RD.r2recent += R2;
+#endif
 
 #pragma omp atomic
-    RDz.r2 += Z2;
+  RDz.r2 += Z2;
 #pragma omp atomic
-    RDz.r2recent += Z2;
+  RDz.r2recent += Z2;
 #ifdef TRIAL_1D // define freq. of oscillations as Omega2 = 4.*z2 / (z4-N*z2*z2)
 #pragma omp atomic
-    RDz.r4 += Z2*Z2;
+  RDz.r4 += Z2*Z2;
 #else
 #pragma omp atomic
-    RDz.r4 += Z4;
+  RDz.r4 += Z4;
 #endif
-  }
 
 #ifdef BC_SPHERE // on a sphere calculate mean square CM size
   r2 = xCM*xCM + yCM*yCM + zCM*zCM;
@@ -1624,7 +1625,7 @@ void MeasureRadialDistributionWalker(struct Walker *W) {
       nx = (int) (W->x[i]/RD_MATRIX.step_x);
       ny = (int) (W->y[i]/RD_MATRIX.step_y);
 
-      if(nx<gridRDx && ny<gridRDy) {
+      if(nx >= 0 && nx < gridRDx && ny >= 0 && ny < gridRDy) {
 #pragma omp atomic
         RD_MATRIX.N[nx][ny]++;
 #pragma omp atomic

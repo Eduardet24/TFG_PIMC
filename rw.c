@@ -2313,15 +2313,34 @@ int SavePureZ2(DOUBLE f) {
 
 /**************************** Save Mean R2 ************************************/
 void SaveMeanR2(void) {
-  xR2 += RD.r2recent;
-  SaveR2(RD.r2recent/(DOUBLE)RD.times_measured, RD.r4/(DOUBLE)RD.times_measured);
+  DOUBLE r2_mean, r4_mean, z2_mean, z4_mean;
 
-  zR2 += RDz.r2recent;
-  SaveZ2(RDz.r2recent/(DOUBLE)RDz.times_measured, RDz.r4/(DOUBLE)RDz.times_measured);
+  if(MC == PIMC) {
+    /* MeasureRadialDistribution() already divided r2recent and r4 by (Nwalkers * N). */
+    r2_mean = RD.r2recent;
+    r4_mean = RD.r4;
+    z2_mean = RDz.r2recent;
+    z4_mean = RDz.r4;
+  }
+  else if(Nwalkers > 0 && N > 0) {
+    DOUBLE inv_samples = 1.0 / (DOUBLE) (Nwalkers * N);
+    r2_mean = RD.r2recent * inv_samples;
+    r4_mean = RD.r4 * inv_samples;
+    z2_mean = RDz.r2recent * inv_samples;
+    z4_mean = RDz.r4 * inv_samples;
+  }
+  else {
+    r2_mean = r4_mean = z2_mean = z4_mean = 0.;
+  }
+
+  xR2 += r2_mean;
+  SaveR2(r2_mean, r4_mean);
+
+  zR2 += z2_mean;
+  SaveZ2(z2_mean, z4_mean);
 
   RD.r2recent = RD.r4 = 0.;
   RDz.r2recent = RDz.r4 = 0.;
-  //RD.times_measured = RDz.times_measured = 0;
 
   R2times_measured++;
 }
