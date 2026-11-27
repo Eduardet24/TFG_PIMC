@@ -312,6 +312,7 @@ int main(int argn, char **argv) {
   long long worm_cycle_samples_block_start = 0;
   long long worm_cycle_samples_block;
   int worm_cycle_length;
+  int worm_saved_coords = 0;
   FILE *worm_block_file;
 #endif
 
@@ -1438,6 +1439,12 @@ int main(int argn, char **argv) {
 #endif
           MeasureWormPermutations();
           MeasureWormSuperfluid();
+#ifdef WORM_ALGORITHM
+          if(MC == PIMC && block == blck - 1 && !worm_saved_coords) {
+            SaveCoordinates(file_particles);
+            worm_saved_coords = 1;
+          }
+#endif
           time_begin = clock();
           if(video) Picture();
 #ifdef WORM_ALGORITHM
@@ -1510,6 +1517,10 @@ int main(int argn, char **argv) {
       }
       if(measure_RadDistr && RD.times_measured > 0) {
         SaveRadialDistribution();
+      }
+      if(worm_open == 0) {
+        SaveCoordinates(file_particles);
+        worm_saved_coords = 1;
       }
       EmptyDistributionArrays();
     }
@@ -1605,6 +1616,9 @@ int main(int argn, char **argv) {
 
 #ifdef WORM_ALGORITHM
   if(MC == PIMC) {
+    if(!worm_saved_coords) {
+      SaveCoordinates(file_particles);
+    }
     SaveWormGapHistogram("outworm_gap.dat");
     SaveWormPermutations("outworm_perm.dat");
     SaveWormOBDM("outworm_obdm.dat");
@@ -1751,7 +1765,9 @@ void Measure(int block, int iter) {
 
   for(w=0; w<Nwalkers; w++) W[w].times_measured++; // should be executed last
 
-#ifndef WORM_ALGORITHM
+#ifdef WORM_ALGORITHM
+  if(MC != PIMC && iter % Niter == 0) SaveBlockData(block);
+#else
   if(iter % Niter == 0) SaveBlockData(block);
 #endif
 
