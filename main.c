@@ -1321,12 +1321,11 @@ int main(int argn, char **argv) {
   if(MC == PIMC) {
 #ifdef PIMC_HARMONIC_NORMAL_MODES
 #  ifdef WORM_ALGORITHM
-    /* Muestrear modos normales cuando los caminos son cerrados (sector Z);
-       en el sector G mover las cuentas activas (incluidas Ira y Masha) con PIMC */
-    if(worm_open == 0) {
-      PIMCMoveHarmonicNormalModes();
-    } else {
-      PIMCMoveOneByOneSweep();
+    /* Muestrear modos normales para todos los anillos cerrados (en Sector Z todos,
+       y en Sector G los ciclos espectadores); mover únicamente la cadena abierta en Sector G */
+    PIMCMoveHarmonicNormalModes();
+    if(worm_open != 0) {
+      PIMCMoveOpenWormChain();
     }
     PIMCWormMoves(); /* actualización del algoritmo worm */
 #  else

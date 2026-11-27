@@ -55,7 +55,7 @@ static int EnsureWormRingScratch(int n_particles, int total_beads) {
 
 #ifdef PIMC_HARMONIC_NORMAL_MODES
 /******************* Exact Harmonic PIMC Normal-Mode Draw ******************/
-#define NM_CACHE_SLOTS 16
+#define NM_CACHE_SLOTS 64
 
 typedef struct {
   int ring_beads;
@@ -74,11 +74,38 @@ typedef struct {
 
 static NormalModeCache1D nm_cache[NM_CACHE_SLOTS];
 static int nm_cache_next = 0;
+static int nm_cache_atexit_registered = 0;
+static DOUBLE *nm_plain_ring = NULL;
+static int nm_plain_ring_cap = 0;
+
+static void FreeNormalModeCache(void) {
+  int i;
+  for(i = 0; i < NM_CACHE_SLOTS; i++) {
+    if(nm_cache[i].sigma_mode != NULL) free(nm_cache[i].sigma_mode);
+    if(nm_cache[i].step_cos != NULL) free(nm_cache[i].step_cos);
+    if(nm_cache[i].step_sin != NULL) free(nm_cache[i].step_sin);
+    nm_cache[i].sigma_mode = NULL;
+    nm_cache[i].step_cos = NULL;
+    nm_cache[i].step_sin = NULL;
+    nm_cache[i].ring_beads = 0;
+    nm_cache[i].cap_modes = 0;
+  }
+  if(nm_plain_ring != NULL) {
+    free(nm_plain_ring);
+    nm_plain_ring = NULL;
+  }
+  nm_plain_ring_cap = 0;
+}
 
 static const NormalModeCache1D* GetNormalModeCache(int ring_beads, DOUBLE tau, DOUBLE omega2) {
   int i, mode;
   int n_modes = (ring_beads - 1) / 2;
   NormalModeCache1D *slot = NULL;
+
+  if(!nm_cache_atexit_registered) {
+    atexit(FreeNormalModeCache);
+    nm_cache_atexit_registered = 1;
+  }
 
   for(i = 0; i < NM_CACHE_SLOTS; i++) {
     if(nm_cache[i].ring_beads == ring_beads &&
@@ -103,7 +130,9 @@ static const NormalModeCache1D* GetNormalModeCache(int ring_beads, DOUBLE tau, D
     if(new_sig != NULL) slot->sigma_mode = new_sig;
     if(new_cos != NULL) slot->step_cos = new_cos;
     if(new_sin != NULL) slot->step_sin = new_sin;
-    if(new_sig == NULL || new_cos == NULL || new_sin == NULL) return NULL;
+    if(new_sig == NULL || new_cos == NULL || new_sin == NULL) {
+      Error("Out of memory in GetNormalModeCache\n");
+    }
     slot->cap_modes = n_modes;
   }
 
@@ -128,97 +157,143 @@ static const NormalModeCache1D* GetNormalModeCache(int ring_beads, DOUBLE tau, D
   return slot;
 }
 
-static void SampleHarmonicNormalRing1D(DOUBLE *ring_out, int ring_beads, DOUBLE tau, DOUBLE omega2, int axis) {
-  int n, mode;
-  DOUBLE dx, dy, dz, q0, q_cos, q_sin, amplitude, angle, cosine, sine;
-  const NormalModeCache1D *c = GetNormalModeCache(ring_beads, tau, omega2);
+static void InitHarmonicRingDCAndNyquist(DOUBLE *ring_out, int ring_beads, const NormalModeCache1D *c) {
+  int n;
+  DOUBLE z0, z1, dc;
 
-  for(n = 0; n < ring_beads; n++) ring_out[n] = 0.;
+  RandomNormal(&z0, &z1, 0., 1.0);
+  dc = z0 * c->sigma0 * c->inv_sqrt_n;
 
-  if(c != NULL) {
-    RandomNormal3(&dx, &dy, &dz, 0., c->sigma0);
-    q0 = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
-    amplitude = q0 * c->inv_sqrt_n;
-    for(n = 0; n < ring_beads; n++) ring_out[n] += amplitude;
-
-    for(mode = 0; mode < c->n_modes; mode++) {
-      DOUBLE sig = c->sigma_mode[mode];
-      DOUBLE step_cosine = c->step_cos[mode];
-      DOUBLE step_sine = c->step_sin[mode];
-      RandomNormal3(&dx, &dy, &dz, 0., sig);
-      q_cos = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
-      RandomNormal3(&dx, &dy, &dz, 0., sig);
-      q_sin = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
-
-      cosine = 1.;
-      sine = 0.;
-      amplitude = c->amp_mode;
-      for(n = 0; n < ring_beads; n++) {
-        ring_out[n] += amplitude * (q_cos * cosine + q_sin * sine);
-        angle = cosine * step_cosine - sine * step_sine;
-        sine = sine * step_cosine + cosine * step_sine;
-        cosine = angle;
-      }
+  if((ring_beads & 1) == 0) {
+    DOUBLE nyq = z1 * c->sigma_nyq * c->inv_sqrt_n;
+    DOUBLE even_val = dc + nyq;
+    DOUBLE odd_val = dc - nyq;
+    for(n = 0; n + 1 < ring_beads; n += 2) {
+      ring_out[n] = even_val;
+      ring_out[n + 1] = odd_val;
     }
-
-    if(ring_beads % 2 == 0) {
-      RandomNormal3(&dx, &dy, &dz, 0., c->sigma_nyq);
-      q_cos = ((axis == 0) ? dx : ((axis == 1) ? dy : dz)) * c->inv_sqrt_n;
-      for(n = 0; n < ring_beads; n++) {
-        ring_out[n] += (n % 2 == 0) ? q_cos : -q_cos;
-      }
-    }
-    return;
-  }
-
-  /* Fallback sin caché en caso de fallo de memoria */
-  RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(tau * omega2));
-  q0 = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
-  amplitude = q0 / Sqrt((DOUBLE)ring_beads);
-  for(n = 0; n < ring_beads; n++) ring_out[n] += amplitude;
-
-  for(mode = 1; mode <= (ring_beads - 1) / 2; mode++) {
-    DOUBLE step = 2. * PI * (DOUBLE)mode / (DOUBLE)ring_beads;
-    DOUBLE step_cosine = Cos(step);
-    DOUBLE step_sine = Sin(step);
-    DOUBLE eigenvalue = 4. * Sin(0.5 * step) * Sin(0.5 * step) / tau + tau * omega2;
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_cos = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(eigenvalue));
-    q_sin = (axis == 0) ? dx : ((axis == 1) ? dy : dz);
-
-    cosine = 1.;
-    sine = 0.;
-    amplitude = Sqrt(2. / (DOUBLE)ring_beads);
+  } else {
     for(n = 0; n < ring_beads; n++) {
-      ring_out[n] += amplitude * (q_cos * cosine + q_sin * sine);
-      angle = cosine * step_cosine - sine * step_sine;
-      sine = sine * step_cosine + cosine * step_sine;
-      cosine = angle;
-    }
-  }
-
-  if(ring_beads % 2 == 0) {
-    RandomNormal3(&dx, &dy, &dz, 0., 1. / Sqrt(4. / tau + tau * omega2));
-    q_cos = ((axis == 0) ? dx : ((axis == 1) ? dy : dz)) / Sqrt((DOUBLE)ring_beads);
-    for(n = 0; n < ring_beads; n++) {
-      ring_out[n] += (n % 2 == 0) ? q_cos : -q_cos;
+      ring_out[n] = dc;
     }
   }
 }
+
+static void SampleHarmonicNormalRing1D(DOUBLE *ring_out, int ring_beads, DOUBLE tau, DOUBLE omega2) {
+  int n, mode;
+  int half_n = (ring_beads - 1) / 2;
+  int is_even = ((ring_beads & 1) == 0);
+  int half_idx = ring_beads >> 1;
+  const NormalModeCache1D *c = GetNormalModeCache(ring_beads, tau, omega2);
+  DOUBLE amp = c->amp_mode;
+
+  InitHarmonicRingDCAndNyquist(ring_out, ring_beads, c);
+
+  for(mode = 0; mode < c->n_modes; mode++) {
+    DOUBLE sig = c->sigma_mode[mode];
+    DOUBLE step_cosine = c->step_cos[mode];
+    DOUBLE step_sine = c->step_sin[mode];
+    DOUBLE q_cos, q_sin;
+    DOUBLE cosine = step_cosine;
+    DOUBLE sine = step_sine;
+
+    RandomNormal(&q_cos, &q_sin, 0., sig);
+    q_cos *= amp;
+    q_sin *= amp;
+
+    ring_out[0] += q_cos;
+    if(is_even) {
+      ring_out[half_idx] += (mode & 1) ? q_cos : -q_cos;
+    }
+
+    for(n = 1; n <= half_n; n++) {
+      DOUBLE c_term = q_cos * cosine;
+      DOUBLE s_term = q_sin * sine;
+      DOUBLE angle;
+      ring_out[n] += c_term + s_term;
+      ring_out[ring_beads - n] += c_term - s_term;
+
+      angle = cosine * step_cosine - sine * step_sine;
+      sine = sine * step_cosine + cosine * step_sine;
+      cosine = angle;
+      if((n & 31) == 0) {
+        DOUBLE inv_r = 0.5 * (3.0 - (cosine * cosine + sine * sine));
+        cosine *= inv_r;
+        sine *= inv_r;
+      }
+    }
+  }
+}
+
+#if defined(MOVE_IN_X) && defined(MOVE_IN_Y)
+static void SampleHarmonicNormalRing2D(DOUBLE *ring_x, DOUBLE *ring_y, int ring_beads, DOUBLE tau, DOUBLE omega2) {
+  int n, mode;
+  int half_n = (ring_beads - 1) / 2;
+  int is_even = ((ring_beads & 1) == 0);
+  int half_idx = ring_beads >> 1;
+  const NormalModeCache1D *c = GetNormalModeCache(ring_beads, tau, omega2);
+  DOUBLE amp = c->amp_mode;
+
+  InitHarmonicRingDCAndNyquist(ring_x, ring_beads, c);
+  InitHarmonicRingDCAndNyquist(ring_y, ring_beads, c);
+
+  for(mode = 0; mode < c->n_modes; mode++) {
+    DOUBLE sig = c->sigma_mode[mode];
+    DOUBLE step_cosine = c->step_cos[mode];
+    DOUBLE step_sine = c->step_sin[mode];
+    DOUBLE qx_cos, qx_sin, qy_cos, qy_sin;
+    DOUBLE cosine = step_cosine;
+    DOUBLE sine = step_sine;
+
+    RandomNormal(&qx_cos, &qx_sin, 0., sig);
+    RandomNormal(&qy_cos, &qy_sin, 0., sig);
+    qx_cos *= amp;
+    qx_sin *= amp;
+    qy_cos *= amp;
+    qy_sin *= amp;
+
+    ring_x[0] += qx_cos;
+    ring_y[0] += qy_cos;
+    if(is_even) {
+      ring_x[half_idx] += (mode & 1) ? qx_cos : -qx_cos;
+      ring_y[half_idx] += (mode & 1) ? qy_cos : -qy_cos;
+    }
+
+    for(n = 1; n <= half_n; n++) {
+      DOUBLE cx_term = qx_cos * cosine;
+      DOUBLE sx_term = qx_sin * sine;
+      DOUBLE cy_term = qy_cos * cosine;
+      DOUBLE sy_term = qy_sin * sine;
+      DOUBLE angle;
+
+      ring_x[n] += cx_term + sx_term;
+      ring_x[ring_beads - n] += cx_term - sx_term;
+      ring_y[n] += cy_term + sy_term;
+      ring_y[ring_beads - n] += cy_term - sy_term;
+
+      angle = cosine * step_cosine - sine * step_sine;
+      sine = sine * step_cosine + cosine * step_sine;
+      cosine = angle;
+      if((n & 31) == 0) {
+        DOUBLE inv_r = 0.5 * (3.0 - (cosine * cosine + sine * sine));
+        cosine *= inv_r;
+        sine *= inv_r;
+      }
+    }
+  }
+}
+#endif
 
 void PIMCMoveHarmonicNormalModes(void) {
   int bead, particle;
   int beads = Nwalkers;
   DOUBLE tau;
-  static DOUBLE *plain_ring = NULL;
-  static int plain_ring_cap = 0;
 
-  if(beads > plain_ring_cap) {
-    DOUBLE *new_ring = (DOUBLE*) realloc(plain_ring, (size_t)beads * sizeof(DOUBLE));
+  if(beads > nm_plain_ring_cap) {
+    DOUBLE *new_ring = (DOUBLE*) realloc(nm_plain_ring, (size_t)beads * sizeof(DOUBLE));
     if(new_ring == NULL) Error("Out of memory in PIMCMoveHarmonicNormalModes\n");
-    plain_ring = new_ring;
-    plain_ring_cap = beads;
+    nm_plain_ring = new_ring;
+    nm_plain_ring_cap = beads;
   }
 
   if(N < 1 || beads < 1 || T <= 0.) {
@@ -231,85 +306,105 @@ void PIMCMoveHarmonicNormalModes(void) {
   tau = 1. / (T * (DOUBLE)beads);
 
 #ifdef WORM_ALGORITHM
-  if(worm_next != NULL && worm_open == 0) {
-    if(EnsureWormRingScratch(N, N * beads)) {
-      int *visited = worm_ring_visited;
-      int *ring_p = worm_ring_p;
-      int *ring_w = worm_ring_w;
-      DOUBLE *ring_x = worm_ring_x;
-      DOUBLE *ring_y = worm_ring_y;
-      DOUBLE *ring_z = worm_ring_z;
-      (void)ring_x;
-      (void)ring_y;
-      (void)ring_z;
-      memset(visited, 0, (size_t)N * sizeof(int));
+  if(worm_next != NULL) {
+    if(!EnsureWormRingScratch(N, N * beads)) {
+      Error("Out of memory in PIMCMoveHarmonicNormalModes worm scratch\n");
+    }
+    int *visited = worm_ring_visited;
+    int *ring_p = worm_ring_p;
+    int *ring_w = worm_ring_w;
+    DOUBLE *ring_x = worm_ring_x;
+    DOUBLE *ring_y = worm_ring_y;
+    DOUBLE *ring_z = worm_ring_z;
+    (void)ring_x;
+    (void)ring_y;
+    (void)ring_z;
+    memset(visited, 0, (size_t)N * sizeof(int));
 
-      for(particle = 0; particle < N; particle++) {
-        if(visited[particle]) continue;
-
-        /* Rastrear el anillo continuo de cuentas a lo largo del ciclo físico */
-        int ring_beads = 0;
-        int curr_p = particle;
-        int curr_w = 0;
-        do {
-          if(curr_w == 0) visited[curr_p] = 1;
-          ring_p[ring_beads] = curr_p;
-          ring_w[ring_beads] = curr_w;
-          ring_beads++;
-          if(ring_beads >= N * beads) break;
-          curr_p = worm_next[curr_w][curr_p];
-          curr_w = (curr_w + 1) % beads;
-        } while(!(curr_w == 0 && curr_p == particle));
-
-        CaseX(SampleHarmonicNormalRing1D(ring_x, ring_beads, tau, omega_x2, 0));
-        CaseY(SampleHarmonicNormalRing1D(ring_y, ring_beads, tau, omega_y2, 1));
-        CaseZ(SampleHarmonicNormalRing1D(ring_z, ring_beads, tau, omega_z2, 2));
-
-        /* Asignar las coordenadas calculadas a las cuentas físicas */
-        for(int n = 0; n < ring_beads; n++) {
-          int rw = ring_w[n];
-          int rp = ring_p[n];
-#ifdef MOVE_IN_X
-          W[rw].x[rp] = ring_x[n];
-#else
-          W[rw].x[rp] = 0.;
-#endif
-#ifdef MOVE_IN_Y
-          W[rw].y[rp] = ring_y[n];
-#else
-          W[rw].y[rp] = 0.;
-#endif
-#ifdef MOVE_IN_Z
-          W[rw].z[rp] = ring_z[n];
-#else
-          W[rw].z[rp] = 0.;
-#endif
-        }
+    for(particle = 0; particle < N; particle++) {
+      if(visited[particle]) continue;
+      if(worm_open != 0 && worm_next[0][particle] < 0) {
+        visited[particle] = 1;
+        continue;
       }
 
-      return;
+      /* Rastrear el anillo desde slice 0; en Sector G ignorar cualquier tramo abierto */
+      int is_closed = 1;
+      int ring_beads = 0;
+      int curr_p = particle;
+      int curr_w = 0;
+      do {
+        if(curr_w == 0) visited[curr_p] = 1;
+        ring_p[ring_beads] = curr_p;
+        ring_w[ring_beads] = curr_w;
+        ring_beads++;
+        curr_p = worm_next[curr_w][curr_p];
+        if(curr_p < 0) {
+          is_closed = 0;
+          break;
+        }
+        curr_w = (curr_w + 1 < beads) ? curr_w + 1 : 0;
+      } while(!(curr_w == 0 && curr_p == particle) && ring_beads < N * beads);
+
+      if(!is_closed || !(curr_w == 0 && curr_p == particle)) continue;
+
+#if defined(MOVE_IN_X) && defined(MOVE_IN_Y)
+      if(omega_x2 == omega_y2) {
+        SampleHarmonicNormalRing2D(ring_x, ring_y, ring_beads, tau, omega_x2);
+      } else {
+        SampleHarmonicNormalRing1D(ring_x, ring_beads, tau, omega_x2);
+        SampleHarmonicNormalRing1D(ring_y, ring_beads, tau, omega_y2);
+      }
+#else
+      CaseX(SampleHarmonicNormalRing1D(ring_x, ring_beads, tau, omega_x2));
+      CaseY(SampleHarmonicNormalRing1D(ring_y, ring_beads, tau, omega_y2));
+#endif
+      CaseZ(SampleHarmonicNormalRing1D(ring_z, ring_beads, tau, omega_z2));
+
+      /* Asignar las coordenadas calculadas a las cuentas físicas */
+      for(int n = 0; n < ring_beads; n++) {
+        int rw = ring_w[n];
+        int rp = ring_p[n];
+#ifdef MOVE_IN_X
+        W[rw].x[rp] = ring_x[n];
+#else
+        W[rw].x[rp] = 0.;
+#endif
+#ifdef MOVE_IN_Y
+        W[rw].y[rp] = ring_y[n];
+#else
+        W[rw].y[rp] = 0.;
+#endif
+#ifdef MOVE_IN_Z
+        W[rw].z[rp] = ring_z[n];
+#else
+        W[rw].z[rp] = 0.;
+#endif
+      }
     }
+
+    return;
   }
 #endif
 
   for(particle = 0; particle < N; particle++) {
 #ifdef MOVE_IN_X
-    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_x2, 0);
-    for(bead = 0; bead < beads; bead++) W[bead].x[particle] = plain_ring[bead];
+    SampleHarmonicNormalRing1D(nm_plain_ring, beads, tau, omega_x2);
+    for(bead = 0; bead < beads; bead++) W[bead].x[particle] = nm_plain_ring[bead];
 #else
     for(bead = 0; bead < beads; bead++) W[bead].x[particle] = 0.;
 #endif
 
 #ifdef MOVE_IN_Y
-    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_y2, 1);
-    for(bead = 0; bead < beads; bead++) W[bead].y[particle] = plain_ring[bead];
+    SampleHarmonicNormalRing1D(nm_plain_ring, beads, tau, omega_y2);
+    for(bead = 0; bead < beads; bead++) W[bead].y[particle] = nm_plain_ring[bead];
 #else
     for(bead = 0; bead < beads; bead++) W[bead].y[particle] = 0.;
 #endif
 
 #ifdef MOVE_IN_Z
-    SampleHarmonicNormalRing1D(plain_ring, beads, tau, omega_z2, 2);
-    for(bead = 0; bead < beads; bead++) W[bead].z[particle] = plain_ring[bead];
+    SampleHarmonicNormalRing1D(nm_plain_ring, beads, tau, omega_z2);
+    for(bead = 0; bead < beads; bead++) W[bead].z[particle] = nm_plain_ring[bead];
 #else
     for(bead = 0; bead < beads; bead++) W[bead].z[particle] = 0.;
 #endif
@@ -318,6 +413,137 @@ void PIMCMoveHarmonicNormalModes(void) {
 #endif
 
 /************************** PIMC Move One By One ****************************/
+static void PIMCMoveSingleBeadParticle(int w, int i, int w1, int w2,
+                                       DOUBLE tau, DOUBLE inv_tau, DOUBLE inv_2tau, DOUBLE step_sigma,
+                                       int *local_accepted, int *local_rejected) {
+#ifndef INTERACTION_ABSENT
+  int j;
+#endif
+  DOUBLE du = 0.;
+  DOUBLE xi;
+  DOUBLE dx, dy, dz;
+  DOUBLE x, y, z;
+  DOUBLE xp, yp, zp;
+  DOUBLE dr[3];
+  DOUBLE xm, ym, zm;
+  DOUBLE r2;
+
+  x = W[w].x[i];
+  y = W[w].y[i];
+  z = W[w].z[i];
+#ifdef WORM_ALGORITHM
+  int prev_p = (worm_prev != NULL) ? worm_prev[w][i] : i;
+  int next_p = (worm_next != NULL) ? worm_next[w][i] : i;
+  if(prev_p < 0 && next_p < 0) return; /* detached bead in open-chain sector */
+#else
+  int prev_p = i;
+  int next_p = i;
+#endif
+
+  RandomNormal3(&dx, &dy, &dz, 0., step_sigma);
+
+#ifdef TRIAL_3D
+  xp = x + dx;
+  yp = y + dy;
+  zp = z + dz;
+#endif
+
+#ifdef TRIAL_2D
+  xp = x + dx;
+  yp = y + dy;
+  zp = 0.;
+#endif
+
+#ifdef TRIAL_1D
+  xp = 0.;
+  yp = 0.;
+  zp = z + dz;
+#endif
+
+  ReduceToTheBoxXYZ(&xp, &yp, &zp);
+
+  du -= tau * Vext(xp, yp, zp);
+  du += tau * Vext(x, y, z);
+
+  /* kinetic energy contribution (two links for interior beads, one link for Ira/Masha) */
+  if(prev_p >= 0 && next_p >= 0) {
+    xm = 0.5 * (W[w1].x[prev_p] + W[w2].x[next_p]);
+    ym = 0.5 * (W[w1].y[prev_p] + W[w2].y[next_p]);
+    zm = 0.5 * (W[w1].z[prev_p] + W[w2].z[next_p]);
+
+    dr[0] = xp - xm;
+    dr[1] = yp - ym;
+    dr[2] = zp - zm;
+    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+    du -= r2 * inv_tau;
+
+    dr[0] = x - xm;
+    dr[1] = y - ym;
+    dr[2] = z - zm;
+    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+    du += r2 * inv_tau;
+  } else {
+    int w_conn = (prev_p >= 0) ? w1 : w2;
+    int p_conn = (prev_p >= 0) ? prev_p : next_p;
+    xm = W[w_conn].x[p_conn];
+    ym = W[w_conn].y[p_conn];
+    zm = W[w_conn].z[p_conn];
+
+    dr[0] = xp - xm;
+    dr[1] = yp - ym;
+    dr[2] = zp - zm;
+    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+    du -= r2 * inv_2tau;
+
+    dr[0] = x - xm;
+    dr[1] = y - ym;
+    dr[2] = z - zm;
+    r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+    du += r2 * inv_2tau;
+  }
+
+#ifndef INTERACTION_ABSENT
+  for(j = 0; j < N; j++) {
+#ifdef WORM_ALGORITHM
+    if(j != i && (worm_prev == NULL || worm_next == NULL || worm_prev[w][j] >= 0 || worm_next[w][j] >= 0)) {
+#else
+    if(j != i) {
+#endif
+      dr[0] = xp - W[w].x[j];
+      dr[1] = yp - W[w].y[j];
+      dr[2] = zp - W[w].z[j];
+      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      du -= tau * InteractionEnergy(sqrt(r2));
+
+      dr[0] = x - W[w].x[j];
+      dr[1] = y - W[w].y[j];
+      dr[2] = z - W[w].z[j];
+      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      du += tau * InteractionEnergy(sqrt(r2));
+    }
+  }
+#endif
+
+  if(du > 0.) {
+    W[w].x[i] = xp;
+    W[w].y[i] = yp;
+    W[w].z[i] = zp;
+    W[w].U -= du;
+    (*local_accepted)++;
+  } else {
+    xi = Random();
+    if(xi < Exp(du)) {
+      W[w].x[i] = xp;
+      W[w].y[i] = yp;
+      W[w].z[i] = zp;
+      W[w].U -= du;
+      (*local_accepted)++;
+    } else {
+      (*local_rejected)++;
+    }
+  }
+}
+
 /** @brief Perform a single PIMC move for one bead and return local accept/reject counts.
  *  @param w Index of the bead to be moved.
  *  @param accepted_out Output count of accepted single-particle moves.
@@ -325,198 +551,62 @@ void PIMCMoveHarmonicNormalModes(void) {
  */
 static void PIMCMoveOneByOneBead(int w, int *accepted_out, int *rejected_out) {
   int i;
-#ifndef INTERACTION_ABSENT
-  int j;
-#endif
-  int w1,w2; // index of the walker with [w-1] and [w+1]
-  DOUBLE du;
-  DOUBLE xi;
-  DOUBLE dx,dy,dz;
-  DOUBLE x,y,z;
-  DOUBLE xp,yp,zp;
-  DOUBLE dr[3];
-  DOUBLE xm,ym,zm; // position of the middle point
-  DOUBLE r2;
-  DOUBLE tau;
-  DOUBLE sigma;
-  DOUBLE step_sigma;
+  int w1 = (w > 0) ? (w - 1) : (Nwalkers - 1);
+  int w2 = (w + 1 < Nwalkers) ? (w + 1) : 0;
+  DOUBLE tau = 1. / (T * (DOUBLE)Nwalkers);
+  DOUBLE inv_tau = 1. / tau;
+  DOUBLE inv_2tau = 0.5 * inv_tau;
+  DOUBLE step_sigma = Sqrt(dt_vmc);
   int local_accepted = 0;
   int local_rejected = 0;
 
-  w1 = w-1; // previous bead number
-  w2 = w+1; // next bead number
-  if(w1<0) w1 = Nwalkers-1; // cyclic condition
-  if(w2==Nwalkers) w2 = 0;
-
-  tau = 1./(T*(DOUBLE)Nwalkers); // inverse temperature on a single bead (epsilon)
-  sigma = 0.5*tau;
-  step_sigma = Sqrt(dt_vmc);
-
-  // Move particle i of the bead
-  for(i=0; i<N; i++) { // loop over particles
-    du = 0.;
-
-    x = W[w].x[i];
-    y = W[w].y[i];
-    z = W[w].z[i];
-#ifdef WORM_ALGORITHM
-    int prev_p = (worm_prev != NULL) ? worm_prev[w][i] : i;
-    int next_p = (worm_next != NULL) ? worm_next[w][i] : i;
-    if(prev_p < 0 && next_p < 0) continue; /* detached bead in open-chain sector */
-#else
-    int prev_p = i;
-    int next_p = i;
-#endif
-
-    // Wp is the trial position
-    RandomNormal3(&dx, &dy, &dz, 0., step_sigma); // generate a random number distributed according to Normal distribution
-
-/** @brief Generate a random number distributed according to a Normal distribution.
- *  @param dx Pointer to the x-component of the random vector.
- *  @param dy Pointer to the y-component of the random vector.
- *  @param dz Pointer to the z-component of the random vector.
- *  @param mean The mean of the Normal distribution.
- *  @param sigma The standard deviation of the Normal distribution.
- */
-#ifdef TRIAL_3D
-    xp = x + dx;
-    yp = y + dy;
-    zp = z + dz;
-#endif
-
-#ifdef TRIAL_2D
-    xp = x + dx;
-    yp = y + dy;
-    zp = 0.;
-#endif
-
-#ifdef TRIAL_1D
-    xp = 0.;
-    yp = 0.;
-    zp = z + dz;
-#endif
-/** @brief Reduce the position to the simulation box.
- *  @param xp Pointer to the x-coordinate of the position.
- *  @param yp Pointer to the y-coordinate of the position.
- *  @param zp Pointer to the z-coordinate of the position.
- */
-    ReduceToTheBoxXYZ(&xp, &yp, &zp); // in case of a box, put the new position to the box
-
-    // external potential
-    du -= tau*Vext(xp,yp,zp);
-    du += tau*Vext(x,y,z);
-
-    // kinetic energy contribution (two links for interior beads, one link for Ira/Masha)
-    if(prev_p >= 0 && next_p >= 0) {
-      xm = 0.5*(W[w1].x[prev_p]+W[w2].x[next_p]);
-      ym = 0.5*(W[w1].y[prev_p]+W[w2].y[next_p]);
-      zm = 0.5*(W[w1].z[prev_p]+W[w2].z[next_p]);
-
-      dr[0] = xp - xm;
-      dr[1] = yp - ym;
-      dr[2] = zp - zm;
-      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-      du -= r2/(2.*sigma);
-
-      dr[0] = x - xm;
-      dr[1] = y - ym;
-      dr[2] = z - zm;
-      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-      du += r2/(2.*sigma);
-    } else {
-      int w_conn = (prev_p >= 0) ? w1 : w2;
-      int p_conn = (prev_p >= 0) ? prev_p : next_p;
-      xm = W[w_conn].x[p_conn];
-      ym = W[w_conn].y[p_conn];
-      zm = W[w_conn].z[p_conn];
-
-      dr[0] = xp - xm;
-      dr[1] = yp - ym;
-      dr[2] = zp - zm;
-      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-      du -= r2/(2.*tau);
-
-      dr[0] = x - xm;
-      dr[1] = y - ym;
-      dr[2] = z - zm;
-      r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-      du += r2/(2.*tau);
-    }
-
-#ifndef INTERACTION_ABSENT
-    for(j=0; j<N; j++) {
-#ifdef WORM_ALGORITHM
-      if(j != i && (worm_prev == NULL || worm_next == NULL || worm_prev[w][j] >= 0 || worm_next[w][j] >= 0)) { // calculate new interaction energy
-#else
-      if(j != i) { // calculate new interaction energy
-#endif
-        dr[0] = xp - W[w].x[j];
-        dr[1] = yp - W[w].y[j];
-        dr[2] = zp - W[w].z[j];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-        du -= tau*InteractionEnergy(sqrt(r2));
-
-        // calculate old interaction energy
-        dr[0] = x - W[w].x[j];
-        dr[1] = y - W[w].y[j];
-        dr[2] = z - W[w].z[j];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-        du += tau*InteractionEnergy(sqrt(r2));
-
-        /*// calculate new interaction energy
-        dr[0] = xp - W[w1].x[j];
-        dr[1] = yp - W[w1].y[j];
-        dr[2] = zp - W[w1].z[j];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-        du -= tau*InteractionEnergy(sqrt(r2));
-        dr[0] = xp - W[w2].x[j];
-        dr[1] = yp - W[w2].y[j];
-        dr[2] = zp - W[w2].z[j];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-        du -= tau*InteractionEnergy(sqrt(r2));
-
-        // calculate old interaction energy
-        dr[0] = x - W[w1].x[j];
-        dr[1] = y - W[w1].y[j];
-        dr[2] = z - W[w1].z[j];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);
-        du += tau*InteractionEnergy(sqrt(r2));
-        dr[0] = x - W[w2].x[j];
-        dr[1] = y - W[w2].y[j];
-        dr[2] = z - W[w2].z[j];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]);*/
-        du += tau*InteractionEnergy(sqrt(r2));
-      }
-    }
-#endif
-
-    // The Metropolis code
-    // f = Exp(u), p = Exp(up-u)
-    if(du > 0.) {
-      W[w].x[i] = xp;
-      W[w].y[i] = yp;
-      W[w].z[i] = zp;
-      W[w].U -= du;
-      local_accepted++;
-    }
-    else {
-      xi = Random(); // generate a number between (0,1)
-      if(xi<Exp(du)) {
-        W[w].x[i] = xp;
-        W[w].y[i] = yp;
-        W[w].z[i] = zp;
-        W[w].U -= du;
-        local_accepted++;
-      }
-      else {
-        local_rejected++;
-      }
-    }
+  for(i = 0; i < N; i++) {
+    PIMCMoveSingleBeadParticle(w, i, w1, w2, tau, inv_tau, inv_2tau, step_sigma,
+                               &local_accepted, &local_rejected);
   }
 
   *accepted_out = local_accepted;
   *rejected_out = local_rejected;
 }
+
+#ifdef WORM_ALGORITHM
+/** @brief Perform single-bead Metropolis updates only along the active open worm chain in Sector G. */
+void PIMCMoveOpenWormChain(void) {
+  int curr_w, curr_p, max_steps, steps;
+  int local_accepted = 0;
+  int local_rejected = 0;
+  DOUBLE tau, inv_tau, inv_2tau, step_sigma;
+
+  if(Nwalkers <= 0 || N <= 0) return;
+  if(worm_open == 0 || worm_next == NULL || worm_prev == NULL ||
+     worm_bead_masha < 0 || worm_particle_masha < 0) {
+    PIMCMoveOneByOneSweep();
+    return;
+  }
+
+  tau = 1. / (T * (DOUBLE)Nwalkers);
+  inv_tau = 1. / tau;
+  inv_2tau = 0.5 * inv_tau;
+  step_sigma = Sqrt(dt_vmc);
+
+  curr_w = worm_bead_masha;
+  curr_p = worm_particle_masha;
+  max_steps = N * Nwalkers;
+
+  for(steps = 0; steps < max_steps && curr_p >= 0; steps++) {
+    int w1 = (curr_w > 0) ? (curr_w - 1) : (Nwalkers - 1);
+    int w2 = (curr_w + 1 < Nwalkers) ? (curr_w + 1) : 0;
+    int next_p = worm_next[curr_w][curr_p];
+    PIMCMoveSingleBeadParticle(curr_w, curr_p, w1, w2, tau, inv_tau, inv_2tau, step_sigma,
+                               &local_accepted, &local_rejected);
+    curr_p = next_p;
+    curr_w = w2;
+  }
+
+  accepted += local_accepted;
+  rejected += local_rejected;
+}
+#endif
 
 /** @brief Perform a single PIMC move for one bead.
  *  @param w Index of the bead to be moved.

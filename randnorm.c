@@ -212,7 +212,7 @@ void RandomNormal(DOUBLE *x1, DOUBLE *x2, const DOUBLE dummy, const DOUBLE sigma
   //  //randomize();
   //  first_time = OFF;
   //}
-  while(S>=1.) {
+  while(S>=1. || S<=0.) {
     U1 = Random();
     U2 = Random();
 
