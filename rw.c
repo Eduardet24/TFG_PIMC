@@ -19,8 +19,8 @@
 #  include "parallel.h"
 #endif
 
-#define CHECK(text, type, address) {if(strcmp(ch,text)==0) {    fscanf(in, type, address); Message("\n  %s" type, text, *address);    }  }
-#define CHECKs(text, type, address) {if(strcmp(ch,text)==0) {    fscanf(in, type, address);      Message("\n  %s" type, text, address);    }  }
+#define CHECK(text, type, address) { if(strcmp(ch,text)==0) { if(fscanf(in, type, address) == 1) { Message("\n  %s" type, text, *address); } continue; } }
+#define CHECKs(text, type, address) { if(strcmp(ch,text)==0) { if(fscanf(in, type, address) == 1) { Message("\n  %s%s", text, address); } continue; } }
 
 /******************************** Load Config ******************************/
 int LoadParameters(void) {
@@ -48,7 +48,7 @@ int LoadParameters(void) {
   RD_MATRIX.maxx = RD_MATRIX.maxy = 0.;
   Dpar = (DOUBLE) DIMENSION;
 
-  while(fscanf(in, "%s\n", ch) != EOF) {
+  while(fscanf(in, "%511s", ch) == 1) {
     CHECK("MC=","%i", &MC);
     CHECK("SmartMC=","%i", &SmartMC);
     CHECK("N=","%i", &N);
@@ -79,24 +79,24 @@ int LoadParameters(void) {
     CHECK("Apar12=", "%" LF "", &Apar12);
     CHECK("Bpar12=", "%" LF "", &Bpar12);
     CHECK("Cpar12=", "%" LF "", &Cpar12);
-    CHECKs("file_particles=", "%s", file_particles);
-    CHECKs("file_wf=", "%s", file_wf);
-    CHECKs("file_wf1b=", "%s", file_wf1b);
-    CHECKs("file_energy=", "%s", file_energy);
-    CHECKs("file_OBDM=", "%s", file_OBDM);
-    CHECKs("file_OBDM_MATRIX=", "%s", file_OBDM_MATRIX);
-    CHECKs("file_PD=", "%s", file_PD);
-    CHECKs("file_PD_pure=", "%s", file_PD_pure);
-    CHECKs("file_RD=", "%s", file_RD);
-    CHECKs("file_PDz=", "%s", file_PDz);
-    CHECKs("file_RDz=", "%s", file_RDz);
-    CHECKs("file_R2=", "%s", file_R2);
-    CHECKs("file_z2=", "%s", file_z2);
-    CHECKs("file_R2_pure=", "%s", file_R2_pure);
-    CHECKs("file_z2_pure=", "%s", file_z2_pure);
-    CHECKs("file_Sk=", "%s", file_Sk);
-    CHECKs("file_Sk_pure=", "%s", file_Sk_pure);
-    CHECKs("file_SD=", "%s", file_SD);
+    CHECKs("file_particles=", "%24s", file_particles);
+    CHECKs("file_wf=", "%24s", file_wf);
+    CHECKs("file_wf1b=", "%24s", file_wf1b);
+    CHECKs("file_energy=", "%24s", file_energy);
+    CHECKs("file_OBDM=", "%24s", file_OBDM);
+    CHECKs("file_OBDM_MATRIX=", "%24s", file_OBDM_MATRIX);
+    CHECKs("file_PD=", "%24s", file_PD);
+    CHECKs("file_PD_pure=", "%24s", file_PD_pure);
+    CHECKs("file_RD=", "%24s", file_RD);
+    CHECKs("file_PDz=", "%24s", file_PDz);
+    CHECKs("file_RDz=", "%24s", file_RDz);
+    CHECKs("file_R2=", "%24s", file_R2);
+    CHECKs("file_z2=", "%24s", file_z2);
+    CHECKs("file_R2_pure=", "%24s", file_R2_pure);
+    CHECKs("file_z2_pure=", "%24s", file_z2_pure);
+    CHECKs("file_Sk=", "%24s", file_Sk);
+    CHECKs("file_Sk_pure=", "%24s", file_Sk_pure);
+    CHECKs("file_SD=", "%24s", file_SD);
     CHECK("verbosity=", "%i", &verbosity);
     CHECK("Nmeasure=", "%li", &Nmeasure);
     CHECK("grid_trial=", "%i", &grid_trial);
@@ -678,17 +678,27 @@ int LoadParticleCoordinates(void) {
   FILE *in;
   int w, i;
   DOUBLE Ew;
+  char particles_path[512];
 
   if(verbosity) Warning("Loading walker coordinates ...\n  ");
 
-  in = fopen(INPATH "in3Dprev.in", "r");
+  if(file_particles[0] == '/' || strncmp(file_particles, "./", 2) == 0) {
+    snprintf(particles_path, sizeof(particles_path), "%s", file_particles);
+  }
+  else {
+    snprintf(particles_path, sizeof(particles_path), "%s%s", INPATH, file_particles);
+  }
+  in = fopen(particles_path, "r");
   if(in == NULL) {
     perror("\nError:");
-    Error("\ncan't read %s", file_particles);
+    Error("\ncan't read %s", particles_path);
   }
 
   // Define number of walkers
-  fscanf(in, "%i\n", &Nwalkers);
+  if(fscanf(in, "%i\n", &Nwalkers) != 1 || Nwalkers < 1) {
+    fclose(in);
+    Error("Invalid walker count in %s", particles_path);
+  }
   if(Nwalkers>NwalkersMax) {
     Warning("  Increasing number of maximal walkers in order to be able to load saved coordinates! %i -> %i\n", NwalkersMax, Nwalkers);
     NwalkersMax = Nwalkers;
@@ -698,7 +708,10 @@ int LoadParticleCoordinates(void) {
 
   E = 0.;
   for(w=0; w<Nwalkers; w++) {
-    fscanf(in, "%" LF "\n", &Ew);
+    if(fscanf(in, "%" LF "\n", &Ew) != 1) {
+      fclose(in);
+      Error("Unexpected EOF reading energy for walker %i in %s", w + 1, particles_path);
+    }
 
 #ifdef RESCALE_COORDINATES_TO_OSC_UNITS // rescale to oscillator units
     Ew /= (2.*a*a);
@@ -707,7 +720,10 @@ int LoadParticleCoordinates(void) {
     W[w].E = Ew;
     E += Ew;
     for(i=0; i<N; i++) {
-      fscanf(in, "%" LF " %" LF " %" LF  "\n", &W[w].x[i], &W[w].y[i], &W[w].z[i]);
+      if(fscanf(in, "%" LF " %" LF " %" LF  "\n", &W[w].x[i], &W[w].y[i], &W[w].z[i]) != 3) {
+        fclose(in);
+        Error("Unexpected EOF reading coordinates (walker %i, particle %i) in %s", w + 1, i + 1, particles_path);
+      }
 
 #ifdef RESCALE_COORDINATES_TO_OSC_UNITS // Coordinates are stored in scattering length distances
       W[w].x[i] *= a;
@@ -810,7 +826,7 @@ int SaveCoordinates(char *file_particles) {
   FILE *out;
   int w, i;
   static int times_saved = 0;
-  char filename[20];
+  char filename[64];
 #ifdef SPINFULL
   FILE *file_spin, *file_coord_spin;
 #endif
@@ -822,7 +838,7 @@ int SaveCoordinates(char *file_particles) {
   if(file_particles_append<2)
     out = fopen(file_particles, file_particles_append?"a":"w");
   else {
-    sprintf(filename, "in3Dprev.%i", times_saved++);
+    snprintf(filename, sizeof(filename), "in3Dprev.%i", times_saved++);
     out = fopen(filename, "w");
   }
 

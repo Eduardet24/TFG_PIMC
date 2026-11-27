@@ -17,32 +17,64 @@
 #  include "parallel.h"
 #endif
 
+static FILE *mc_log_file = NULL;
+static int mc_log_initialized = OFF;
+static int mc_log_atexit_registered = OFF;
+
+static void CloseLogFile(void) {
+  if(mc_log_file != NULL) {
+    fflush(mc_log_file);
+    fclose(mc_log_file);
+    mc_log_file = NULL;
+  }
+}
+
+static void BuildLogPath(char *path, size_t size) {
+#ifndef MPI
+  snprintf(path, size, "%sMC.log", OUTPATH);
+#else
+  snprintf(path, size, "%sMC%d.log", OUTPATH, myid);
+#endif
+}
+
+static void WriteToLogFile(const char *prefix, const char *text, int truncate_on_first) {
+  if(mc_log_file == NULL) {
+    char log_path[256];
+    BuildLogPath(log_path, sizeof(log_path));
+    mc_log_file = fopen(log_path, (truncate_on_first && !mc_log_initialized) ? "w" : "a");
+    if(mc_log_file != NULL) {
+      mc_log_initialized = ON;
+      if(!mc_log_atexit_registered) {
+        atexit(CloseLogFile);
+        mc_log_atexit_registered = ON;
+      }
+    }
+  }
+  if(mc_log_file != NULL) {
+    if(prefix != NULL && prefix[0] != '\0') fputs(prefix, mc_log_file);
+    fputs(text, mc_log_file);
+    fflush(mc_log_file);
+  }
+}
+
 /************************************ Error ********************************/
 void Error(const char * format, ...) {
   va_list arg;
-  FILE *out;
-  char text[100];
+  char text[2048];
 
-#ifndef MPI
-  out = fopen(OUTPATH "MC.log","a");
-#else
-  char num[2]=" ";
-  num[0] = '0'+myid;
-  strcpy(text, OUTPATH "MC");
-  strcat(text, num);
-  strcat(text, ".log");
-  out = fopen(text, "a");
-#endif
-  
   va_start(arg, format);
-  vsprintf(text, format, arg);
+  vsnprintf(text, sizeof(text), format, arg);
   va_end(arg);
 
-  fprintf(stderr,"\nFATAL ERROR:\n");
-  fprintf(stderr, "%s\n", text);
-
-  fprintf(out, "\nFATAL ERROR:\n %s", text);
-  fclose(out);
+#ifdef _OPENMP
+#pragma omp critical(mc_log_io)
+#endif
+  {
+    fprintf(stderr, "\nFATAL ERROR:\n");
+    fprintf(stderr, "%s\n", text);
+    WriteToLogFile("\nFATAL ERROR:\n ", text, OFF);
+    CloseLogFile();
+  }
 
 #ifdef MPI
 // MPI_Finalize();
@@ -55,107 +87,93 @@ void Error(const char * format, ...) {
 void Warning(const char *format, ...) {
   va_list arg;
   static int CR = ON, x=20;
-  FILE *out;
-  char text[200];
-
-#ifndef MPI
-  out = fopen(OUTPATH "MC.log", "a");
-#else
-  char num[2]=" ";
-  num[0] = '0'+myid;
-  strcpy(text, OUTPATH "MC");
-  strcat(text, num);
-  strcat(text, ".log");
-  out = fopen(text, "a");
-#endif
+  char text[2048];
+  size_t len;
 
   va_start(arg, format);
-  vsprintf(text, format, arg);
+  vsnprintf(text, sizeof(text), format, arg);
+  va_end(arg);
 
-  if(video == OFF) {
-    printf("WARNING: %s", text);
-  }
-  else{ 
-    if(CR) {
-      setcolor(BLACK);
-      bar(0,20, 1200, 40);
+#ifdef _OPENMP
+#pragma omp critical(mc_log_io)
+#endif
+  {
+    if(video == OFF) {
+      printf("WARNING: %s", text);
     }
-    setcolor(LIGHTRED);
-    outtextxy(x,21,text);
-    if(text[strlen(text)-1] != '\n') {
-      CR = OFF;
-      x += strlen(text)*9;
+    else{
+      if(CR) {
+        setcolor(BLACK);
+        bar(0,20, 1200, 40);
+      }
+      setcolor(LIGHTRED);
+      outtextxy(x,21,text);
+      len = strlen(text);
+      if(len > 0 && text[len-1] != '\n') {
+        CR = OFF;
+        x += (int)len*9;
+      }
+      else {
+        CR = ON;
+        x = 20;
+      }
     }
-    else {
-      CR = ON;
-      x = 20;
-    }
-  }
 
-  if(out) {
-    fprintf(out, "WARNING: %s", text);
-    fclose(out);
+    WriteToLogFile("WARNING: ", text, OFF);
   }
 }
 
-/************************************** Warning ****************************/
+/************************************** Message ****************************/
 void Message(const char * format, ...) {
   va_list arg;
-  static int initialized = OFF;
   static int CR = ON, x=20;
-  FILE *out;
-  char text[200];
-
-#ifndef MPI
-  out = fopen(OUTPATH "MC.log", initialized++?"a":"w");
-#else
-  char num[2]=" ";
-  num[0] = '0'+myid;
-  strcpy(text, OUTPATH "MC");
-  strcat(text, num);
-  strcat(text, ".log");
-  out = fopen(text, initialized++?"a":"w");
-#endif
+  char text[2048];
+  size_t len;
 
   va_start(arg, format);
-  vsprintf(text, format, arg);
+  vsnprintf(text, sizeof(text), format, arg);
+  va_end(arg);
 
-  if(video == OFF) {
-    printf("%s", text);
-  }
-  else{
-    if(CR) {
-      setcolor(BLACK);
-      bar(0,0, 1200, 20);
+#ifdef _OPENMP
+#pragma omp critical(mc_log_io)
+#endif
+  {
+    if(video == OFF) {
+      printf("%s", text);
     }
-    setcolor(WHITE);
-    outtextxy(x,1,text);
-    if(text[strlen(text)-1] != '\n') {
-      CR = OFF;
-      x += strlen(text)*9;
+    else{
+      if(CR) {
+        setcolor(BLACK);
+        bar(0,0, 1200, 20);
+      }
+      setcolor(WHITE);
+      outtextxy(x,1,text);
+      len = strlen(text);
+      if(len > 0 && text[len-1] != '\n') {
+        CR = OFF;
+        x += (int)len*9;
+      }
+      else {
+        CR = ON;
+        x = 20;
+      }
     }
-    else {
-      CR = ON;
-      x = 20;
-    }
-  }
 
-  if(out) {
-    fprintf(out, "%s", text);
-    fclose(out);
+    WriteToLogFile(NULL, text, ON);
   }
 }
 
 /*************************************** Exit *******************************/
 void Exit(int status, const char * format, ...) {
-
   va_list arg;
+  char text[2048];
 
-  Warning(format);
-  fprintf(stderr,"\nExit message: ");
   va_start(arg, format);
-  fprintf(stderr, format, arg);
+  vsnprintf(text, sizeof(text), format, arg);
   va_end(arg);
+
+  Warning("%s", text);
+  fprintf(stderr, "\nExit message: %s", text);
 
   exit(status);
 }
