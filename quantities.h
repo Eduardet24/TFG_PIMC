@@ -33,6 +33,8 @@
 #endif
 
 DOUBLE Energy(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext);
+DOUBLE MeasurePIMCSectorZ(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext,
+                          int do_rad, int do_worm_perm, int do_worm_sf);
 extern DOUBLE Ekin_prim; // Primitive kinetic energy estimator (Feynman-Barker formula)
 DOUBLE WalkerEnergy(struct Walker *walker, DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *EFF, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext);
 DOUBLE WalkerEnergy0(struct Walker *W);

@@ -22,216 +22,549 @@
 
 DOUBLE Ekin_prim = 0.; // Primitive kinetic energy estimator
 
+#if defined(TRAP_POTENTIAL) && defined(BC_ABSENT) && defined(INTERACTION_ABSENT) && \
+    !defined(SPECKLES) && !defined(VEXT_SPLINE_1D) && !defined(VEXT_COS2) && \
+    !defined(VEXT_SOLITON_FIXED_PHASE) && !defined(EXTERNAL_POTENTIAL_Uo_R2) && \
+    !defined(VEXT_IMPURITY_3DSW) && !defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) && \
+    !defined(VEXT_GAUSSIAN) && !defined(VEXT_TRAP_DOUBLE_WELL)
+#  define PIMC_PURE_HARMONIC_TRAP
+#endif
+
+static int *pimc_visited = NULL;
+static int pimc_visited_cap = 0;
+static DOUBLE *pimc_virial_buf = NULL;
+static int pimc_virial_cap = 0;
+static int pimc_scratch_atexit_registered = 0;
+
+static void FreePIMCScratch(void) {
+  if(pimc_visited != NULL) {
+    free(pimc_visited);
+    pimc_visited = NULL;
+  }
+  pimc_visited_cap = 0;
+  if(pimc_virial_buf != NULL) {
+    free(pimc_virial_buf);
+    pimc_virial_buf = NULL;
+  }
+  pimc_virial_cap = 0;
+}
+
+static int EnsurePIMCVisited(int n_particles) {
+  if(!pimc_scratch_atexit_registered) {
+    atexit(FreePIMCScratch);
+    pimc_scratch_atexit_registered = 1;
+  }
+  if(n_particles > pimc_visited_cap) {
+    int *new_vis = (int*) realloc(pimc_visited, (size_t)n_particles * sizeof(int));
+    if(new_vis == NULL) return 0;
+    pimc_visited = new_vis;
+    pimc_visited_cap = n_particles;
+  }
+  return (pimc_visited != NULL);
+}
+
+static int EnsurePIMCVirialBuf(int n_particles) {
+  if(!pimc_scratch_atexit_registered) {
+    atexit(FreePIMCScratch);
+    pimc_scratch_atexit_registered = 1;
+  }
+  if(n_particles > pimc_virial_cap) {
+    DOUBLE *new_buf = (DOUBLE*) realloc(pimc_virial_buf, (size_t)n_particles * 9 * sizeof(DOUBLE));
+    if(new_buf == NULL) return 0;
+    pimc_virial_buf = new_buf;
+    pimc_virial_cap = n_particles;
+  }
+  return (pimc_virial_buf != NULL);
+}
+
 /********************************* Energy ************************************/
-/** @brief Calculate the energy of the system.
+/** @brief Unified Sector-Z measurement for PIMC (energy, radial density, permutations, superfluidity).
  *  @param Epot Pointer to the potential energy.
  *  @param Ekin Pointer to the kinetic energy.
  *  @param Eff Pointer to the effective energy.
  *  @param Edamping Pointer to the damping energy.
  *  @param Eint Pointer to the interaction energy.
  *  @param Eext Pointer to the external energy.
+ *  @param do_rad Nonzero to accumulate RD/RDz/RD_MATRIX/R2 in the same bead pass.
+ *  @param do_worm_perm Nonzero to accumulate worm permutation cycle statistics.
+ *  @param do_worm_sf Nonzero to accumulate worm superfluid estimator.
  *  @return The total energy of the system.
  */
-static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
-                         DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
+DOUBLE MeasurePIMCSectorZ(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
+                          DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext,
+                          int do_rad, int do_worm_perm, int do_worm_sf) {
   DOUBLE spring = 0.;
   DOUBLE virial = 0.;
-  DOUBLE centroid_x = 0., centroid_y = 0., centroid_z = 0.;
-  DOUBLE potential = 0.;
   DOUBLE external = 0.;
   DOUBLE interaction = 0.;
   DOUBLE tau = 1. / (T * (DOUBLE) Nwalkers);
-  int bead;
-  int next_bead;
-  int particle;
-  int other_particle;
+  int bead, next_bead, particle;
   int terms = 0;
   DOUBLE dr[3];
-  DOUBLE r2;
-
-  for(bead=0; bead<Nwalkers; bead++) { // loop over all beads
-    if(W[bead].status != ALIVE) continue; // skip dead walkers
-    next_bead = bead + 1;
-    if(next_bead == Nwalkers) next_bead = 0; // cyclic condition
-    terms++;
-    centroid_x += W[bead].x[0];
-    centroid_y += W[bead].y[0];
-    centroid_z += W[bead].z[0];
-
-    for(particle=0; particle<N; particle++) { // loop over all particles
+#ifndef INTERACTION_ABSENT
+  int other_particle;
+  DOUBLE r2_int;
+#endif
 #ifdef WORM_ALGORITHM
-      int next_p = (worm_next != NULL && worm_open == 0) ? worm_next[bead][particle] : particle;
-      if(next_p < 0) next_p = particle;
+  int worm_closed = (worm_next != NULL && worm_open == 0);
+  int sf_active = (do_worm_sf && worm_closed && Nwalkers > 0 && N > 0 && T > 0.0);
+  int sf_valid = sf_active;
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+  DOUBLE sf_Az_twice = 0.0;
+  DOUBLE sf_Icl_2d = 0.0;
+#elif defined(TRIAL_3D)
+  DOUBLE sf_A_twice[3] = {0.0, 0.0, 0.0};
+  DOUBLE sf_Icl_3d[3] = {0.0, 0.0, 0.0};
+#endif
+#else
+  DOUBLE sf_Wx = 0.0, sf_Wy = 0.0, sf_Wz = 0.0;
+#endif
+#else
+  const int worm_closed = 0;
+  (void)do_worm_perm;
+  (void)do_worm_sf;
+#endif
+
+#ifdef PIMC_PURE_HARMONIC_TRAP
+  int use_nonworm_virial = !worm_closed && EnsurePIMCVirialBuf(N);
+  DOUBLE *ref_x = NULL, *ref_y = NULL, *ref_z = NULL;
+  DOUBLE *sx = NULL, *sx2 = NULL, *sy = NULL, *sy2 = NULL, *sz = NULL, *sz2 = NULL;
+  int has_nonworm_ref = 0;
+  (void)ref_x; (void)ref_y; (void)ref_z;
+  (void)sx; (void)sx2; (void)sy; (void)sy2; (void)sz; (void)sz2;
+  if(use_nonworm_virial) {
+    ref_x = pimc_virial_buf;
+    ref_y = ref_x + N;
+    ref_z = ref_y + N;
+    sx    = ref_z + N;
+    sx2   = sx + N;
+    sy    = sx2 + N;
+    sy2   = sy + N;
+    sz    = sy2 + N;
+    sz2   = sz + N;
+    memset(sx, 0, (size_t)N * 6 * sizeof(DOUBLE));
+  }
+#endif
+
+  /* Radial distribution accumulators */
+  DOUBLE RD_r2_acc = 0., RD_r4_acc = 0.;
+  DOUBLE RDz_r2_acc = 0., RDz_r4_acc = 0.;
+  DOUBLE inv_RD_step = (do_rad && RD.step > 0.) ? (1.0 / RD.step) : 0.;
+  DOUBLE inv_RDz_step = (do_rad && measure_RDz && RDz.step > 0.) ? (1.0 / RDz.step) : 0.;
+  DOUBLE inv_RD_mat_x = (do_rad && measure_RadDistrMATRIX && RD_MATRIX.step_x > 0.) ? (1.0 / RD_MATRIX.step_x) : 0.;
+  DOUBLE inv_RD_mat_y = (do_rad && measure_RadDistrMATRIX && RD_MATRIX.step_y > 0.) ? (1.0 / RD_MATRIX.step_y) : 0.;
+#ifdef BC_SPHERE
+  const int calculate_CM = ON;
+#else
+  const int calculate_CM = R2_subtract_CM;
+#endif
+
+  if(do_rad) {
+    RD.times_measured += Nwalkers;
+    if(measure_RDz) RDz.times_measured += Nwalkers;
+  }
+
+  for(bead=0; bead<Nwalkers; bead++) {
+    int is_alive = (W[bead].status == ALIVE);
+    DOUBLE xCM = 0., yCM = 0., zCM = 0.;
+    DOUBLE bead_R2 = 0., bead_R4 = 0., bead_Z2 = 0., bead_Z4 = 0.;
+#ifdef PIMC_PURE_HARMONIC_TRAP
+    int first_alive_bead = 0;
+    if(is_alive) {
+      if(use_nonworm_virial && !has_nonworm_ref) {
+        first_alive_bead = 1;
+        has_nonworm_ref = 1;
+      }
+      terms++;
+    }
+#else
+    if(is_alive) terms++;
+#endif
+
+    next_bead = (bead + 1 < Nwalkers) ? (bead + 1) : 0;
+
+    if(do_rad && calculate_CM) {
+      for(particle=0; particle<N; particle++) {
+        xCM += W[bead].x[particle];
+        yCM += W[bead].y[particle];
+        zCM += W[bead].z[particle];
+      }
+      xCM /= (DOUBLE) N;
+      yCM /= (DOUBLE) N;
+      zCM /= (DOUBLE) N;
+    }
+
+    for(particle=0; particle<N; particle++) {
+      DOUBLE x = W[bead].x[particle];
+      DOUBLE y = W[bead].y[particle];
+      DOUBLE z = W[bead].z[particle];
+      DOUBLE x2 = 0., y2 = 0., z2_raw = 0.;
+      CaseX(x2 = x * x);
+      CaseY(y2 = y * y);
+      CaseZ(z2_raw = z * z);
+
+      if(do_rad) {
+        DOUBLE r2, r, z2_cm;
+        int n;
+#ifdef BC_ABSENT
+        if(R2_subtract_CM) {
+          r2 = (x - xCM)*(x - xCM) + (y - yCM)*(y - yCM) + (z - zCM)*(z - zCM);
+        } else {
+          r2 = x2 + y2 + z2_raw;
+        }
+#else
+        r2 = x2;
+#endif
+        r = Sqrt(r2);
+#ifndef BC_SPHERE
+        bead_R2 += r2;
+        bead_R4 += r2 * r2;
+#endif
+
+#ifdef BC_ABSENT
+#ifdef TRIAL_1D
+        if(fabs(z) < RD.width) {
+#else
+        if(r < RD.width) {
+#endif
+#else
+        if(r < RD.width) {
+#endif
+          n = (int)(r * inv_RD_step);
+          if(n >= 0 && n < RD.size) RD.N[n]++;
+        }
+
+        z2_cm = (z - zCM) * (z - zCM);
+#ifdef TRIAL_2D
+#if defined(BC_2DPBC) || defined(BC_1DPBC_X)
+        z2_cm = y2;
+#endif
+#endif
+        bead_Z2 += z2_cm;
+        bead_Z4 += z2_cm * z2_cm;
+#ifdef BC_ABSENT
+        if(measure_RDz && r < RDz.width) {
+#else
+        if(measure_RDz) {
+#endif
+          n = (int)(Sqrt(z2_cm) * inv_RDz_step);
+          if(n >= 0 && n < RDz.size) RDz.N[n]++;
+        }
+
+        if(measure_RadDistrMATRIX) {
+          int nx = (int)(x * inv_RD_mat_x);
+          int ny = (int)(y * inv_RD_mat_y);
+          if(nx >= 0 && nx < gridRDx && ny >= 0 && ny < gridRDy) {
+            RD_MATRIX.N[nx][ny]++;
+            RD_MATRIX.times_measured++;
+          }
+        }
+      }
+
+#ifdef WORM_ALGORITHM
+      int raw_next = worm_closed ? worm_next[bead][particle] : particle;
+      if(worm_closed && raw_next < 0) sf_valid = 0;
+      int next_p = (raw_next >= 0) ? raw_next : particle;
 #else
       int next_p = particle;
 #endif
-      dr[0] = W[bead].x[particle] - W[next_bead].x[next_p];
-      dr[1] = W[bead].y[particle] - W[next_bead].y[next_p];
-      dr[2] = W[bead].z[particle] - W[next_bead].z[next_p];
-      spring += FindNearestImage(&dr[0], &dr[1], &dr[2]);
+      DOUBLE x_next = W[next_bead].x[next_p];
+      DOUBLE y_next = W[next_bead].y[next_p];
+      DOUBLE z_next = W[next_bead].z[next_p];
 
-#ifdef EXTERNAL_POTENTIAL
-      external += Vext(W[bead].x[particle], W[bead].y[particle], W[bead].z[particle]); // external potential energy
+      if(is_alive) {
+        dr[0] = x - x_next;
+        dr[1] = y - y_next;
+        dr[2] = z - z_next;
+        spring += FindNearestImage(&dr[0], &dr[1], &dr[2]);
+
+#ifdef PIMC_PURE_HARMONIC_TRAP
+        {
+          DOUBLE v_harm = 0.;
+          CaseX(v_harm += omega_x2 * x2);
+          CaseY(v_harm += omega_y2 * y2);
+          CaseZ(v_harm += omega_z2 * z2_raw);
+          external += 0.5 * v_harm;
+        }
+        if(use_nonworm_virial) {
+          if(first_alive_bead) {
+            CaseX(ref_x[particle] = x);
+            CaseY(ref_y[particle] = y);
+            CaseZ(ref_z[particle] = z);
+          } else {
+            CaseX(DOUBLE dx = x - ref_x[particle]; sx[particle] += dx; sx2[particle] += dx * dx);
+            CaseY(DOUBLE dy = y - ref_y[particle]; sy[particle] += dy; sy2[particle] += dy * dy);
+            CaseZ(DOUBLE dz = z - ref_z[particle]; sz[particle] += dz; sz2[particle] += dz * dz);
+          }
+        }
+#elif defined(EXTERNAL_POTENTIAL)
+        external += Vext(x, y, z);
 #endif
+
+#ifdef WORM_ALGORITHM
+        if(sf_valid) {
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+          sf_Az_twice += x * y_next - y * x_next;
+          sf_Icl_2d += x2 + y2;
+#elif defined(TRIAL_3D)
+          sf_A_twice[0] += y * z_next - z * y_next;
+          sf_A_twice[1] += z * x_next - x * z_next;
+          sf_A_twice[2] += x * y_next - y * x_next;
+          sf_Icl_3d[0] += y2 + z2_raw;
+          sf_Icl_3d[1] += z2_raw + x2;
+          sf_Icl_3d[2] += x2 + y2;
+#endif
+#else
+          CaseX(sf_Wx -= dr[0]);
+          CaseY(sf_Wy -= dr[1]);
+          CaseZ(sf_Wz -= dr[2]);
+#endif
+        }
+#endif
+      }
+#ifdef WORM_ALGORITHM
+      else if(sf_valid) {
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+        sf_Az_twice += x * y_next - y * x_next;
+        sf_Icl_2d += x2 + y2;
+#elif defined(TRIAL_3D)
+        sf_A_twice[0] += y * z_next - z * y_next;
+        sf_A_twice[1] += z * x_next - x * z_next;
+        sf_A_twice[2] += x * y_next - y * x_next;
+        sf_Icl_3d[0] += y2 + z2_raw;
+        sf_Icl_3d[1] += z2_raw + x2;
+        sf_Icl_3d[2] += x2 + y2;
+#endif
+#else
+        dr[0] = x_next - x;
+        dr[1] = y_next - y;
+        dr[2] = z_next - z;
+        FindNearestImage(&dr[0], &dr[1], &dr[2]);
+        CaseX(sf_Wx += dr[0]);
+        CaseY(sf_Wy += dr[1]);
+        CaseZ(sf_Wz += dr[2]);
+#endif
+      }
+#endif
+    }
+
+    if(do_rad) {
+#ifdef BC_SPHERE
+      {
+        DOUBLE cm_r2 = xCM*xCM + yCM*yCM + zCM*zCM;
+        RD.r2 += cm_r2;
+        RD.r4 += cm_r2 * cm_r2;
+        RD_r2_acc += cm_r2;
+        bead_R2 += (DOUBLE) N * cm_r2;
+        bead_R4 += (DOUBLE) N * cm_r2 * cm_r2;
+      }
+#else
+      RD_r2_acc += bead_R2;
+      RD_r4_acc += bead_R4;
+#endif
+      RDz_r2_acc += bead_Z2;
+#ifdef TRIAL_1D
+      RDz_r4_acc += bead_Z2 * bead_Z2;
+#else
+      RDz_r4_acc += bead_Z4;
+#endif
+
+      if(measure_R2) {
+        W[bead].r2 = bead_R2 / (DOUBLE) N;
+        W[bead].r4 = bead_R4 / (DOUBLE) N;
+        W[bead].z2 = bead_Z2 / (DOUBLE) N;
+#ifdef TRIAL_1D
+        W[bead].z4 = bead_Z2 * bead_Z2 / (DOUBLE) N;
+#else
+        W[bead].z4 = bead_Z4 / (DOUBLE) N;
+#endif
+      }
     }
 
 #ifndef INTERACTION_ABSENT
-    for(particle=0; particle<N; particle++) { // loop over all particles
-      for(other_particle=particle+1; other_particle<N; other_particle++) { // loop over all other particles
-        dr[0] = W[bead].x[particle] - W[bead].x[other_particle];
-        dr[1] = W[bead].y[particle] - W[bead].y[other_particle];
-        dr[2] = W[bead].z[particle] - W[bead].z[other_particle];
-        r2 = FindNearestImage(&dr[0], &dr[1], &dr[2]); // find the nearest image distance
-        interaction += InteractionEnergy(Sqrt(r2)); // interaction energy
+    if(is_alive) {
+      for(particle=0; particle<N; particle++) {
+        for(other_particle=particle+1; other_particle<N; other_particle++) {
+          dr[0] = W[bead].x[particle] - W[bead].x[other_particle];
+          dr[1] = W[bead].y[particle] - W[bead].y[other_particle];
+          dr[2] = W[bead].z[particle] - W[bead].z[other_particle];
+          r2_int = FindNearestImage(&dr[0], &dr[1], &dr[2]);
+          interaction += InteractionEnergy(Sqrt(r2_int));
+        }
       }
     }
 #endif
   }
 
+  if(do_rad && Nwalkers > 0 && N > 0) {
+    DOUBLE inv_samples = 1.0 / (DOUBLE)(Nwalkers * N);
+#ifndef BC_SPHERE
+    RD.r2 += RD_r2_acc;
+    RD.r4 = RD_r4_acc * inv_samples;
+#else
+    RD.r4 = RD.r4 * inv_samples;
+#endif
+    RD.r2recent = RD_r2_acc * inv_samples;
+
+    RDz.r2 += RDz_r2_acc;
+    RDz.r2recent = RDz_r2_acc * inv_samples;
+    RDz.r4 = RDz_r4_acc * inv_samples;
+  }
+
+#ifdef WORM_ALGORITHM
+  if(sf_valid) {
+#ifdef BC_ABSENT
+#ifdef TRIAL_2D
+    DOUBLE Az = 0.5 * sf_Az_twice;
+    DOUBLE Icl = sf_Icl_2d / (DOUBLE)Nwalkers;
+
+    worm_sf_samples++;
+    worm_sf_A_sum[2] += Az;
+    worm_sf_A2_sum[2] += Az * Az;
+    worm_sf_Icl_sum[2] += Icl;
+
+    worm_sf_block_samples++;
+    worm_sf_block_A_sum[2] += Az;
+    worm_sf_block_A2_sum[2] += Az * Az;
+    worm_sf_block_Icl_sum[2] += Icl;
+#elif defined(TRIAL_3D)
+    int axis;
+    worm_sf_samples++;
+    worm_sf_block_samples++;
+    for(axis = 0; axis < 3; axis++) {
+      DOUBLE A_ax = 0.5 * sf_A_twice[axis];
+      DOUBLE Icl_ax = sf_Icl_3d[axis] / (DOUBLE)Nwalkers;
+      worm_sf_A_sum[axis] += A_ax;
+      worm_sf_A2_sum[axis] += A_ax * A_ax;
+      worm_sf_Icl_sum[axis] += Icl_ax;
+      worm_sf_block_A_sum[axis] += A_ax;
+      worm_sf_block_A2_sum[axis] += A_ax * A_ax;
+      worm_sf_block_Icl_sum[axis] += Icl_ax;
+    }
+#endif
+#else
+    DOUBLE W2 = sf_Wx * sf_Wx + sf_Wy * sf_Wy + sf_Wz * sf_Wz;
+    worm_sf_samples++;
+    worm_sf_W2_sum += W2;
+    worm_sf_block_samples++;
+    worm_sf_block_W2_sum += W2;
+#endif
+  }
+#endif
+
   if(terms == 0) {
-    *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.; // if no alive walkers, return 0
+    *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.;
     return 0.;
   }
 
-  *Eext = external / ((DOUBLE) terms * N); // average external energy per particle
-  *Eint = interaction / ((DOUBLE) terms * N); // average interaction energy per particle
-  *Epot = *Eext + *Eint; // total potential energy per particle
-  centroid_x /= (DOUBLE) terms;
-  centroid_y /= (DOUBLE) terms;
-  centroid_z /= (DOUBLE) terms;
+  *Eext = external / ((DOUBLE) terms * N);
+  *Eint = interaction / ((DOUBLE) terms * N);
+  *Epot = *Eext + *Eint;
   // Primitive kinetic energy estimator (Feynman-Barker formula requested by professor):
   Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
-#if defined(TRAP_POTENTIAL) && defined(BC_ABSENT) && defined(INTERACTION_ABSENT) && \
-    !defined(SPECKLES) && !defined(VEXT_SPLINE_1D) && !defined(VEXT_COS2) && \
-    !defined(VEXT_SOLITON_FIXED_PHASE) && !defined(EXTERNAL_POTENTIAL_Uo_R2) && \
-    !defined(VEXT_IMPURITY_3DSW) && !defined(EXTERNAL_POTENTIAL_CONSTANT_SPINFULL) && \
-    !defined(VEXT_GAUSSIAN) && !defined(VEXT_TRAP_DOUBLE_WELL)
-  {
-    static DOUBLE *cx = NULL;
-    static DOUBLE *cy = NULL;
-    static DOUBLE *cz = NULL;
-    static int c_cap = 0;
-    DOUBLE zero_mode_factor = 1.0;
-    int num_cycles = 0;
-#ifdef WORM_ALGORITHM
-    if(worm_next != NULL && worm_open == 0) {
-      static int *visited = NULL;
-      static int *ring_p = NULL;
-      static int *ring_w = NULL;
-      static int vis_cap = 0;
-      static int ring_cap = 0;
-      int total_beads = N * Nwalkers;
-      if(N > vis_cap) {
-        int *new_vis = (int*) realloc(visited, (size_t)N * sizeof(int));
-        if(new_vis != NULL) {
-          visited = new_vis;
-          vis_cap = N;
-        }
-      }
-      if(total_beads > ring_cap) {
-        int *new_rp = (int*) realloc(ring_p, (size_t)total_beads * sizeof(int));
-        int *new_rw = (int*) realloc(ring_w, (size_t)total_beads * sizeof(int));
-        if(new_rp != NULL) ring_p = new_rp;
-        if(new_rw != NULL) ring_w = new_rw;
-        if(new_rp != NULL && new_rw != NULL) ring_cap = total_beads;
-      }
-      if(visited != NULL && ring_p != NULL && ring_w != NULL && N <= vis_cap && total_beads <= ring_cap) {
-        memset(visited, 0, (size_t)N * sizeof(int));
-        for(particle=0; particle<N; particle++) {
-          if(visited[particle]) continue;
-          num_cycles++;
-          int ring_beads = 0;
-          int curr_p = particle;
-          int curr_w = 0;
-          DOUBLE sum_cx = 0., sum_cy = 0., sum_cz = 0.;
-          (void)sum_cx;
-          (void)sum_cy;
-          (void)sum_cz;
-          do {
-            if(curr_w == 0) visited[curr_p] = 1;
-            ring_p[ring_beads] = curr_p;
-            ring_w[ring_beads] = curr_w;
-            if(W[curr_w].status == ALIVE) {
-              CaseX(sum_cx += W[curr_w].x[curr_p]);
-              CaseY(sum_cy += W[curr_w].y[curr_p]);
-              CaseZ(sum_cz += W[curr_w].z[curr_p]);
-            }
-            ring_beads++;
-            if(ring_beads >= total_beads) break;
-            curr_p = worm_next[curr_w][curr_p];
-            curr_w = (curr_w + 1) % Nwalkers;
-          } while(!(curr_w == 0 && curr_p == particle));
 
-          if(ring_beads > 0) {
-            CaseX(sum_cx /= (DOUBLE) ring_beads);
-            CaseY(sum_cy /= (DOUBLE) ring_beads);
-            CaseZ(sum_cz /= (DOUBLE) ring_beads);
-            for(int n=0; n<ring_beads; n++) {
-              int w = ring_w[n];
-              int p = ring_p[n];
-              if(W[w].status == ALIVE) {
-                CaseX(virial += (W[w].x[p] - sum_cx) * omega_x2 * W[w].x[p]);
-                CaseY(virial += (W[w].y[p] - sum_cy) * omega_y2 * W[w].y[p]);
-                CaseZ(virial += (W[w].z[p] - sum_cz) * omega_z2 * W[w].z[p]);
-              }
-            }
+#ifdef WORM_ALGORITHM
+  {
+#ifdef PIMC_PURE_HARMONIC_TRAP
+    const int do_virial = 1;
+#else
+    const int do_virial = 0;
+#endif
+    int num_cycles = 0;
+    int cycle_ok = 0;
+    if(worm_closed && (do_worm_perm || do_virial) && EnsurePIMCVisited(N)) {
+      int total_limit = N * Nwalkers;
+      cycle_ok = 1;
+      memset(pimc_visited, 0, (size_t)N * sizeof(int));
+      if(do_worm_perm) worm_cycle_samples++;
+
+      for(particle=0; particle<N; particle++) {
+        if(pimc_visited[particle]) continue;
+        num_cycles++;
+        int L_cycle = 0;
+        int curr_p = particle;
+        int curr_w = 0;
+        int steps = 0;
+        int active_beads = 0;
+        int has_ref = 0;
+        CaseX(DOUBLE x0 = 0.);
+        CaseX(DOUBLE sum_dx = 0.);
+        CaseX(DOUBLE sum_dx2 = 0.);
+        CaseY(DOUBLE y0 = 0.);
+        CaseY(DOUBLE sum_dy = 0.);
+        CaseY(DOUBLE sum_dy2 = 0.);
+        CaseZ(DOUBLE z0 = 0.);
+        CaseZ(DOUBLE sum_dz = 0.);
+        CaseZ(DOUBLE sum_dz2 = 0.);
+
+        do {
+          if(curr_w == 0) {
+            pimc_visited[curr_p] = 1;
+            L_cycle++;
           }
+          if(do_virial && W[curr_w].status == ALIVE) {
+            if(!has_ref) {
+              CaseX(x0 = W[curr_w].x[curr_p]);
+              CaseY(y0 = W[curr_w].y[curr_p]);
+              CaseZ(z0 = W[curr_w].z[curr_p]);
+              has_ref = 1;
+            } else {
+              CaseX(DOUBLE dx = W[curr_w].x[curr_p] - x0; sum_dx += dx; sum_dx2 += dx * dx);
+              CaseY(DOUBLE dy = W[curr_w].y[curr_p] - y0; sum_dy += dy; sum_dy2 += dy * dy);
+              CaseZ(DOUBLE dz = W[curr_w].z[curr_p] - z0; sum_dz += dz; sum_dz2 += dz * dz);
+            }
+            active_beads++;
+          }
+          curr_p = worm_next[curr_w][curr_p];
+          if(curr_p < 0) break;
+          curr_w = (curr_w + 1 < Nwalkers) ? (curr_w + 1) : 0;
+          steps++;
+          if(steps >= total_limit || L_cycle > N) break;
+        } while(!(curr_w == 0 && curr_p == particle));
+
+        if(do_worm_perm && worm_cycle_histogram != NULL && L_cycle <= N) {
+          worm_cycle_histogram[L_cycle] += L_cycle;
         }
-        zero_mode_factor = (DOUBLE)num_cycles / (DOUBLE)N;
-        *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
-        *Eff = *Edamping = 0.;
-        return *Epot + *Ekin;
+        if(do_virial && active_beads > 0) {
+          DOUBLE inv_m = 1.0 / (DOUBLE)active_beads;
+          CaseX(virial += omega_x2 * (sum_dx2 - sum_dx * sum_dx * inv_m));
+          CaseY(virial += omega_y2 * (sum_dy2 - sum_dy * sum_dy * inv_m));
+          CaseZ(virial += omega_z2 * (sum_dz2 - sum_dz * sum_dz * inv_m));
+        }
       }
+    }
+
+#ifdef PIMC_PURE_HARMONIC_TRAP
+    if(worm_closed && cycle_ok) {
+      DOUBLE zero_mode_factor = (DOUBLE)num_cycles / (DOUBLE)N;
+      *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
+      *Eff = *Edamping = 0.;
+      return *Epot + *Ekin;
     }
 #endif
-    if(N > c_cap) {
-      DOUBLE *new_cx = (DOUBLE*) realloc(cx, (size_t)N * sizeof(DOUBLE));
-      DOUBLE *new_cy = (DOUBLE*) realloc(cy, (size_t)N * sizeof(DOUBLE));
-      DOUBLE *new_cz = (DOUBLE*) realloc(cz, (size_t)N * sizeof(DOUBLE));
-      if(new_cx != NULL) cx = new_cx;
-      if(new_cy != NULL) cy = new_cy;
-      if(new_cz != NULL) cz = new_cz;
-      if(new_cx != NULL && new_cy != NULL && new_cz != NULL) c_cap = N;
+  }
+#endif
+
+#ifdef PIMC_PURE_HARMONIC_TRAP
+  if(use_nonworm_virial && terms > 0) {
+    DOUBLE inv_terms = 1.0 / (DOUBLE)terms;
+    for(particle=0; particle<N; particle++) {
+      CaseX(virial += omega_x2 * (sx2[particle] - sx[particle] * sx[particle] * inv_terms));
+      CaseY(virial += omega_y2 * (sy2[particle] - sy[particle] * sy[particle] * inv_terms));
+      CaseZ(virial += omega_z2 * (sz2[particle] - sz[particle] * sz[particle] * inv_terms));
     }
-    if(cx != NULL && cy != NULL && cz != NULL && N <= c_cap) {
-      for(particle=0; particle<N; particle++) {
-        cx[particle] = 0.;
-        cy[particle] = 0.;
-        cz[particle] = 0.;
-      }
-      for(bead=0; bead<Nwalkers; bead++) {
-        if(W[bead].status != ALIVE) continue;
-        for(particle=0; particle<N; particle++) {
-          CaseX(cx[particle] += W[bead].x[particle]);
-          CaseY(cy[particle] += W[bead].y[particle]);
-          CaseZ(cz[particle] += W[bead].z[particle]);
-        }
-      }
-      for(particle=0; particle<N; particle++) {
-        CaseX(cx[particle] /= (DOUBLE) terms);
-        CaseY(cy[particle] /= (DOUBLE) terms);
-        CaseZ(cz[particle] /= (DOUBLE) terms);
-      }
-      for(bead=0; bead<Nwalkers; bead++) {
-        if(W[bead].status != ALIVE) continue;
-        for(particle=0; particle<N; particle++) {
-          CaseX(virial += (W[bead].x[particle] - cx[particle]) * omega_x2 * W[bead].x[particle]);
-          CaseY(virial += (W[bead].y[particle] - cy[particle]) * omega_y2 * W[bead].y[particle]);
-          CaseZ(virial += (W[bead].z[particle] - cz[particle]) * omega_z2 * W[bead].z[particle]);
-        }
-      }
-      *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
-    }
-    else {
-      *Ekin = Ekin_prim;
-    }
+    *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
+  } else {
+    *Ekin = Ekin_prim;
   }
 #else
   *Ekin = Ekin_prim;
 #endif
   *Eff = *Edamping = 0.;
-  potential = *Epot + *Ekin;
-  return potential;
+  return *Epot + *Ekin;
 }
 
 // returns energy of the system averaged over all walkers
@@ -241,7 +574,7 @@ DOUBLE Energy(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff, DOUBLE *Edamping, DOUBLE 
   int terms = 0;
 
   if(MC == PIMC) {
-    return EnergyPIMC(Epot, Ekin, Eff, Edamping, Eint, Eext);
+    return MeasurePIMCSectorZ(Epot, Ekin, Eff, Edamping, Eint, Eext, 0, 0, 0);
   }
 
   *Epot = *Ekin = *Eff = *Edamping = *Eint = *Eext = 0.;

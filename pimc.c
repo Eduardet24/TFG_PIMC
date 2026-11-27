@@ -1818,22 +1818,26 @@ DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], c
 
 void MeasureWormSuperfluid(void) {
   int w, p;
+  (void)w;
+  (void)p;
 
   if(worm_open != 0 || worm_next == NULL || Nwalkers <= 0 || N <= 0 || T <= 0.0) return;
 
 #ifdef BC_ABSENT
 #ifdef TRIAL_2D
-  DOUBLE Az = 0.0;
+  DOUBLE Az_twice = 0.0;
   DOUBLE Icl = 0.0;
   for(w = 0; w < Nwalkers; w++) {
-    int w_next = (w + 1) % Nwalkers;
+    int w_next = (w + 1 < Nwalkers) ? (w + 1) : 0;
     for(p = 0; p < N; p++) {
       int p_next = worm_next[w][p];
       if(p_next < 0) return;
-      Az += 0.5 * (W[w].x[p] * W[w_next].y[p_next] - W[w].y[p] * W[w_next].x[p_next]);
-      Icl += W[w].x[p] * W[w].x[p] + W[w].y[p] * W[w].y[p];
+      DOUBLE x = W[w].x[p], y = W[w].y[p];
+      Az_twice += x * W[w_next].y[p_next] - y * W[w_next].x[p_next];
+      Icl += x * x + y * y;
     }
   }
+  DOUBLE Az = 0.5 * Az_twice;
   Icl /= (DOUBLE)Nwalkers;
 
   worm_sf_samples++;
@@ -1850,15 +1854,15 @@ void MeasureWormSuperfluid(void) {
   DOUBLE Icl[3] = {0.0, 0.0, 0.0};
   int axis;
   for(w = 0; w < Nwalkers; w++) {
-    int w_next = (w + 1) % Nwalkers;
+    int w_next = (w + 1 < Nwalkers) ? (w + 1) : 0;
     for(p = 0; p < N; p++) {
       int p_next = worm_next[w][p];
       if(p_next < 0) return;
       DOUBLE x1 = W[w].x[p], y1 = W[w].y[p], z1 = W[w].z[p];
       DOUBLE x2 = W[w_next].x[p_next], y2 = W[w_next].y[p_next], z2 = W[w_next].z[p_next];
-      A[0] += 0.5 * (y1 * z2 - z1 * y2);
-      A[1] += 0.5 * (z1 * x2 - x1 * z2);
-      A[2] += 0.5 * (x1 * y2 - y1 * x2);
+      A[0] += y1 * z2 - z1 * y2;
+      A[1] += z1 * x2 - x1 * z2;
+      A[2] += x1 * y2 - y1 * x2;
       Icl[0] += y1 * y1 + z1 * z1;
       Icl[1] += z1 * z1 + x1 * x1;
       Icl[2] += x1 * x1 + y1 * y1;
@@ -1867,6 +1871,7 @@ void MeasureWormSuperfluid(void) {
   worm_sf_samples++;
   worm_sf_block_samples++;
   for(axis = 0; axis < 3; axis++) {
+    A[axis] *= 0.5;
     Icl[axis] /= (DOUBLE)Nwalkers;
     worm_sf_A_sum[axis] += A[axis];
     worm_sf_A2_sum[axis] += A[axis] * A[axis];
@@ -1879,7 +1884,7 @@ void MeasureWormSuperfluid(void) {
 #else
   DOUBLE Wx = 0.0, Wy = 0.0, Wz = 0.0;
   for(w = 0; w < Nwalkers; w++) {
-    int w_next = (w + 1) % Nwalkers;
+    int w_next = (w + 1 < Nwalkers) ? (w + 1) : 0;
     for(p = 0; p < N; p++) {
       int p_next = worm_next[w][p];
       if(p_next < 0) return;

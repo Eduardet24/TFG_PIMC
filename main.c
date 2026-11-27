@@ -1441,10 +1441,6 @@ int main(int argn, char **argv) {
             worm_block_energy_sum[2] += Ekin;
             worm_block_energy_samples++;
           }
-#endif
-          MeasureWormPermutations();
-          MeasureWormSuperfluid();
-#ifdef WORM_ALGORITHM
           if(MC == PIMC && block == blck - 1 && !worm_saved_coords) {
             SaveCoordinates(file_particles);
             worm_saved_coords = 1;
@@ -1760,10 +1756,14 @@ void Measure(int block, int iter) {
     }
   }
   else if(MC == PIMC) {
-    if(measure_RadDistr) MeasureRadialDistribution();
+#ifdef WORM_ALGORITHM
+    Eo = E = MeasurePIMCSectorZ(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext,
+                                measure_RadDistr, 1, 1);
+#else
+    Eo = E = MeasurePIMCSectorZ(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext,
+                                measure_RadDistr, 0, 0);
+#endif
     if(measure_R2 && measure_RadDistr) SaveMeanR2();
-
-    Eo = E = Energy(&Epot, &Ekin, &EFF, &Edamping, &Eint, &Eext);
 
     if(measure_energy && iter % Nmeasure == 0) {
       SaveEnergyPIMC(E, Epot, Ekin, Ekin_prim);
