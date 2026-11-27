@@ -1,27 +1,8 @@
 # Simulación PIMC de Osciladores Armónicos 1D y 2D
 
-Este repositorio contiene la implementación y el entorno de trabajo para simulaciones de **Monte Carlo Cuántico** (Quantum Monte Carlo, QMC), principalmente **Path Integral Monte Carlo (PIMC)** para osciladores armónicos 1D y 2D. Incluye un algoritmo Worm con muestreo de permutaciones bosónicas y un benchmark canónico 2D de partículas ideales con `N > 1`. El código base en C está desarrollado originalmente por G. E. Astrakharchik (2001–2017) y ha sido configurado y complementado para el Trabajo de Fin de Grado (TFG).
+Entorno de trabajo para simulaciones de **Monte Carlo Cuántico (QMC)**, centrado en **Path Integral Monte Carlo (PIMC)** para osciladores armónicos en 1D y 2D. Incluye un **algoritmo Worm** con muestreo de permutaciones bosónicas, estimadores de densidad, energía, OBDM y superfluidez, y un benchmark canónico 2D para $N > 1$.
 
----
-
-## Índice
-
-- [1. Estructura del Repositorio](#1-estructura-del-repositorio)
-- [2. Requisitos y Dependencias](#2-requisitos-y-dependencias)
-- [3. Compilación](#3-compilación)
-- [4. Configuración (`MC.cfg`)](#4-configuración-mccfg)
-- [5. Flujo de Simulación](#5-flujo-de-simulación)
-  - [5.1 Simulación Individual](#51-simulación-individual)
-  - [5.2 Campañas Automatizadas por Lotes (`Script_Lote_PIMC.py`)](#52-campañas-automatizadas-por-lotes-script_lote_pimcpy)
-- [6. Scripts de Análisis y Gráficas](#6-scripts-de-análisis-y-gráficas)
-  - [6.1 Densidad y Virial (`Script_Armonico1D_basico.py`)](#61-densidad-y-virial-script_armonico1d_basicopy)
-  - [6.2 Convergencia en Beads (`Script_EPvsBeads`)](#62-convergencia-en-beads-script_epvsbeads)
-  - [6.3 Energía Potencial vs Temperatura (`Script_EPvsT`)](#63-energía-potencial-vs-temperatura-script_epvst)
-  - [6.4 Ajustes Cuadráticos (`Script_Convergencia_AR0.py`)](#64-ajustes-cuadráticos-script_convergencia_ar0py)
-  - [6.5 Script Gnuplot (`scritpt_Rdz_grigori`)](#65-script-gnuplot-scritpt_rdz_grigori)
-  - [6.6 Benchmark de N partículas en 2D](#66-benchmark-de-n-partículas-en-2d)
-- [7. Organización de Resultados (`Resultados/`)](#7-organización-de-resultados-resultados)
-- [8. Modelos Físicos y Referencias Analíticas](#8-modelos-físicos-y-referencias-analíticas)
+El código base en C fue desarrollado originalmente por G. E. Astrakharchik (2001–2017) y ha sido adaptado y ampliado para el Trabajo de Fin de Grado (TFG).
 
 ---
 
@@ -29,256 +10,115 @@ Este repositorio contiene la implementación y el entorno de trabajo para simula
 
 ```text
 Grigori_codigo/
-├── MC                  # Ejecutable binario compilado
-├── MC.cfg              # Archivo principal de configuración y parámetros
-├── main.c, pimc.c, ... # Código fuente en C (módulos MC, PIMC, DMC, VMC, etc.)
-├── Makefile.txt        # Makefile para compilación con Intel (icc)
-├── Makefile.AMD        # Makefile alternativo
-│
-├── scripts/                             # Scripts de análisis, verificación y graficación en Python
-│   ├── Script_Lote_PIMC.py              # Automatización de barridos (T, N_beads)
-│   ├── Script_Armonico1D_basico.py      # Análisis de densidad n(x) y virial para una corrida
-│   ├── Script_EPvsBeads                 # Estudio de convergencia Epot vs 1/N_beads
-│   ├── Script_EPvsT                     # Comparación Epot vs T (analítico, clásico y PIMC)
-│   ├── Script_Convergencia_AR0.py       # Extrapolaciones parabólicas de convergencia
-│   └── Script_Comparacion_N_Particulas_2D.py # Benchmark N>1 y referencias ideales 2D
-├── scritpt_Rdz_grigori                  # Script de graficación rápida con gnuplot
-│
-├── Resultados/
-│   └── 1DArmonico/
-│       ├── AR0/                 # Series con acceptance_rate = 0 (paso fijo dt_vmc)
-│       ├── AR50/                # Series con acceptance_rate = 50%
-│       │   └── lote_modos_normales_blck1000/
-│       │       └── Temp<T>/
-│       │           └── N<beads>/
-│       └── ejecucion_actual/    # Salidas temporales del análisis individual
-│
-└── Doxyfile            # Configuración para documentación con Doxygen
+├── MC                      # Binario compilado
+├── MC.cfg                  # Configuración principal de la simulación
+├── *.c, *.h                # Código fuente en C (MC, PIMC, DMC, VMC, Worm, etc.)
+├── Makefile.txt / .AMD     # Makefiles para compilación (icc / AMD)
+├── scritpt_Rdz_grigori     # Script de graficación rápida con gnuplot
+├── scripts/                # Scripts de análisis, verificación y campañas en Python
+└── Resultados/             # Salidas organizadas por estudio/campaña
 ```
 
 ---
 
-## 2. Requisitos y Dependencias
+## 2. Requisitos y Compilación
 
-- **Compilador de C:** `gcc` con soporte OpenMP o Intel C Compiler (`icc`).
-- **Python 3:** versión 3.8 o superior.
-- **Librerías Python:**
-  ```bash
-  pip install numpy matplotlib scipy
-  ```
-- **Opcionales:**
-  - `gnuplot` (para ejecutar `scritpt_Rdz_grigori`).
-  - `doxygen` (para generar documentación del código C).
+- **Compilador C:** `gcc` con OpenMP (recomendado) o Intel C Compiler (`icc`).
+- **Python 3.8+:** `pip install numpy matplotlib scipy`
+- **Opcionales:** `gnuplot`, `doxygen`.
 
----
-
-## 3. Compilación
-
-### Compilación estándar con GCC (recomendada)
-
-Desde el directorio `Grigori_codigo/`:
+Compilación desde la raíz (`Grigori_codigo/`):
 
 ```bash
+# GCC con OpenMP (recomendada)
 gcc -O2 -fopenmp *.c -lm -o MC
-```
 
-### Compilación con Intel C Compiler (`icc`)
-
-```bash
+# Alternativa con Intel (icc)
 make -f Makefile.txt
 ```
 
-Para limpiar archivos objeto generados:
-
-```bash
-make -f Makefile.txt clean
-```
-
 ---
 
-## 4. Configuración (`MC.cfg`)
-
-El archivo [MC.cfg](file:///home/edugimeno/Documents/Uni/TFG/Grigori_codigo/MC.cfg) gobierna todos los parámetros de la simulación. 
+## 3. Configuración (`MC.cfg`) y Salidas
 
 > [!IMPORTANT]
-> **Sintaxis estricta:** Los parámetros deben especificarse sin espacio antes del signo igual (ejemplo: `T= 0.5`, **no** `T = 0.5`).
-
-### Parámetros principales
+> **Sintaxis estricta:** los parámetros deben escribirse sin espacio antes del signo `=` (ej. `T= 0.5`, **no** `T = 0.5`).
 
 | Parámetro | Valor típico | Descripción |
 | :--- | :--- | :--- |
-| `MC=` | `3` | Tipo de simulación: `0` (VMC), `1` (DMC), `3` (PIMC). |
-| `Npop=` | `5` .. `30` | Número de réplicas temporales o *beads* ($N_{\text{beads}}$). |
-| `T=` | `0.5` .. `4.0` | Temperatura del sistema en unidades reducidas ($\hbar = m = \omega = k_B = 1$). |
-| `N=` | `1` | Número de partículas (1 para oscilador armónico individual). |
-| `omega_z=` | `1` | Frecuencia del potencial armónico $V(z) = \frac{1}{2} m \omega_z^2 z^2$. |
-| `acceptance_rate=` | `50` | Tasa de aceptación objetivo (%). Si es `0`, se usa desplazamiento fijo vía `dt_vmc`. |
-| `dt_vmc=` | `1e-2` | Paso temporal/desplazamiento cuando `acceptance_rate= 0`. |
-| `blck_heating=` | `100` | Bloques de termalización/calentamiento descartados. |
-| `blck=` | `1000` | Número de bloques para toma de medidas. |
-| `Niter=` | `1000` | Iteraciones por bloque. |
-| `Nmeasure=` | `1` | Frecuencia de muestreo (cada cuántas iteraciones se mide). |
-| `measure_energy=` | `1` | Medir energías y guardar en `file_energy` (`oute.dat`). |
-| `measure_RadDistr=`| `1` | Medir distribución radial/espacial en `file_RD` (`outrd.dat`). |
+| `MC=` | `3` | Método: `0` (VMC), `1` (DMC), `3` (PIMC). |
+| `Npop=` | `5` .. `30` | Número de *beads* o réplicas temporales ($N_{\text{beads}}$). |
+| `T=` | `0.5` .. `4.0` | Temperatura en unidades reducidas ($\hbar = m = \omega = k_B = 1$). |
+| `N=` | `1` .. `5` | Número de partículas. |
+| `omega_z=` | `1` | Frecuencia del potencial armónico. |
+| `acceptance_rate=` | `50` | Tasa de aceptación objetivo (%). Con `0` usa paso fijo `dt_vmc`. |
+| `blck_heating=` / `blck=` | `100` / `1000` | Bloques de termalización y de medida. |
+| `Niter=` / `Nmeasure=` | `1000` / `1` | Iteraciones por bloque y frecuencia de muestreo. |
+| `measure_energy=` / `measure_RadDistr=` | `1` / `1` | Activa el guardado de energía (`oute.dat`) y densidad (`outrd.dat`). |
 
-### Archivos de salida producidos por `./MC`
-
-- **`oute.dat`**: Registro de energía por bloque/muestra. Columnas: `# Etot Epot Ekin`.
-- **`outrd.dat`**: Distribución de posiciones/radial $n(r)$.
-- **`MC.log`**: Registro de ejecución, estadísticas de aceptación y resumen.
+**Salidas principales de `./MC`:**
+- `oute.dat`: energías por bloque (`# Etot Epot Ekin`).
+- `outrd.dat`: distribución espacial/radial $n(r)$.
+- `MC.log`: registro de ejecución y tasas de aceptación.
+- `outworm_*.dat`: estadísticas del algoritmo Worm (ciclos, permutaciones, *gap*, OBDM, *snapshots*).
 
 ---
 
-## 5. Flujo de Simulación
+## 4. Uso Rápido
 
-### 5.1 Simulación Individual
+Ejecutar siempre los comandos desde la raíz del repositorio (`Grigori_codigo/`).
 
-1. Ajusta los parámetros deseados en `MC.cfg` (por ejemplo, `Npop= 20`, `T= 1.0`).
-2. Ejecuta el binario:
-   ```bash
-   ./MC
-   ```
-3. Analiza los resultados inmediatamente con:
-   ```bash
-   python3 scripts/Script_Armonico1D_basico.py
-   ```
-   Las gráficas y el resumen numérico se guardarán en `Resultados/1DArmonico/ejecucion_actual/`.
-
-### 5.2 Campañas Automatizadas por Lotes (`Script_Lote_PIMC.py`)
-
-Para barridos sistemáticos en temperatura y número de beads sin intervención manual:
-
+### Simulación individual
 ```bash
-# Ver el plan de ejecución sin correr simulaciones (dry-run)
-python3 scripts/Script_Lote_PIMC.py
-
-# Lanzar la matriz predeterminada
-python3 scripts/Script_Lote_PIMC.py --run
-
-# Lanzar una campaña personalizada
-python3 scripts/Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,25,30 --campaign lote_modos_normales_blck1000
+./MC
+python3 scripts/Script_Armonico1D_basico.py
 ```
 
-**Características del script de lotes:**
-- Crea la jerarquía `Resultados/1DArmonico/AR<rate>/<campaña>/Temp<T>/N<beads>/`.
-- Copia de forma aislada la configuración `MC.cfg` y el ejecutable `MC` en cada carpeta.
-- Guarda el log completo en `run.log`.
-- Comprueba la validez y número de filas de `oute.dat` antes de marcar la corrida con `.complete`.
-- Si una corrida ya fue completada exitosamente, la omite automáticamente.
+### Campaña automatizada por lotes (1D)
+```bash
+# Previsualizar el plan sin ejecutar simulaciones (dry-run)
+python3 scripts/Script_Lote_PIMC.py
 
-### 5.3 Benchmark de partículas ideales en 2D
+# Ejecutar matriz por defecto o personalizada
+python3 scripts/Script_Lote_PIMC.py --run
+python3 scripts/Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,25,30 --campaign lote_modos_normales_blck1000
+```
+Las corridas completadas se guardan en `Resultados/1DArmonico/AR<rate>/<campaña>/Temp<T>/N<beads>/` con un marcador `.complete` para evitar repetir simulaciones ya terminadas.
 
-El benchmark usa `INTERACTION_ABSENT`, una trampa armónica 2D y el muestreador exacto de modos normales para cada camino. Se ejecuta con `N > 1`, pero sin intercambios: representa partículas distinguibles. Las curvas analíticas distinguible y Bose canónica permiten comprobar la energía y el perfil de densidad antes de implementar el Worm Algorithm.
-
+### Benchmark 2D ($N > 1$)
 ```bash
 python3 scripts/Script_Comparacion_N_Particulas_2D.py --run --particles 5
 ```
 
-Con `--run`, el script compila los fuentes C actuales en un directorio temporal y usa ese ejecutable para las simulaciones, evitando depender del `MC` precompilado del repositorio. Los datos se guardan bajo `Resultados/NParticulas2D/`. Para evaluar convergencia de discretización, repetir la corrida con distintos valores de `--beads`; las referencias analíticas corresponden al límite continuo.
+---
+
+## 5. Scripts de Análisis y Verificación (`scripts/`)
+
+| Script | Propósito |
+| :--- | :--- |
+| `Script_Lote_PIMC.py` | Automatización de barridos en $(T, N_{\text{beads}})$. |
+| `Script_Armonico1D_basico.py` | Densidad $n(x)$, residuos y energías por virial de la corrida actual. |
+| `Script_EPvsBeads` | Convergencia de $E_{\text{pot}}$ frente a $1/N_{\text{beads}}$ y extrapolación al continuo. |
+| `Script_EPvsT` | Comparación de $E_{\text{pot}}(T)$ frente a los modelos clásico y cuántico exacto. |
+| `Script_Convergencia_AR0.py` | Ajustes cuadráticos de convergencia para series `AR0` / `AR50`. |
+| `Script_Caminos_Armonico_2D.py` | Visualización de caminos cerrados y fluctuaciones del centroide en 2D. |
+| `Script_Comparacion_N_Particulas_2D.py` | Benchmark $N>1$ en 2D frente a curvas analíticas distinguible y Bose canónica. |
+| `ejecutar_verificacion_fase2.py` / `fase3.py` / `fase4.py` | Baterías de verificación del algoritmo Worm (energía, densidad, permutaciones). |
+| `ejecutar_verificacion_obdm.py` | Verificación de la matriz densidad de un cuerpo (OBDM). |
+| `generar_densidad_comparativa.py` | Gráficos comparativos de densidad radial (con/sin *swap*, bandas $3\sigma$). |
+| `generar_graficos_energia.py` | Gráficos de energía y tablas de verificación. |
+| `generar_graficos_obdm.py` | Mapas de calor 2D y cortes de la OBDM. |
+| `generar_graficos_superfluidez.py` | Análisis y figuras de fracción superfluida. |
+| `generar_graficos_dornheim_worm.py` | Figuras de *snapshots* del algoritmo Worm. |
+| `worm_config.py` | Utilidades compartidas de configuración para los scripts Worm. |
 
 ---
 
-## 6. Scripts de Análisis y Gráficas
+## 6. Referencias Analíticas (Oscilador Armónico 1D)
 
-### 6.1 Densidad y Virial (`Script_Armonico1D_basico.py`)
-- **Propósito:** Procesa `outrd.dat` y `oute.dat` de la simulación actual o local.
-- **Salida:**
-  - Compara la distribución $n(x)$ simulada con la curva analítica cuántica $n_{\text{exact}}(x) = \sqrt{\frac{\alpha}{\pi}} e^{-\alpha x^2}$.
-  - Gráfica de residuos con barras de error estadístico.
-  - Estimación de $\langle x^2 \rangle$, energía potencial $E_{\text{pot}} = \frac{1}{2} \langle x^2 \rangle$, energía cinética y energía total según el teorema del virial.
-  - Guarda los archivos en `Resultados/1DArmonico/ejecucion_actual/`.
+En unidades reducidas ($\hbar = m = \omega = k_B = 1$) con $\beta = 1/T$ y $\alpha = \tanh(\beta/2)$:
 
-### 6.2 Convergencia en Beads (`Script_EPvsBeads`)
-- **Propósito:** Evalúa la convergencia de la energía potencial en función del número de cuentas temporales ($N_{\text{beads}}$) a temperatura fija.
-- **Método:**
-  - Lee los `oute.dat` de todas las carpetas `N<beads>` completadas para la temperatura configurada en `MC.cfg`.
-  - Promedia por bloques para estimar el valor medio y la incertidumbre estadística de $E_{\text{pot}}$.
-  - Grafica $E_{\text{pot}}$ frente a $1/N_{\text{beads}}$ y ajusta una recta para extrapolar al límite continuo $N_{\text{beads}} \to \infty$ ($1/N \to 0$).
-  - Compara el resultado extrapolado con el valor cuántico analítico exacto.
-- **Ejecución:**
-  ```bash
-  python3 scripts/Script_EPvsBeads
-  ```
-  Guarda la gráfica en `convergencia_energia_potencialvsBeads.png` dentro del directorio de la campaña.
-
-### 6.3 Energía Potencial vs Temperatura (`Script_EPvsT`)
-- **Propósito:** Analiza la respuesta térmica del oscilador armónico comparando los regímenes cuántico y clásico.
-- **Método:**
-  - Escanea los resultados de una campaña, detecta los $N_{\text{beads}}$ disponibles y solicita interactivamente cuál analizar.
-  - Representa $\langle U \rangle(T)$ frente a:
-    1. **Modelo clásico:** $E_{\text{pot}} = \frac{1}{2} T$ (teorema de equipartición).
-    2. **Modelo cuántico exacto:** $E_{\text{pot}} = \frac{1}{4} \coth\left(\frac{1}{2T}\right)$.
-    3. **Puntos PIMC:** Con sus respectivas barras de error.
-- **Ejecución:**
-  ```bash
-  python3 scripts/Script_EPvsT
-  ```
-  Genera `energia_potencial_vs_temperatura.png`.
-
-### 6.4 Ajustes Cuadráticos (`Script_Convergencia_AR0.py`)
-- Realiza ajustes polinómicos de orden 2 en $1/N_{\text{beads}}$ para series con tasa de aceptación cero (`AR0`) o fija (`AR50`) a partir de archivos `convergencia_beads_1D.csv`.
-
-### 6.5 Script Gnuplot (`scritpt_Rdz_grigori`)
-- Script rápido para visualizar la función de distribución radial usando gnuplot:
-  ```bash
-  gnuplot scritpt_Rdz_grigori
-  ```
-
-### 6.6 Benchmark de N partículas en 2D
-
-`Script_Comparacion_N_Particulas_2D.py` compara la energía por partícula y la densidad radial del PIMC Worm con las soluciones distinguible y Bose canónica a N fijo. La campaña guarda medias por bloque MC en el sector Z para estimar incertidumbres y compara las fracciones de longitudes de ciclo con la distribución canónica exacta. La fracción condensada mostrada es una referencia analítica, no un estimador independiente medido por la simulación.
-
----
-
-## 7. Organización de Resultados (`Resultados/`)
-
-Los resultados se archivan siguiendo una taxonomía clara según la tasa de aceptación, la campaña y los parámetros físicos:
-
-```text
-Resultados/
-└── 1DArmonico/
-    ├── AR0/                                   # Paso fijo dt_vmc
-    │   ├── N10/
-    │   ├── N20/
-    │   └── N30/
-    └── AR50/                                  # Tasa de aceptación 50%
-        └── lote_modos_normales_blck1000/      # Nombre de la campaña
-            ├── Temp0.5/
-            │   ├── N5/
-            │   │   ├── MC.cfg                 # Parámetros exactos de esta corrida
-            │   │   ├── oute.dat               # Energías por bloque
-            │   │   ├── outrd.dat              # Distribución radial
-            │   │   ├── run.log                # Salida estándar del ejecutable
-            │   │   └── .complete              # Marcador de corrida finalizada
-            │   ├── N10/
-            │   └── ...
-            ├── Temp1/
-            ├── Temp2/
-            ├── convergencia_energia_potencialvsBeads.png
-            └── energia_potencial_vs_temperatura.png
-```
-
----
-
-## 8. Modelos Físicos y Referencias Analíticas
-
-Para una partícula en un potencial armónico $V(x) = \frac{1}{2} m \omega^2 x^2$ en unidades reducidas ($\hbar = m = \omega = k_B = 1$):
-
-### 1. Parámetro térmico
-$$\beta = \frac{1}{T}, \quad \alpha = \tanh\left(\frac{\beta}{2}\right) = \tanh\left(\frac{1}{2T}\right)$$
-
-### 2. Distribución de densidad analítica
-$$n(x) = \left(\frac{\alpha}{\pi}\right)^{1/2} \exp\left(-\alpha x^2\right)$$
-
-### 3. Dispersión cuadrática media
-$$\langle x^2 \rangle = \frac{1}{2\alpha} = \frac{1}{2\tanh\left(\frac{1}{2T}\right)}$$
-
-### 4. Energías por el Teorema del Virial
-Para el oscilador armónico unidimensional:
-$$E_{\text{pot}} = \frac{1}{2} \langle x^2 \rangle, \quad E_{\text{kin}} = E_{\text{pot}}, \quad E_{\text{tot}} = 2 E_{\text{pot}} = \frac{1}{2\tanh\left(\frac{1}{2T}\right)}$$
-
-### 5. Límites asintóticos de la energía potencial
-- **Límite de baja temperatura ($T \to 0$ / fundamental cuántico):**
-  $$E_{\text{pot}} \to \frac{1}{4} \hbar \omega = 0.25$$
-- **Límite de alta temperatura ($T \to \infty$ / límite clásico):**
-  $$\tanh(x) \approx x \implies E_{\text{pot}} \to \frac{1}{2} T$$
+- **Densidad:** $n(x) = \sqrt{\frac{\alpha}{\pi}} e^{-\alpha x^2}$
+- **Dispersión cuadrática media:** $\langle x^2 \rangle = \frac{1}{2\alpha}$
+- **Energías (virial):** $E_{\text{pot}} = E_{\text{kin}} = \frac{1}{2}\langle x^2 \rangle = \frac{1}{4}\coth\left(\frac{1}{2T}\right)$, $\quad E_{\text{tot}} = 2E_{\text{pot}}$
+- **Límites de $E_{\text{pot}}$:** $0.25$ cuando $T \to 0$ (estado fundamental); $\frac{1}{2}T$ cuando $T \to \infty$ (equipartición clásica).
