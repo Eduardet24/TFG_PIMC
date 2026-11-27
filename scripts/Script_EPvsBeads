@@ -20,7 +20,7 @@ import numpy as np
 from scipy.stats import linregress
 
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
 OUTPUT_NAME = 'convergencia_energia_potencialvsBeads.png'
 CAMPAIGN_NAME = 'lote_modos_normales_blck1000'

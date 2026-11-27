@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico'
 DEFAULT_BEAD_COUNTS = (5, 10, 15, 20, 25, 30)
 DEFAULT_RUN_MATRIX = (

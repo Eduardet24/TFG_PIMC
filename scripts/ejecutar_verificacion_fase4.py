@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from worm_config import get_n_particles
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.environ.get("WORM_FASE4_RUN_DIR", SCRIPT_DIR)
 OUTPUT_DIR = os.environ.get(
     "WORM_FASE4_OUTPUT_DIR",

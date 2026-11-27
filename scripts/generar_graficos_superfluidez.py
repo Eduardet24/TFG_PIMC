@@ -39,7 +39,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
 BASE_OUT = SCRIPT_DIR / "Resultados" / "Verificacion_Superfluidez"
 DIR_TEMP = BASE_OUT / "01_Dependencia_Temperatura"
 DIR_PERM = BASE_OUT / "02_Correlacion_Permutaciones_y_MCMC"

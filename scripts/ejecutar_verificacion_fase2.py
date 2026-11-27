@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from Script_Comparacion_N_Particulas_2D import analytical_bose_density, analytical_bose_energy
 from worm_config import get_n_particles
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Fase2_Worm")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

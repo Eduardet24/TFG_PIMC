@@ -21,9 +21,10 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if SCRIPT_DIR not in sys.path:
-    sys.path.insert(0, SCRIPT_DIR)
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
+SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 
 from Script_Comparacion_N_Particulas_2D import (
     analytical_distinguishable_density,

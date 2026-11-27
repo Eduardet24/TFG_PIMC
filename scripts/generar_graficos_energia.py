@@ -43,7 +43,7 @@ import matplotlib.pyplot as plt
 # ==============================================================================
 # CONFIGURACIÓN DE RUTAS Y CONSTANTES
 # ==============================================================================
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_DIR = SCRIPT_DIR
 RESULTS_DIR = SCRIPT_DIR / "Resultados" / "Verificacion_Energia"
 OVERLEAF_DIR = SCRIPT_DIR.parent / "overleaf" / "imágenes"

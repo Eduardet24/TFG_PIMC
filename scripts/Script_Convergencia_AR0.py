@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-RESULTS_DIR = Path(__file__).resolve().parent / 'Resultados' / '1DArmonico'
+RESULTS_DIR = Path(__file__).resolve().parent.parent / 'Resultados' / '1DArmonico'
 
 
 def load_points(series):

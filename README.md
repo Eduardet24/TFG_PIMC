@@ -35,13 +35,14 @@ Grigori_codigo/
 ├── Makefile.txt        # Makefile para compilación con Intel (icc)
 ├── Makefile.AMD        # Makefile alternativo
 │
-├── Script_Lote_PIMC.py          # Automatización de barridos (T, N_beads)
-├── Script_Armonico1D_basico.py  # Análisis de densidad n(x) y virial para una corrida
-├── Script_EPvsBeads             # Estudio de convergencia Epot vs 1/N_beads
-├── Script_EPvsT                 # Comparación Epot vs T (analítico, clásico y PIMC)
-├── Script_Convergencia_AR0.py   # Extrapolaciones parabólicas de convergencia
-├── Script_Comparacion_N_Particulas_2D.py # Benchmark N>1 y referencias ideales 2D
-├── scritpt_Rdz_grigori          # Script de graficación rápida con gnuplot
+├── scripts/                             # Scripts de análisis, verificación y graficación en Python
+│   ├── Script_Lote_PIMC.py              # Automatización de barridos (T, N_beads)
+│   ├── Script_Armonico1D_basico.py      # Análisis de densidad n(x) y virial para una corrida
+│   ├── Script_EPvsBeads                 # Estudio de convergencia Epot vs 1/N_beads
+│   ├── Script_EPvsT                     # Comparación Epot vs T (analítico, clásico y PIMC)
+│   ├── Script_Convergencia_AR0.py       # Extrapolaciones parabólicas de convergencia
+│   └── Script_Comparacion_N_Particulas_2D.py # Benchmark N>1 y referencias ideales 2D
+├── scritpt_Rdz_grigori                  # Script de graficación rápida con gnuplot
 │
 ├── Resultados/
 │   └── 1DArmonico/
@@ -139,7 +140,7 @@ El archivo [MC.cfg](file:///home/edugimeno/Documents/Uni/TFG/Grigori_codigo/MC.c
    ```
 3. Analiza los resultados inmediatamente con:
    ```bash
-   python3 Script_Armonico1D_basico.py
+   python3 scripts/Script_Armonico1D_basico.py
    ```
    Las gráficas y el resumen numérico se guardarán en `Resultados/1DArmonico/ejecucion_actual/`.
 
@@ -149,13 +150,13 @@ Para barridos sistemáticos en temperatura y número de beads sin intervención 
 
 ```bash
 # Ver el plan de ejecución sin correr simulaciones (dry-run)
-python3 Script_Lote_PIMC.py
+python3 scripts/Script_Lote_PIMC.py
 
 # Lanzar la matriz predeterminada
-python3 Script_Lote_PIMC.py --run
+python3 scripts/Script_Lote_PIMC.py --run
 
 # Lanzar una campaña personalizada
-python3 Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,25,30 --campaign lote_modos_normales_blck1000
+python3 scripts/Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,25,30 --campaign lote_modos_normales_blck1000
 ```
 
 **Características del script de lotes:**
@@ -170,7 +171,7 @@ python3 Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,
 El benchmark usa `INTERACTION_ABSENT`, una trampa armónica 2D y el muestreador exacto de modos normales para cada camino. Se ejecuta con `N > 1`, pero sin intercambios: representa partículas distinguibles. Las curvas analíticas distinguible y Bose canónica permiten comprobar la energía y el perfil de densidad antes de implementar el Worm Algorithm.
 
 ```bash
-python3 Script_Comparacion_N_Particulas_2D.py --run --particles 5
+python3 scripts/Script_Comparacion_N_Particulas_2D.py --run --particles 5
 ```
 
 Con `--run`, el script compila los fuentes C actuales en un directorio temporal y usa ese ejecutable para las simulaciones, evitando depender del `MC` precompilado del repositorio. Los datos se guardan bajo `Resultados/NParticulas2D/`. Para evaluar convergencia de discretización, repetir la corrida con distintos valores de `--beads`; las referencias analíticas corresponden al límite continuo.
@@ -196,7 +197,7 @@ Con `--run`, el script compila los fuentes C actuales en un directorio temporal 
   - Compara el resultado extrapolado con el valor cuántico analítico exacto.
 - **Ejecución:**
   ```bash
-  python3 Script_EPvsBeads
+  python3 scripts/Script_EPvsBeads
   ```
   Guarda la gráfica en `convergencia_energia_potencialvsBeads.png` dentro del directorio de la campaña.
 
@@ -210,7 +211,7 @@ Con `--run`, el script compila los fuentes C actuales en un directorio temporal 
     3. **Puntos PIMC:** Con sus respectivas barras de error.
 - **Ejecución:**
   ```bash
-  python3 Script_EPvsT
+  python3 scripts/Script_EPvsT
   ```
   Genera `energia_potencial_vs_temperatura.png`.
 

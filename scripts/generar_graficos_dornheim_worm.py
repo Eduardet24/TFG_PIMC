@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Rutas de salida
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = SCRIPT_DIR / "Resultados" / "Figuras_Worm_Dornheim"
 OVERLEAF_DIR = SCRIPT_DIR.parent / "overleaf" / "imágenes"
 
