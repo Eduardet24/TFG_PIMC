@@ -18,6 +18,38 @@
 #include "utils.h"
 #include MATHINCLUDE
 
+#ifdef WORM_ALGORITHM
+static int *worm_ring_visited = NULL;
+static int *worm_ring_p = NULL;
+static int *worm_ring_w = NULL;
+static DOUBLE *worm_ring_x = NULL;
+static DOUBLE *worm_ring_y = NULL;
+static int worm_ring_cap_n = 0;
+static int worm_ring_cap_total = 0;
+
+static int EnsureWormRingScratch(int n_particles, int total_beads) {
+  if(n_particles > worm_ring_cap_n) {
+    int *new_vis = (int*) realloc(worm_ring_visited, (size_t)n_particles * sizeof(int));
+    if(new_vis == NULL) return 0;
+    worm_ring_visited = new_vis;
+    worm_ring_cap_n = n_particles;
+  }
+  if(total_beads > worm_ring_cap_total) {
+    int *new_p = (int*) realloc(worm_ring_p, (size_t)total_beads * sizeof(int));
+    int *new_w = (int*) realloc(worm_ring_w, (size_t)total_beads * sizeof(int));
+    DOUBLE *new_x = (DOUBLE*) realloc(worm_ring_x, (size_t)total_beads * sizeof(DOUBLE));
+    DOUBLE *new_y = (DOUBLE*) realloc(worm_ring_y, (size_t)total_beads * sizeof(DOUBLE));
+    if(new_p != NULL) worm_ring_p = new_p;
+    if(new_w != NULL) worm_ring_w = new_w;
+    if(new_x != NULL) worm_ring_x = new_x;
+    if(new_y != NULL) worm_ring_y = new_y;
+    if(new_p == NULL || new_w == NULL || new_x == NULL || new_y == NULL) return 0;
+    worm_ring_cap_total = total_beads;
+  }
+  return 1;
+}
+#endif
+
 #ifdef PIMC_HARMONIC_NORMAL_MODES
 /******************* Exact Harmonic PIMC Normal-Mode Draw ******************/
 void PIMCMoveHarmonicNormalModes(void) {
@@ -94,13 +126,14 @@ void PIMCMoveHarmonicNormalModes(void) {
 
 #ifdef WORM_ALGORITHM
   if(worm_next != NULL && worm_open == 0) {
-    int *visited = (int*) calloc(N, sizeof(int));
-    int *ring_p = (int*) malloc(N * beads * sizeof(int));
-    int *ring_w = (int*) malloc(N * beads * sizeof(int));
-    DOUBLE *ring_x = (DOUBLE*) malloc(N * beads * sizeof(DOUBLE));
-    DOUBLE *ring_y = (DOUBLE*) malloc(N * beads * sizeof(DOUBLE));
+    if(EnsureWormRingScratch(N, N * beads)) {
+      int *visited = worm_ring_visited;
+      int *ring_p = worm_ring_p;
+      int *ring_w = worm_ring_w;
+      DOUBLE *ring_x = worm_ring_x;
+      DOUBLE *ring_y = worm_ring_y;
+      memset(visited, 0, (size_t)N * sizeof(int));
 
-    if(visited != NULL && ring_p != NULL && ring_w != NULL && ring_x != NULL && ring_y != NULL) {
       for(particle = 0; particle < N; particle++) {
         if(visited[particle]) continue;
 
@@ -202,18 +235,8 @@ void PIMCMoveHarmonicNormalModes(void) {
         }
       }
 
-      free(visited);
-      free(ring_p);
-      free(ring_w);
-      free(ring_x);
-      free(ring_y);
       return;
     }
-    if(visited) free(visited);
-    if(ring_p) free(ring_p);
-    if(ring_w) free(ring_w);
-    if(ring_x) free(ring_x);
-    if(ring_y) free(ring_y);
   }
 #endif
 
@@ -636,6 +659,28 @@ static DOUBLE *worm_swap_weights = NULL;
 
 void FreeWorm(void) {
   int w;
+  if(worm_ring_visited != NULL) {
+    free(worm_ring_visited);
+    worm_ring_visited = NULL;
+  }
+  if(worm_ring_p != NULL) {
+    free(worm_ring_p);
+    worm_ring_p = NULL;
+  }
+  if(worm_ring_w != NULL) {
+    free(worm_ring_w);
+    worm_ring_w = NULL;
+  }
+  if(worm_ring_x != NULL) {
+    free(worm_ring_x);
+    worm_ring_x = NULL;
+  }
+  if(worm_ring_y != NULL) {
+    free(worm_ring_y);
+    worm_ring_y = NULL;
+  }
+  worm_ring_cap_n = 0;
+  worm_ring_cap_total = 0;
   if(worm_swap_candidates != NULL) {
     free(worm_swap_candidates);
     worm_swap_candidates = NULL;
@@ -1216,8 +1261,9 @@ void MeasureWormPermutations(void) {
 
   if(worm_open != 0 || worm_next == NULL) return;
 
-  visited = (int*) calloc(N, sizeof(int));
-  if(visited == NULL) return;
+  if(!EnsureWormRingScratch(N, 0)) return;
+  visited = worm_ring_visited;
+  memset(visited, 0, (size_t)N * sizeof(int));
 
   worm_cycle_samples++;
 
@@ -1241,8 +1287,6 @@ void MeasureWormPermutations(void) {
       }
     }
   }
-
-  free(visited);
 }
 
 void SaveWormPermutations(const char *filename) {

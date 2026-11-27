@@ -113,8 +113,16 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   Ekin_prim = D / (2. * tau) - spring / (2. * (DOUBLE) terms * tau * tau * N);
 #ifdef TRIAL_1D
   {
-    DOUBLE *cz = (DOUBLE*) malloc(N * sizeof(DOUBLE));
-    if(cz != NULL) {
+    static DOUBLE *cz = NULL;
+    static int cz_cap = 0;
+    if(N > cz_cap) {
+      DOUBLE *new_cz = (DOUBLE*) realloc(cz, (size_t)N * sizeof(DOUBLE));
+      if(new_cz != NULL) {
+        cz = new_cz;
+        cz_cap = N;
+      }
+    }
+    if(cz != NULL && N <= cz_cap) {
       for(particle=0; particle<N; particle++) cz[particle] = 0.;
       for(bead=0; bead<Nwalkers; bead++) {
         if(W[bead].status != ALIVE) continue;
@@ -127,7 +135,6 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
           virial += (W[bead].z[particle] - cz[particle]) * omega_z2 * W[bead].z[particle];
         }
       }
-      free(cz);
       *Ekin = D * T / 2. + virial / (2. * (DOUBLE) terms * N);
     }
     else {
@@ -136,83 +143,98 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
   }
 #elif defined(TRIAL_2D)
   {
-    DOUBLE *cx = (DOUBLE*) malloc(N * sizeof(DOUBLE));
-    DOUBLE *cy = (DOUBLE*) malloc(N * sizeof(DOUBLE));
+    static DOUBLE *cx = NULL;
+    static DOUBLE *cy = NULL;
+    static int c_cap = 0;
     DOUBLE zero_mode_factor = 1.0;
     int num_cycles = 0;
-    if(cx != NULL && cy != NULL) {
 #ifdef WORM_ALGORITHM
-      if(worm_next != NULL && worm_open == 0) {
-        int *visited = (int*) calloc(N, sizeof(int));
-        int *ring_p = (int*) malloc(N * Nwalkers * sizeof(int));
-        int *ring_w = (int*) malloc(N * Nwalkers * sizeof(int));
-        if(visited != NULL && ring_p != NULL && ring_w != NULL) {
-          for(particle=0; particle<N; particle++) {
-            if(visited[particle]) continue;
-            num_cycles++;
-            int ring_beads = 0;
-            int curr_p = particle;
-            int curr_w = 0;
-            DOUBLE sum_cx = 0., sum_cy = 0.;
-            do {
-              if(curr_w == 0) visited[curr_p] = 1;
-              ring_p[ring_beads] = curr_p;
-              ring_w[ring_beads] = curr_w;
-              if(W[curr_w].status == ALIVE) {
-                sum_cx += W[curr_w].x[curr_p];
-                sum_cy += W[curr_w].y[curr_p];
-              }
-              ring_beads++;
-              if(ring_beads >= N * Nwalkers) break;
-              curr_p = worm_next[curr_w][curr_p];
-              curr_w = (curr_w + 1) % Nwalkers;
-            } while(!(curr_w == 0 && curr_p == particle));
+    if(worm_next != NULL && worm_open == 0) {
+      static int *visited = NULL;
+      static int *ring_p = NULL;
+      static int *ring_w = NULL;
+      static int vis_cap = 0;
+      static int ring_cap = 0;
+      int total_beads = N * Nwalkers;
+      if(N > vis_cap) {
+        int *new_vis = (int*) realloc(visited, (size_t)N * sizeof(int));
+        if(new_vis != NULL) {
+          visited = new_vis;
+          vis_cap = N;
+        }
+      }
+      if(total_beads > ring_cap) {
+        int *new_rp = (int*) realloc(ring_p, (size_t)total_beads * sizeof(int));
+        int *new_rw = (int*) realloc(ring_w, (size_t)total_beads * sizeof(int));
+        if(new_rp != NULL) ring_p = new_rp;
+        if(new_rw != NULL) ring_w = new_rw;
+        if(new_rp != NULL && new_rw != NULL) ring_cap = total_beads;
+      }
+      if(visited != NULL && ring_p != NULL && ring_w != NULL && N <= vis_cap && total_beads <= ring_cap) {
+        memset(visited, 0, (size_t)N * sizeof(int));
+        for(particle=0; particle<N; particle++) {
+          if(visited[particle]) continue;
+          num_cycles++;
+          int ring_beads = 0;
+          int curr_p = particle;
+          int curr_w = 0;
+          DOUBLE sum_cx = 0., sum_cy = 0.;
+          do {
+            if(curr_w == 0) visited[curr_p] = 1;
+            ring_p[ring_beads] = curr_p;
+            ring_w[ring_beads] = curr_w;
+            if(W[curr_w].status == ALIVE) {
+              sum_cx += W[curr_w].x[curr_p];
+              sum_cy += W[curr_w].y[curr_p];
+            }
+            ring_beads++;
+            if(ring_beads >= total_beads) break;
+            curr_p = worm_next[curr_w][curr_p];
+            curr_w = (curr_w + 1) % Nwalkers;
+          } while(!(curr_w == 0 && curr_p == particle));
 
-            if(ring_beads > 0) {
-              sum_cx /= (DOUBLE) ring_beads;
-              sum_cy /= (DOUBLE) ring_beads;
-              for(int n=0; n<ring_beads; n++) {
-                int w = ring_w[n];
-                int p = ring_p[n];
-                if(W[w].status == ALIVE) {
-                  virial += (W[w].x[p] - sum_cx) * omega_x2 * W[w].x[p] +
-                            (W[w].y[p] - sum_cy) * omega_y2 * W[w].y[p];
-                }
+          if(ring_beads > 0) {
+            sum_cx /= (DOUBLE) ring_beads;
+            sum_cy /= (DOUBLE) ring_beads;
+            for(int n=0; n<ring_beads; n++) {
+              int w = ring_w[n];
+              int p = ring_p[n];
+              if(W[w].status == ALIVE) {
+                virial += (W[w].x[p] - sum_cx) * omega_x2 * W[w].x[p] +
+                          (W[w].y[p] - sum_cy) * omega_y2 * W[w].y[p];
               }
             }
           }
-          free(visited);
-          free(ring_p);
-          free(ring_w);
-          zero_mode_factor = (DOUBLE)num_cycles / (DOUBLE)N;
-          *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
-          free(cx);
-          free(cy);
-          return *Epot + *Ekin;
         }
-        else {
-          if(visited) free(visited);
-          if(ring_p) free(ring_p);
-          if(ring_w) free(ring_w);
+        zero_mode_factor = (DOUBLE)num_cycles / (DOUBLE)N;
+        *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
+        *Eff = *Edamping = 0.;
+        return *Epot + *Ekin;
+      }
+    }
+#endif
+    if(N > c_cap) {
+      DOUBLE *new_cx = (DOUBLE*) realloc(cx, (size_t)N * sizeof(DOUBLE));
+      DOUBLE *new_cy = (DOUBLE*) realloc(cy, (size_t)N * sizeof(DOUBLE));
+      if(new_cx != NULL) cx = new_cx;
+      if(new_cy != NULL) cy = new_cy;
+      if(new_cx != NULL && new_cy != NULL) c_cap = N;
+    }
+    if(cx != NULL && cy != NULL && N <= c_cap) {
+      for(particle=0; particle<N; particle++) {
+        cx[particle] = 0.;
+        cy[particle] = 0.;
+      }
+      for(bead=0; bead<Nwalkers; bead++) {
+        if(W[bead].status != ALIVE) continue;
+        for(particle=0; particle<N; particle++) {
+          cx[particle] += W[bead].x[particle];
+          cy[particle] += W[bead].y[particle];
         }
       }
-#endif
-      {
-        for(particle=0; particle<N; particle++) {
-          cx[particle] = 0.;
-          cy[particle] = 0.;
-        }
-        for(bead=0; bead<Nwalkers; bead++) {
-          if(W[bead].status != ALIVE) continue;
-          for(particle=0; particle<N; particle++) {
-            cx[particle] += W[bead].x[particle];
-            cy[particle] += W[bead].y[particle];
-          }
-        }
-        for(particle=0; particle<N; particle++) {
-          cx[particle] /= (DOUBLE) terms;
-          cy[particle] /= (DOUBLE) terms;
-        }
+      for(particle=0; particle<N; particle++) {
+        cx[particle] /= (DOUBLE) terms;
+        cy[particle] /= (DOUBLE) terms;
       }
       for(bead=0; bead<Nwalkers; bead++) {
         if(W[bead].status != ALIVE) continue;
@@ -221,13 +243,9 @@ static DOUBLE EnergyPIMC(DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *Eff,
                     (W[bead].y[particle] - cy[particle]) * omega_y2 * W[bead].y[particle];
         }
       }
-      free(cx);
-      free(cy);
       *Ekin = (D * T / 2.) * zero_mode_factor + virial / (2. * (DOUBLE) terms * N);
     }
     else {
-      if(cx) free(cx);
-      if(cy) free(cy);
       *Ekin = Ekin_prim;
     }
   }
