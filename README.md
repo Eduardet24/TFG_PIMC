@@ -31,11 +31,17 @@ Compilación desde la raíz (`Grigori_codigo/`):
 
 ```bash
 # GCC con OpenMP (recomendada)
-gcc -O2 -fopenmp *.c -lm -o MC
+gcc -O2 -fopenmp -std=c99 *.c -lm -o MC
+
+# Alternativa con mayor optimización
+gcc -O3 -fopenmp -std=c99 *.c -lm -o MC
 
 # Alternativa con Intel (icc)
 make -f Makefile.txt
 ```
+
+> [!NOTE]
+> Las macros principales de compilación se configuran en `main.h` antes de compilar: dimensionalidad (`TRIAL_1D`, `TRIAL_2D`, `TRIAL_3D`), muestreo exacto armónico (`PIMC_HARMONIC_NORMAL_MODES`) y algoritmo Worm (`WORM_ALGORITHM`).
 
 ---
 
@@ -55,6 +61,9 @@ make -f Makefile.txt
 | `blck_heating=` / `blck=` | `100` / `1000` | Bloques de termalización y de medida. |
 | `Niter=` / `Nmeasure=` | `1000` / `1` | Iteraciones por bloque y frecuencia de muestreo. |
 | `measure_energy=` / `measure_RadDistr=` | `1` / `1` | Activa el guardado de energía (`oute.dat`) y densidad (`outrd.dat`). |
+| `worm_C=` | `0.004167` | Parámetro de fugacidad del algoritmo Worm. |
+| `worm_swap=` | `1` | Activa (`1`) o desactiva (`0`) permutaciones *Swap* (también anulable con `WORM_DISABLE_SWAP=1`). |
+| `worm_obdm_max=` / `worm_obdm_grid=` | `3.5` / `100` | Rango `[-max, max]` y resolución de la malla OBDM del Worm. |
 
 **Salidas principales de `./MC`:**
 - `oute.dat`: energías por bloque (`# Etot Epot Ekin`).

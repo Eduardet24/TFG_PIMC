@@ -1,10 +1,21 @@
 # Binarios y objetos compilados
 MC
+MC_*
+!MC.cfg
 *.o
 
 # Salidas de datos y registros
 *.dat
 *.log
+Resultados/
+
+# Documentación generada por Doxygen
+html/
+latex/
+
+# Caché de Python
+__pycache__/
+*.py[cod]
 
 # Archivos del sistema
 .DS_Store
