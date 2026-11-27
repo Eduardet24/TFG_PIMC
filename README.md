@@ -83,7 +83,7 @@ python3 scripts/Script_Lote_PIMC.py
 python3 scripts/Script_Lote_PIMC.py --run
 python3 scripts/Script_Lote_PIMC.py --run --temperaturas 0.5,1.0,2.0 --beads 5,10,15,20,25,30 --campaign lote_modos_normales_blck1000
 ```
-Las corridas completadas se guardan en `Resultados/1DArmonico/AR<rate>/<campaña>/Temp<T>/N<beads>/` con un marcador `.complete` para evitar repetir simulaciones ya terminadas.
+Las ejecuciones completadas se guardan en `Resultados/1DArmonico/AR<rate>/<campaña>/Temp<T>/N<beads>/` con un marcador `.complete` para evitar repetir simulaciones ya terminadas.
 
 ### Benchmark 2D ($N > 1$)
 ```bash

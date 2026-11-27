@@ -1451,7 +1451,6 @@ int main(int argn, char **argv) {
 
 #ifdef WORM_ALGORITHM
     if(MC == PIMC && block >= 0) {
-      SaveWormOBDM("outworm_obdm.dat");
       worm_block_file = fopen("outworm_energy_blocks.dat", "a");
       if(worm_block_file != NULL) {
         DOUBLE sample_divisor = worm_block_energy_samples > 0 ? (DOUBLE)worm_block_energy_samples : 1.;
@@ -1509,8 +1508,6 @@ int main(int argn, char **argv) {
           fclose(worm_block_file);
         }
       }
-      SaveWormSuperfluid("outworm_superfluid.dat");
-
       if(measure_RadDistr && RD.times_measured > 0) {
         SaveRadialDistribution();
       }
