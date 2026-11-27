@@ -1382,10 +1382,13 @@ extern DOUBLE worm_sf_block_A2_sum[3];
 extern DOUBLE worm_sf_block_Icl_sum[3];
 extern DOUBLE worm_sf_block_W2_sum;
 extern long long worm_sf_num_blocks;
-extern DOUBLE worm_sf_rho_block_sum;
-extern DOUBLE worm_sf_rho_block_sum2;
+extern DOUBLE worm_sf_rho_block_mean;
+extern DOUBLE worm_sf_rho_block_m2;
+extern DOUBLE worm_sf_block_weight_sum;
+extern DOUBLE worm_sf_block_weight_sum2;
 void MeasureWormSuperfluid(void);
 DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], const DOUBLE A2_sum[3], const DOUBLE Icl_sum[3], DOUBLE W2_sum);
+void AccumulateWormSuperfluidBlock(long long block_samples, DOUBLE rho_s_block);
 void SaveWormSuperfluid(const char *filename);
 #endif
 

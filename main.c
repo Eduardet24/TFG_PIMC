@@ -190,8 +190,10 @@ DOUBLE worm_sf_block_A2_sum[3] = {0.0, 0.0, 0.0};
 DOUBLE worm_sf_block_Icl_sum[3] = {0.0, 0.0, 0.0};
 DOUBLE worm_sf_block_W2_sum = 0.0;
 long long worm_sf_num_blocks = 0;
-DOUBLE worm_sf_rho_block_sum = 0.0;
-DOUBLE worm_sf_rho_block_sum2 = 0.0;
+DOUBLE worm_sf_rho_block_mean = 0.0;
+DOUBLE worm_sf_rho_block_m2 = 0.0;
+DOUBLE worm_sf_block_weight_sum = 0.0;
+DOUBLE worm_sf_block_weight_sum2 = 0.0;
 #endif
 
 struct Walker *W, *Wp;
@@ -1487,9 +1489,7 @@ int main(int argn, char **argv) {
         DOUBLE rho_s_block = ComputeWormSuperfluidFraction(
           worm_sf_block_samples, worm_sf_block_A_sum, worm_sf_block_A2_sum,
           worm_sf_block_Icl_sum, worm_sf_block_W2_sum);
-        worm_sf_num_blocks++;
-        worm_sf_rho_block_sum += rho_s_block;
-        worm_sf_rho_block_sum2 += rho_s_block * rho_s_block;
+        AccumulateWormSuperfluidBlock(worm_sf_block_samples, rho_s_block);
         worm_block_file = fopen("outworm_superfluid_blocks.dat", "a");
         if(worm_block_file != NULL) {
           DOUBLE n_blk = (DOUBLE)worm_sf_block_samples;

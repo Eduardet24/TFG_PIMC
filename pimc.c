@@ -866,8 +866,10 @@ void InitWorm(void) {
   worm_sf_samples = 0;
   worm_sf_block_samples = 0;
   worm_sf_num_blocks = 0;
-  worm_sf_rho_block_sum = 0.0;
-  worm_sf_rho_block_sum2 = 0.0;
+  worm_sf_rho_block_mean = 0.0;
+  worm_sf_rho_block_m2 = 0.0;
+  worm_sf_block_weight_sum = 0.0;
+  worm_sf_block_weight_sum2 = 0.0;
   worm_sf_W2_sum = 0.0;
   worm_sf_block_W2_sum = 0.0;
   for(i = 0; i < 3; i++) {
@@ -1208,8 +1210,8 @@ static void WormSwapMove(void) {
   /* 3. Elegir candidato k con probabilidad P(k) = chi_1(k) / Sigma_1 */
   r = Random() * sum_weights1;
   cum = 0.0;
-  chosen_idx = 0;
-  for(int c = 0; c < cand_count; c++) {
+  chosen_idx = cand_count - 1;
+  for(int c = 0; c < cand_count - 1; c++) {
     cum += weights[c];
     if(r <= cum) {
       chosen_idx = c;
@@ -1804,6 +1806,21 @@ void MeasureWormSuperfluid(void) {
 #endif
 }
 
+void AccumulateWormSuperfluidBlock(long long block_samples, DOUBLE rho_s_block) {
+  DOUBLE w, w_new, delta;
+  if(block_samples <= 0) return;
+
+  w = (DOUBLE)block_samples;
+  w_new = worm_sf_block_weight_sum + w;
+  delta = rho_s_block - worm_sf_rho_block_mean;
+
+  worm_sf_num_blocks++;
+  worm_sf_rho_block_mean += (w / w_new) * delta;
+  worm_sf_rho_block_m2 += w * delta * (rho_s_block - worm_sf_rho_block_mean);
+  worm_sf_block_weight_sum = w_new;
+  worm_sf_block_weight_sum2 += w * w;
+}
+
 void SaveWormSuperfluid(const char *filename) {
   FILE *f;
   DOUBLE rhos, block_mean = 0.0, block_err = 0.0;
@@ -1817,11 +1834,12 @@ void SaveWormSuperfluid(const char *filename) {
   rhos = ComputeWormSuperfluidFraction(worm_sf_samples, worm_sf_A_sum, worm_sf_A2_sum, worm_sf_Icl_sum, worm_sf_W2_sum);
 
   if(worm_sf_num_blocks > 0) {
-    block_mean = worm_sf_rho_block_sum / (DOUBLE)worm_sf_num_blocks;
-    if(worm_sf_num_blocks > 1) {
-      DOUBLE var = (worm_sf_rho_block_sum2 / (DOUBLE)worm_sf_num_blocks) - block_mean * block_mean;
-      if(var < 0.0) var = 0.0;
-      block_err = Sqrt(var / (DOUBLE)(worm_sf_num_blocks - 1));
+    block_mean = worm_sf_rho_block_mean;
+    if(worm_sf_num_blocks > 1 && worm_sf_block_weight_sum > 0.0) {
+      DOUBLE denom = worm_sf_block_weight_sum * (worm_sf_block_weight_sum * worm_sf_block_weight_sum - worm_sf_block_weight_sum2);
+      if(denom > 0.0 && worm_sf_rho_block_m2 > 0.0) {
+        block_err = Sqrt((worm_sf_rho_block_m2 * worm_sf_block_weight_sum2) / denom);
+      }
     }
   }
 

@@ -37,6 +37,7 @@ void MeasureWormOBDM(void);
 void SaveWormOBDM(const char *filename);
 void MeasureWormSuperfluid(void);
 DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], const DOUBLE A2_sum[3], const DOUBLE Icl_sum[3], DOUBLE W2_sum);
+void AccumulateWormSuperfluidBlock(long long block_samples, DOUBLE rho_s_block);
 void SaveWormSuperfluid(const char *filename);
 #endif
 
