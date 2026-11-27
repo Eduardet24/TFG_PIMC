@@ -1,6 +1,8 @@
 """Run a serial matrix of isolated PIMC simulations."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 import re
 import shutil
 import subprocess
@@ -100,7 +102,12 @@ def main():
                         help='números de beads separados por comas; requiere --temperatures')
     parser.add_argument('--campaign', default='lote_modos_normales_blck1000',
                         help='nombre del subdirectorio para guardar esta campaña')
+    parser.add_argument('-j', '--jobs', type=int, default=min(4, os.cpu_count() or 1),
+                        help='simulaciones en paralelo al usar --run')
     args = parser.parse_args()
+
+    if args.jobs < 1:
+        parser.error('--jobs debe ser >= 1')
 
     if (args.temperatures is None) != (args.beads is None):
         parser.error('--temperatures y --beads deben usarse juntos')
@@ -141,6 +148,7 @@ def main():
     if not args.run:
         print('Modo de prueba: no se ejecutó MC. Usa --run para lanzar el lote.')
 
+    to_execute = []
     for temperature, beads, run_dir, run_config, expected_rows in planned_runs:
         if completed_run(run_dir, expected_rows):
             print(f'OMITIR completo: T={temperature:g}, N={beads}')
@@ -150,26 +158,35 @@ def main():
             continue
 
         print(f'PREPARAR T={temperature:g}, N={beads}: {run_dir}')
-        if not args.run:
-            continue
+        if args.run:
+            to_execute.append((temperature, beads, run_dir, run_config, expected_rows))
 
+    if not args.run or not to_execute:
+        return
+
+    def _run_one(item):
+        temperature, beads, run_dir, run_config, expected_rows = item
         run_dir.mkdir(parents=True, exist_ok=True)
         copy_run_inputs(run_dir, run_config)
+        env = os.environ.copy()
+        if args.jobs > 1:
+            env['OMP_NUM_THREADS'] = '1'
         with (run_dir / 'run.log').open('w', encoding='utf-8') as log_file:
             result = subprocess.run(
-                ['./MC'], cwd=run_dir, stdout=log_file, stderr=subprocess.STDOUT,
+                ['./MC'], cwd=run_dir, env=env, stdout=log_file, stderr=subprocess.STDOUT,
                 check=False,
             )
-
         if result.returncode != 0:
-            print(f'FALLÓ T={temperature:g}, N={beads}; revisa {run_dir / "run.log"}')
-            continue
+            return f'FALLÓ T={temperature:g}, N={beads}; revisa {run_dir / "run.log"}'
         if not valid_output(run_dir, expected_rows):
-            print(f'INCOMPLETA T={temperature:g}, N={beads}; revisa {run_dir / "run.log"}')
-            continue
-
+            return f'INCOMPLETA T={temperature:g}, N={beads}; revisa {run_dir / "run.log"}'
         (run_dir / '.complete').write_text('ok\n', encoding='ascii')
-        print(f'COMPLETA T={temperature:g}, N={beads}')
+        return f'COMPLETA T={temperature:g}, N={beads}'
+
+    with ThreadPoolExecutor(max_workers=min(args.jobs, len(to_execute))) as pool:
+        futures = [pool.submit(_run_one, item) for item in to_execute]
+        for fut in as_completed(futures):
+            print(fut.result())
 
 
 if __name__ == '__main__':

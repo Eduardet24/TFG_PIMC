@@ -35,6 +35,7 @@ import time
 import shutil
 import argparse
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -168,7 +169,7 @@ def get_or_compile_mc():
 
 
 def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,
-                  blck_heating=25, blck=120, n_iter=1500, swap_enabled=True):
+                  blck_heating=25, blck=120, n_iter=1500, swap_enabled=True, single_thread=False):
     run_dir.mkdir(parents=True, exist_ok=True)
     # Ajustar worm_C para mantener fracción Z saludable (~10-25%)
     worm_c = 0.03 / max(1, n_particles * n_beads * 0.25)
@@ -189,6 +190,8 @@ def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,
 
     env = os.environ.copy()
     env["WORM_DISABLE_SWAP"] = "0" if swap_enabled else "1"
+    if single_thread:
+        env["OMP_NUM_THREADS"] = "1"
 
     proc = subprocess.run([str(exe), "MC.cfg"], cwd=run_dir, env=env, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -496,7 +499,11 @@ def plot_dashboard(data_temp, mcmc_case, data_beads, data_n):
 def main():
     parser = argparse.ArgumentParser(description="Generar gráficos de fracción superfluida Worm PIMC")
     parser.add_argument("--no-run", action="store_true", help="Reutilizar datos JSON existentes sin re-ejecutar C")
+    parser.add_argument("-j", "--jobs", type=int, default=min(4, os.cpu_count() or 1),
+                        help="Simulaciones en paralelo al ejecutar C")
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("--jobs debe ser >= 1")
 
     summary_json = DIR_DATA / "resumen_superfluidez.json"
 
@@ -511,46 +518,72 @@ def main():
         base_cfg = (SCRIPT_DIR / "MC.cfg").read_text(encoding="utf-8", errors="ignore")
         t0 = time.time()
 
+        single_thread = args.jobs > 1
+
         # 1. Barrido en temperatura (N=4, P=30)
         n_temp = 4
         p_temp = 30
         temps = [0.25, 0.35, 0.5, 0.7, 1.0, 1.4, 2.0, 2.6]
-        swap_runs, noswap_runs = [], []
-        print(f"[1/3] Barrido en temperatura T ({len(temps)} puntos, N={n_temp}, P={p_temp})...")
-        for t in temps:
-            beads = 40 if t < 0.4 else p_temp
-            r_s = run_pimc_case(exe, base_cfg, DIR_DATA / f"T_{t:g}_swap", n_temp, t, beads,
-                                blck_heating=25, blck=100, n_iter=1500, swap_enabled=True)
-            r_ns = run_pimc_case(exe, base_cfg, DIR_DATA / f"T_{t:g}_noswap", n_temp, t, beads,
-                                 blck_heating=25, blck=100, n_iter=1500, swap_enabled=False)
-            swap_runs.append(r_s)
-            noswap_runs.append(r_ns)
-            print(f"      T={t:4.2f} | Swap: {r_s['rho_s_block_mean']:.4f}+/-{r_s['rho_s_err']:.4f} | "
-                  f"NoSwap: {r_ns['rho_s_block_mean']:.4f}+/-{r_ns['rho_s_err']:.4f} | P(L>=2)={r_s['P_nontrivial']:.3f}")
+        print(f"[1/3] Barrido en temperatura T ({len(temps)} puntos, N={n_temp}, P={p_temp}, jobs={args.jobs})...")
+        with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+            temp_tasks = [
+                (
+                    t,
+                    pool.submit(
+                        run_pimc_case, exe, base_cfg, DIR_DATA / f"T_{t:g}_swap",
+                        n_temp, t, 40 if t < 0.4 else p_temp, 25, 100, 1500, True, single_thread
+                    ),
+                    pool.submit(
+                        run_pimc_case, exe, base_cfg, DIR_DATA / f"T_{t:g}_noswap",
+                        n_temp, t, 40 if t < 0.4 else p_temp, 25, 100, 1500, False, single_thread
+                    ),
+                )
+                for t in temps
+            ]
+            swap_runs, noswap_runs = [], []
+            for t, fut_s, fut_ns in temp_tasks:
+                r_s = fut_s.result()
+                r_ns = fut_ns.result()
+                swap_runs.append(r_s)
+                noswap_runs.append(r_ns)
+                print(f"      T={t:4.2f} | Swap: {r_s['rho_s_block_mean']:.4f}+/-{r_s['rho_s_err']:.4f} | "
+                      f"NoSwap: {r_ns['rho_s_block_mean']:.4f}+/-{r_ns['rho_s_err']:.4f} | P(L>=2)={r_s['P_nontrivial']:.3f}")
 
-        # 2. Convergencia en beads P (N=4, T=0.5)
-        p_list = [10, 20, 30, 50, 80]
-        beads_runs = []
-        print(f"[2/3] Convergencia en número de beads P ({p_list}, N=4, T=0.5)...")
-        for p in p_list:
-            r_p = run_pimc_case(exe, base_cfg, DIR_DATA / f"P_{p}", 4, 0.5, p,
-                                blck_heating=25, blck=100, n_iter=1500, swap_enabled=True)
-            beads_runs.append(r_p)
-            print(f"      P={p:2d} | rho_s/rho = {r_p['rho_s_block_mean']:.4f}+/-{r_p['rho_s_err']:.4f}")
+            # 2. Convergencia en beads P (N=4, T=0.5)
+            p_list = [10, 20, 30, 50, 80]
+            print(f"[2/3] Convergencia en número de beads P ({p_list}, N=4, T=0.5)...")
+            beads_tasks = [
+                (p, pool.submit(run_pimc_case, exe, base_cfg, DIR_DATA / f"P_{p}",
+                                4, 0.5, p, 25, 100, 1500, True, single_thread))
+                for p in p_list
+            ]
+            beads_runs = []
+            for p, fut_p in beads_tasks:
+                r_p = fut_p.result()
+                beads_runs.append(r_p)
+                print(f"      P={p:2d} | rho_s/rho = {r_p['rho_s_block_mean']:.4f}+/-{r_p['rho_s_err']:.4f}")
 
-        # 3. Escalado con N partículas (T=0.5, P=30)
-        n_list = [1, 2, 3, 5, 8]
-        n_swap_runs, n_noswap_runs = [], []
-        print(f"[3/3] Escalado con número de partículas N ({n_list}, T=0.5, P=30)...")
-        for nn in n_list:
-            r_ns_s = run_pimc_case(exe, base_cfg, DIR_DATA / f"N_{nn}_swap", nn, 0.5, 30,
-                                   blck_heating=25, blck=100, n_iter=1500, swap_enabled=True)
-            r_ns_ns = run_pimc_case(exe, base_cfg, DIR_DATA / f"N_{nn}_noswap", nn, 0.5, 30,
-                                    blck_heating=25, blck=100, n_iter=1500, swap_enabled=False)
-            n_swap_runs.append(r_ns_s)
-            n_noswap_runs.append(r_ns_ns)
-            print(f"      N={nn} | Swap: {r_ns_s['rho_s_block_mean']:.4f}+/-{r_ns_s['rho_s_err']:.4f} | "
-                  f"NoSwap: {r_ns_ns['rho_s_block_mean']:.4f}+/-{r_ns_ns['rho_s_err']:.4f}")
+            # 3. Escalado con N partículas (T=0.5, P=30)
+            n_list = [1, 2, 3, 5, 8]
+            print(f"[3/3] Escalado con número de partículas N ({n_list}, T=0.5, P=30)...")
+            n_tasks = [
+                (
+                    nn,
+                    pool.submit(run_pimc_case, exe, base_cfg, DIR_DATA / f"N_{nn}_swap",
+                                nn, 0.5, 30, 25, 100, 1500, True, single_thread),
+                    pool.submit(run_pimc_case, exe, base_cfg, DIR_DATA / f"N_{nn}_noswap",
+                                nn, 0.5, 30, 25, 100, 1500, False, single_thread),
+                )
+                for nn in n_list
+            ]
+            n_swap_runs, n_noswap_runs = [], []
+            for nn, fut_ns_s, fut_ns_ns in n_tasks:
+                r_ns_s = fut_ns_s.result()
+                r_ns_ns = fut_ns_ns.result()
+                n_swap_runs.append(r_ns_s)
+                n_noswap_runs.append(r_ns_ns)
+                print(f"      N={nn} | Swap: {r_ns_s['rho_s_block_mean']:.4f}+/-{r_ns_s['rho_s_err']:.4f} | "
+                      f"NoSwap: {r_ns_ns['rho_s_block_mean']:.4f}+/-{r_ns_ns['rho_s_err']:.4f}")
 
         dataset = {
             "temp_sweep": {"N": n_temp, "P": p_temp, "swap": swap_runs, "noswap": noswap_runs},

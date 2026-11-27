@@ -11,6 +11,7 @@ Genera:
 """
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from pathlib import Path
 import re
@@ -57,7 +58,7 @@ def build_mc_binary(output_path):
 
 
 def run_simulation(binary_path, n_particles, temp, beads, run_dir,
-                   blck_heating=20, blck=60, niter=200):
+                   blck_heating=20, blck=60, niter=200, single_thread=False):
     """Ejecuta una corrida del ejecutable MC en C en un directorio aislado."""
     run_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(binary_path, run_dir / 'MC')
@@ -92,8 +93,11 @@ def run_simulation(binary_path, n_particles, temp, beads, run_dir,
                     'outworm_energy_blocks.dat', 'outworm_cycle_blocks.dat')
     run_started = time.time()
     log_file = run_dir / 'run.log'
+    env = os.environ.copy()
+    if single_thread:
+        env['OMP_NUM_THREADS'] = '1'
     with log_file.open('w', encoding='utf-8') as f_log:
-        res = subprocess.run(['./MC'], cwd=run_dir, stdout=f_log, stderr=subprocess.STDOUT, text=True)
+        res = subprocess.run(['./MC'], cwd=run_dir, env=env, stdout=f_log, stderr=subprocess.STDOUT, text=True)
 
     if res.returncode != 0:
         raise RuntimeError(f'Error en simulación MC en {run_dir}. Revisa {log_file}')
@@ -328,7 +332,12 @@ def main():
     parser.add_argument('--blocks', type=int, default=400, help='Bloques de medida en MC')
     parser.add_argument('--iterations', type=int, default=500, help='Iteraciones por bloque en MC')
     parser.add_argument('--run', action='store_true', help='Compilar el código C actual y ejecutar las simulaciones')
+    parser.add_argument('-j', '--jobs', type=int, default=min(4, os.cpu_count() or 1),
+                        help='Simulaciones en paralelo al usar --run')
     args = parser.parse_args()
+
+    if args.jobs < 1:
+        parser.error('--jobs debe ser >= 1')
 
     temps = [float(t.strip()) for t in args.temperatures.split(',')]
     if args.particles < 1 or args.beads < 2 or args.blocks < 1 or args.iterations < 1:
@@ -342,7 +351,10 @@ def main():
     if args.run:
         with tempfile.TemporaryDirectory(prefix='pimc-build-') as build_dir:
             binary_path = build_mc_binary(Path(build_dir) / 'MC')
-            for temp in temps:
+            workers = min(args.jobs, len(temps))
+            single_thread = workers > 1
+
+            def _sim_temp(temp):
                 sim_dir = n_dir / f'sim_T{temp:g}'
                 print(f'-> Simulando N={args.particles}, T={temp:g}, beads={args.beads}...')
                 run_simulation(
@@ -354,7 +366,13 @@ def main():
                     blck_heating=20,
                     blck=args.blocks,
                     niter=args.iterations,
+                    single_thread=single_thread,
                 )
+                return temp
+
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                for fut in as_completed([pool.submit(_sim_temp, t) for t in temps]):
+                    fut.result()
 
     sim_energies = []
     cycle_results = []
