@@ -22,6 +22,17 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pimc_common import (
+    analytical_bose_cycle_fractions,
+    analytical_bose_density,
+    analytical_bose_energy,
+    analytical_distinguishable_density,
+    analytical_distinguishable_energy,
+    blocked_ratio_stats,
+    canonical_bose_partition,
+    compile_mc_binary,
+)
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_DIR = SCRIPT_DIR
@@ -37,109 +48,12 @@ OMEGA = 1.0
 
 
 # ==============================================================================
-# Modelos Analíticos Exactos
-# ==============================================================================
-
-def analytical_distinguishable_energy(temp, omega=OMEGA):
-    """Energía por partícula para oscilador armónico 2D (partículas distinguibles)."""
-    beta = 1.0 / temp
-    return omega / np.tanh(0.5 * beta * omega)
-
-
-def analytical_distinguishable_density(r_grid, temp, omega=OMEGA):
-    """Densidad radial n(r) para partículas distinguibles (gaussiana térmica)."""
-    beta = 1.0 / temp
-    sigma2 = (0.5 / omega) / np.tanh(0.5 * beta * omega)
-    return (1.0 / (2.0 * np.pi * sigma2)) * np.exp(-r_grid**2 / (2.0 * sigma2))
-
-
-def canonical_bose_partition(n_particles, temp, omega=OMEGA):
-    """Return canonical partition sums and excitation-energy-weighted sums."""
-    if n_particles < 1 or temp <= 0 or omega <= 0:
-        raise ValueError('N, T y omega deben ser positivos')
-
-    beta = 1.0 / temp
-    partition = np.zeros(n_particles + 1)
-    excitation_energy_sum = np.zeros(n_particles + 1)
-    excited_partition = np.zeros(n_particles + 1)
-    partition[0] = 1.0
-    excited_partition[0] = 1.0
-
-    for count in range(1, n_particles + 1):
-        for cycle in range(1, count + 1):
-            q = np.exp(-cycle * beta * omega)
-            one_cycle_partition = 1.0 / (1.0 - q)**2
-            one_cycle_excitation = 2.0 * omega * q / (1.0 - q)
-            excited_cycle_partition = one_cycle_partition - 1.0
-            partition[count] += one_cycle_partition * partition[count - cycle] / count
-            excitation_energy_sum[count] += one_cycle_partition * (
-                cycle * one_cycle_excitation * partition[count - cycle]
-                + excitation_energy_sum[count - cycle]
-            ) / count
-            excited_partition[count] += (
-                excited_cycle_partition * excited_partition[count - cycle] / count
-            )
-
-    return partition, excitation_energy_sum, excited_partition
-
-
-def analytical_bose_energy(n_particles, temp, omega=OMEGA):
-    """Canonical energy per particle for a fixed number of 2D ideal bosons."""
-    partition, excitation_energy_sum, excited_partition = canonical_bose_partition(
-        n_particles, temp, omega
-    )
-    e_per_particle = omega + excitation_energy_sum[n_particles] / (n_particles * partition[n_particles])
-    ground_state_occupancy = sum(
-        (n_particles - count) * excited_partition[count]
-        for count in range(n_particles)
-    )
-    ground_state_occupancy /= partition[n_particles]
-    return e_per_particle, ground_state_occupancy / n_particles
-
-
-def analytical_bose_cycle_fractions(n_particles, temp, omega=OMEGA):
-    """Canonical particle fractions belonging to permutation cycles of each length."""
-    partition, _, _ = canonical_bose_partition(n_particles, temp, omega)
-    beta = 1.0 / temp
-    return np.array([
-        cycle_partition * partition[n_particles - cycle]
-        / (n_particles * partition[n_particles])
-        for cycle in range(1, n_particles + 1)
-        for cycle_partition in [1.0 / (1.0 - np.exp(-cycle * beta * omega))**2]
-    ])
-
-
-def analytical_bose_density(r_grid, n_particles, temp, omega=OMEGA):
-    """Canonical per-particle 2D density for a fixed number of ideal bosons."""
-    partition, _, _ = canonical_bose_partition(n_particles, temp, omega)
-    beta = 1.0 / temp
-    normalization = n_particles * partition[n_particles]
-
-    density = np.zeros_like(r_grid)
-    for cycle in range(1, n_particles + 1):
-        q = np.exp(-cycle * beta * omega)
-        cycle_partition = 1.0 / (1.0 - q)**2
-        weight = cycle_partition * partition[n_particles - cycle] / normalization
-        sigma_k2 = (0.5 / omega) / np.tanh(0.5 * cycle * beta * omega)
-        gauss = (1.0 / (2.0 * np.pi * sigma_k2)) * np.exp(-r_grid**2 / (2.0 * sigma_k2))
-        density += weight * gauss
-    return density
-
-
-# ==============================================================================
 # Ejecución y Lectura de PIMC (C Engine)
 # ==============================================================================
 
 def build_mc_binary(output_path):
     """Compile the current C sources into an isolated executable."""
-    sources = sorted(SCRIPT_DIR.glob('*.c'))
-    command = [os.environ.get('CC', 'gcc'), '-O2', '-fopenmp', '-std=c99']
-    command.extend(str(source) for source in sources)
-    command.extend(['-lm', '-o', str(output_path)])
-    result = subprocess.run(command, cwd=SCRIPT_DIR, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f'No se pudo compilar MC:\n{result.stdout}\n{result.stderr}')
-    return output_path
+    return compile_mc_binary(SCRIPT_DIR, output_path, only_if_stale=False)
 
 
 def run_simulation(binary_path, n_particles, temp, beads, run_dir,
@@ -207,18 +121,6 @@ def validate_run_output(run_dir):
     for filename in ('outworm_energy_blocks.dat', 'outworm_cycle_blocks.dat', 'outworm_perm.dat'):
         if not (run_dir / filename).is_file():
             raise FileNotFoundError(f'No se encontró {run_dir / filename}; vuelve a ejecutar con --run')
-
-
-def blocked_ratio_stats(values, counts):
-    """Mean and standard error from fixed-time MC blocks with variable Z counts."""
-    values = np.asarray(values, dtype=float)
-    counts = np.asarray(counts, dtype=float)
-    if len(values) < 2 or np.any(counts < 0) or counts.sum() <= 0:
-        raise ValueError('Se necesitan al menos dos bloques medidos para estimar la incertidumbre')
-    mean = np.average(values, weights=counts)
-    residuals = counts * (values - mean)
-    error = residuals.std(ddof=1) / (np.sqrt(len(residuals)) * counts.mean())
-    return mean, error
 
 
 def read_energy_results(run_dir):

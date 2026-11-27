@@ -20,6 +20,16 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from worm_config import get_n_particles
+from pimc_common import (
+    analytical_bose_cycle_fractions,
+    analytical_bose_density,
+    analytical_bose_energy,
+    analytical_distinguishable_density,
+    analytical_distinguishable_energy,
+    blocked_ratio_stats,
+    canonical_bose_partition,
+    compile_mc_binary,
+)
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUN_DIR = os.environ.get("WORM_FASE4_RUN_DIR", SCRIPT_DIR)
@@ -49,26 +59,8 @@ def get_worm_executable():
     if configured_executable:
         return configured_executable
 
-    sources = sorted(glob.glob(os.path.join(SCRIPT_DIR, "*.c")))
-    if not sources:
-        raise RuntimeError(f"No se encontraron fuentes C en {SCRIPT_DIR}")
-
     executable = os.path.join(SCRIPT_DIR, "MC_snapshots")
-    newest_source = max(os.path.getmtime(source) for source in sources)
-    if not os.path.isfile(executable) or os.path.getmtime(executable) < newest_source:
-        compiler = os.environ.get("CC", "gcc")
-        command = [compiler, "-O2", "-fopenmp", "-std=c99", *sources,
-                   "-lm", "-o", executable]
-        print(f"  -> Compilando ejecutable Worm con snapshots: {compiler}")
-        result = subprocess.run(
-            command, cwd=SCRIPT_DIR, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"No se pudo compilar el ejecutable Worm:\n{result.stdout[-6000:]}")
-        print(f"  -> Ejecutable actualizado: {executable}")
-
-    return executable
+    return str(compile_mc_binary(SCRIPT_DIR, executable, only_if_stale=True))
 
 print(f"=================================================================")
 print(f"  VERIFICACIÓN FASE 4: MOVIMIENTO SWAP Y PERMUTACIONES BOSÓNICAS  ")
@@ -82,88 +74,7 @@ print(f"  Parámetro fugacidad C: {WORM_C:.6f}")
 print(f"  Bloques medición     : {MEASURE_BLOCKS} (iter por bloque: {N_ITER})")
 print(f"=================================================================\n")
 
-# Modelos analíticos exactos (de Script_Comparacion_N_Particulas_2D.py)
-def canonical_bose_partition(n_particles, temp, omega=OMEGA):
-    beta = 1.0 / temp
-    partition = np.zeros(n_particles + 1)
-    excitation_energy_sum = np.zeros(n_particles + 1)
-    excited_partition = np.zeros(n_particles + 1)
-    partition[0] = 1.0
-    excited_partition[0] = 1.0
-
-    for count in range(1, n_particles + 1):
-        for cycle in range(1, count + 1):
-            q = np.exp(-cycle * beta * omega)
-            one_cycle_partition = 1.0 / (1.0 - q)**2
-            one_cycle_excitation = 2.0 * omega * q / (1.0 - q)
-            excited_cycle_partition = one_cycle_partition - 1.0
-            partition[count] += one_cycle_partition * partition[count - cycle] / count
-            excitation_energy_sum[count] += one_cycle_partition * (
-                cycle * one_cycle_excitation * partition[count - cycle]
-                + excitation_energy_sum[count - cycle]
-            ) / count
-            excited_partition[count] += (
-                excited_cycle_partition * excited_partition[count - cycle] / count
-            )
-
-    return partition, excitation_energy_sum, excited_partition
-
-def analytical_bose_energy(n_particles, temp, omega=OMEGA):
-    partition, excitation_energy_sum, excited_partition = canonical_bose_partition(
-        n_particles, temp, omega
-    )
-    e_per_particle = omega + excitation_energy_sum[n_particles] / (n_particles * partition[n_particles])
-    ground_state_occupancy = sum(
-        (n_particles - count) * excited_partition[count]
-        for count in range(n_particles)
-    )
-    ground_state_occupancy /= partition[n_particles]
-    return e_per_particle, ground_state_occupancy / n_particles
-
-
-def analytical_bose_cycle_fractions(n_particles, temp, omega=OMEGA):
-    partition, _, _ = canonical_bose_partition(n_particles, temp, omega)
-    beta = 1.0 / temp
-    return np.array([
-        (1.0 / (1.0 - np.exp(-cycle * beta * omega))**2)
-        * partition[n_particles - cycle] / (n_particles * partition[n_particles])
-        for cycle in range(1, n_particles + 1)
-    ])
-
-
-def blocked_ratio_stats(values, counts):
-    values = np.asarray(values, dtype=float)
-    counts = np.asarray(counts, dtype=float)
-    if len(values) < 2 or np.any(counts < 0) or counts.sum() <= 0:
-        raise ValueError("Se necesitan al menos dos bloques para estimar la incertidumbre")
-    mean = np.average(values, weights=counts)
-    residuals = counts * (values - mean)
-    error = np.std(residuals, ddof=1) / (np.sqrt(len(residuals)) * counts.mean())
-    return mean, error
-
-def analytical_bose_density(r_grid, n_particles, temp, omega=OMEGA):
-    partition, _, _ = canonical_bose_partition(n_particles, temp, omega)
-    beta = 1.0 / temp
-    normalization = n_particles * partition[n_particles]
-
-    density = np.zeros_like(r_grid)
-    for cycle in range(1, n_particles + 1):
-        q = np.exp(-cycle * beta * omega)
-        cycle_partition = 1.0 / (1.0 - q)**2
-        weight = cycle_partition * partition[n_particles - cycle] / normalization
-        sigma_k2 = (0.5 / omega) / np.tanh(0.5 * cycle * beta * omega)
-        gauss = (1.0 / (2.0 * np.pi * sigma_k2)) * np.exp(-r_grid**2 / (2.0 * sigma_k2))
-        density += weight * gauss
-    return density
-
-def analytical_distinguishable_energy(temp, omega=OMEGA):
-    beta = 1.0 / temp
-    return omega / np.tanh(0.5 * beta * omega)
-
-def analytical_distinguishable_density(r_grid, temp, omega=OMEGA):
-    beta = 1.0 / temp
-    sigma2 = (0.5 / omega) / np.tanh(0.5 * beta * omega)
-    return (1.0 / (2.0 * np.pi * sigma2)) * np.exp(-r_grid**2 / (2.0 * sigma2))
+# Modelos analíticos exactos importados desde pimc_common.py
 
 # 1. Configurar MC.cfg temporal para la prueba
 cfg_path = os.path.join(RUN_DIR, "MC.cfg")

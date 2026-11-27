@@ -29,6 +29,7 @@ if _THIS_DIR not in sys.path:
 SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 
 from worm_config import get_n_particles
+from pimc_common import canonical_bose_partition as _full_bose_partition
 
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_OBDM")
 OVERLEAF_IMG_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "overleaf", "imágenes")
@@ -61,16 +62,8 @@ OMEGA = 1.0
 # ==============================================================================
 
 def canonical_bose_partition(n_particles, temp, omega=OMEGA):
-    """Calcula la función de partición canónica Z_N recursivamente."""
-    beta = 1.0 / temp
-    partition = np.zeros(n_particles + 1)
-    partition[0] = 1.0
-    for count in range(1, n_particles + 1):
-        for cycle in range(1, count + 1):
-            q = np.exp(-cycle * beta * omega)
-            one_cycle_partition = 1.0 / (1.0 - q)**2
-            partition[count] += one_cycle_partition * partition[count - cycle] / count
-    return partition
+    """Calcula la función de partición canónica Z_N."""
+    return _full_bose_partition(n_particles, temp, omega)[0]
 
 
 def normalized_mehler_1d(x, xp, tau, omega=OMEGA):

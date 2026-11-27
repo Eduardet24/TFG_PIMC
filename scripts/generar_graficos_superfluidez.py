@@ -39,6 +39,8 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
+from pimc_common import compile_mc_binary
+
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 BASE_OUT = SCRIPT_DIR / "Resultados" / "Verificacion_Superfluidez"
 DIR_TEMP = BASE_OUT / "01_Dependencia_Temperatura"
@@ -162,16 +164,7 @@ def exact_bose_superfluid(n_particles, temp, n_beads=None, omega=OMEGA):
 # 2. COMPILACIÓN Y EJECUCIÓN DE SIMULACIONES PIMC
 # ==============================================================================
 def get_or_compile_mc():
-    exe = SCRIPT_DIR / "MC"
-    sources = sorted(SCRIPT_DIR.glob("*.c"))
-    newest_src = max(s.stat().st_mtime for s in sources)
-    if not exe.is_file() or exe.stat().st_mtime < newest_src:
-        cmd = ["gcc", "-O2", "-fopenmp", "-std=c99", *[str(s) for s in sources], "-lm", "-o", str(exe)]
-        print(f"  [Compilando] {' '.join(cmd[:5])} ...")
-        res = subprocess.run(cmd, cwd=SCRIPT_DIR, capture_output=True, text=True)
-        if res.returncode != 0:
-            raise RuntimeError(f"Error compilando MC:\n{res.stderr}")
-    return exe
+    return compile_mc_binary(SCRIPT_DIR, SCRIPT_DIR / "MC", only_if_stale=True, compiler="gcc")
 
 
 def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,

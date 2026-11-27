@@ -27,6 +27,7 @@ if _THIS_DIR not in sys.path:
 SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 
 from worm_config import get_n_particles
+from pimc_common import compile_mc_binary
 from generar_graficos_obdm import (
     load_worm_obdm_data,
     load_worm_dist_data,
@@ -62,17 +63,7 @@ N_ITER = int(os.environ.get("WORM_OBDM_NITER", 1000))
 
 
 def get_or_compile_executable():
-    executable = os.path.join(SCRIPT_DIR, "MC")
-    sources = sorted([os.path.join(SCRIPT_DIR, f) for f in os.listdir(SCRIPT_DIR) if f.endswith(".c")])
-    newest_source = max(os.path.getmtime(s) for s in sources)
-    if not os.path.isfile(executable) or os.path.getmtime(executable) < newest_source:
-        compiler = os.environ.get("CC", "gcc")
-        cmd = [compiler, "-O2", "-fopenmp", "-std=c99", *sources, "-lm", "-o", executable]
-        print(f"  -> Compilando motor C con soporte OBDM: {' '.join(cmd[:5])}...")
-        res = subprocess.run(cmd, cwd=SCRIPT_DIR, capture_output=True, text=True)
-        if res.returncode != 0:
-            raise RuntimeError(f"Error compilando MC:\n{res.stderr}")
-    return executable
+    return str(compile_mc_binary(SCRIPT_DIR, os.path.join(SCRIPT_DIR, "MC"), only_if_stale=True))
 
 
 def main():
