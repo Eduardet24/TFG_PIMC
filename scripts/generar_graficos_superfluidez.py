@@ -28,7 +28,6 @@ Uso:
 """
 
 import os
-import re
 import sys
 import json
 import time
@@ -40,7 +39,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pimc_common import compile_mc_binary
+from pimc_common import blocked_ratio_stats, compile_mc_binary, replace_cfg_value
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 BASE_OUT = SCRIPT_DIR / "Resultados" / "Verificacion_Superfluidez"
@@ -176,6 +175,132 @@ def get_or_compile_mc():
     )
 
 
+DEFAULT_BURN_IN = 0.20
+
+
+def compute_superfluid_block_stats(sf_blocks_file, temp, burn_in_frac=DEFAULT_BURN_IN, sf_fallback=None):
+    """Calcula rho_s/rho y su error estándar mediante estimador de razón ponderado por muestras."""
+    sf_blocks = np.loadtxt(sf_blocks_file, comments="#", ndmin=2)
+    if sf_blocks.size == 0:
+        raise ValueError(f"Archivo de bloques vacío: {sf_blocks_file}")
+
+    start_idx = int(len(sf_blocks) * burn_in_frac)
+    if len(sf_blocks) - start_idx < 2:
+        start_idx = 0
+    useful = sf_blocks[start_idx:]
+    useful = useful[useful[:, 1] > 0]
+
+    if len(useful) >= 2 and useful.shape[1] >= 6:
+        counts = useful[:, 1].astype(float)
+        a2_vals = useful[:, 3].astype(float)
+        a_vals = useful[:, 4].astype(float)
+        icl_vals = useful[:, 5].astype(float)
+
+        a2_mean = float(np.average(a2_vals, weights=counts))
+        a_mean = float(np.average(a_vals, weights=counts))
+        icl_mean = float(np.average(icl_vals, weights=counts))
+        if icl_mean <= 0.0:
+            raise ValueError(f"Icl_mean no positivo en {sf_blocks_file}")
+
+        num_vals = 4.0 * temp * a2_vals
+        rho_s_ratio = float(np.sum(counts * num_vals) / np.sum(counts * icl_vals))
+        residuals = counts * (num_vals - rho_s_ratio * icl_vals)
+        rho_s_err = float(
+            np.std(residuals, ddof=1) / (np.sqrt(len(residuals)) * counts.mean() * icl_mean)
+        )
+        return {
+            "rho_s": rho_s_ratio,
+            "rho_s_block_mean": rho_s_ratio,
+            "rho_s_err": rho_s_err,
+            "A2_mean": a2_mean,
+            "A_mean": a_mean,
+            "Icl_mean": icl_mean,
+        }
+
+    if len(useful) >= 2:
+        counts = useful[:, 1].astype(float)
+        rho_s_mean, rho_s_err = blocked_ratio_stats(useful[:, 2], counts)
+        return {
+            "rho_s": float(rho_s_mean),
+            "rho_s_block_mean": float(rho_s_mean),
+            "rho_s_err": float(rho_s_err),
+            "A2_mean": float(sf_fallback[3]) if sf_fallback is not None and len(sf_fallback) > 3 else 0.0,
+            "A_mean": float(sf_fallback[4]) if sf_fallback is not None and len(sf_fallback) > 4 else 0.0,
+            "Icl_mean": float(sf_fallback[5]) if sf_fallback is not None and len(sf_fallback) > 5 else 0.0,
+        }
+
+    if sf_fallback is None:
+        raise ValueError(f"No hay suficientes bloques válidos en {sf_blocks_file}")
+    return {
+        "rho_s": float(sf_fallback[0]),
+        "rho_s_block_mean": float(sf_fallback[1]),
+        "rho_s_err": float(sf_fallback[2]),
+        "A2_mean": float(sf_fallback[3]),
+        "A_mean": float(sf_fallback[4]),
+        "Icl_mean": float(sf_fallback[5]),
+    }
+
+
+def load_run_summary(run_dir, n_particles, temp, n_beads, swap_enabled, burn_in_frac=DEFAULT_BURN_IN):
+    """Lee las salidas de una simulación PIMC y extrae estadísticas ponderadas por bloques."""
+    run_path = Path(run_dir)
+    sf_file = run_path / "outworm_superfluid.dat"
+    sf_blocks_file = run_path / "outworm_superfluid_blocks.dat"
+    perm_file = run_path / "outworm_perm.dat"
+
+    sf_vals = np.loadtxt(sf_file, comments="#") if sf_file.is_file() else None
+    stats = compute_superfluid_block_stats(
+        sf_blocks_file, temp, burn_in_frac=burn_in_frac, sf_fallback=sf_vals
+    )
+
+    perm_vals = np.loadtxt(perm_file, comments="#")
+    if perm_vals.ndim == 1:
+        perm_vals = perm_vals.reshape(1, -1)
+
+    p1 = float(perm_vals[0, 2])
+    p_non_trivial = float(np.sum(perm_vals[1:, 2])) if perm_vals.shape[0] > 1 else 0.0
+
+    return {
+        "N": int(n_particles),
+        "T": float(temp),
+        "P": int(n_beads),
+        "swap": bool(swap_enabled),
+        **stats,
+        "P1": p1,
+        "P_nontrivial": p_non_trivial,
+        "blocks_file": str(sf_blocks_file),
+    }
+
+
+def refresh_dataset_stats(dataset, burn_in_frac=DEFAULT_BURN_IN):
+    """Recalcula estadísticas ponderadas desde outworm_superfluid_blocks.dat si existe en disco."""
+    def _refresh_list(items):
+        refreshed = []
+        for item in items:
+            blk_path = Path(item.get("blocks_file", ""))
+            if not blk_path.is_file():
+                refreshed.append(item)
+                continue
+            refreshed.append(
+                load_run_summary(
+                    blk_path.parent,
+                    item["N"],
+                    item["T"],
+                    item["P"],
+                    item["swap"],
+                    burn_in_frac=burn_in_frac,
+                )
+            )
+        return refreshed
+
+    dataset["temp_sweep"]["swap"] = sorted(_refresh_list(dataset["temp_sweep"]["swap"]), key=lambda d: d["T"])
+    dataset["temp_sweep"]["noswap"] = sorted(_refresh_list(dataset["temp_sweep"]["noswap"]), key=lambda d: d["T"])
+    dataset["beads_sweep"]["runs"] = sorted(_refresh_list(dataset["beads_sweep"]["runs"]), key=lambda d: d["P"])
+    dataset["n_sweep"]["swap"] = sorted(_refresh_list(dataset["n_sweep"]["swap"]), key=lambda d: d["N"])
+    dataset["n_sweep"]["noswap"] = sorted(_refresh_list(dataset["n_sweep"]["noswap"]), key=lambda d: d["N"])
+    return dataset
+
+
 def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,
                   blck_heating=25, blck=120, n_iter=1500, swap_enabled=True, single_thread=False):
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -183,15 +308,15 @@ def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,
     worm_c = 0.03 / max(1, n_particles * n_beads * 0.25)
 
     cfg = base_cfg_text
-    cfg = re.sub(r"N=\s*\d+", f"N= {n_particles}", cfg)
-    cfg = re.sub(r"T=\s*[\d\.eE+-]+", f"T= {temp}", cfg)
-    cfg = re.sub(r"Npop=\s*\d+", f"Npop= {n_beads}", cfg)
-    cfg = re.sub(r"NwalkersMax=\s*\d+", f"NwalkersMax= {max(60, n_beads * 2)}", cfg)
-    cfg = re.sub(r"worm_C=\s*[\d\.eE+-]+", f"worm_C= {worm_c:.6f}", cfg)
-    cfg = re.sub(r"blck_heating=\s*\d+", f"blck_heating= {blck_heating}", cfg)
-    cfg = re.sub(r"blck=\s*[\d\s]+", f"blck= {blck}\n", cfg)
-    cfg = re.sub(r"Niter=\s*\d+", f"Niter= {n_iter}", cfg)
-    cfg = re.sub(r"Nmeasure=\s*\d+", "Nmeasure= 1", cfg)
+    cfg = replace_cfg_value(cfg, "N", n_particles)
+    cfg = replace_cfg_value(cfg, "T", f"{temp:g}")
+    cfg = replace_cfg_value(cfg, "Npop", n_beads)
+    cfg = replace_cfg_value(cfg, "NwalkersMax", max(60, n_beads * 2))
+    cfg = replace_cfg_value(cfg, "worm_C", f"{worm_c:.6f}")
+    cfg = replace_cfg_value(cfg, "blck_heating", blck_heating)
+    cfg = replace_cfg_value(cfg, "blck", blck)
+    cfg = replace_cfg_value(cfg, "Niter", n_iter)
+    cfg = replace_cfg_value(cfg, "Nmeasure", 1)
 
     cfg_file = run_dir / "MC.cfg"
     cfg_file.write_text(cfg, encoding="utf-8")
@@ -205,34 +330,7 @@ def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,
     if proc.returncode != 0:
         raise RuntimeError(f"Error en simulación {run_dir}:\n{proc.stderr[-500:]}")
 
-    sf_file = run_dir / "outworm_superfluid.dat"
-    sf_blocks_file = run_dir / "outworm_superfluid_blocks.dat"
-    perm_file = run_dir / "outworm_perm.dat"
-
-    sf_vals = np.loadtxt(sf_file, comments="#")
-    sf_blocks = np.loadtxt(sf_blocks_file, comments="#")
-    perm_vals = np.loadtxt(perm_file, comments="#")
-    if perm_vals.ndim == 1:
-        perm_vals = perm_vals.reshape(1, -1)
-
-    p1 = float(perm_vals[0, 2])
-    p_non_trivial = float(np.sum(perm_vals[1:, 2])) if perm_vals.shape[0] > 1 else 0.0
-
-    return {
-        "N": n_particles,
-        "T": temp,
-        "P": n_beads,
-        "swap": swap_enabled,
-        "rho_s": float(sf_vals[0]),
-        "rho_s_block_mean": float(sf_vals[1]),
-        "rho_s_err": float(sf_vals[2]),
-        "A2_mean": float(sf_vals[3]),
-        "A_mean": float(sf_vals[4]),
-        "Icl_mean": float(sf_vals[5]),
-        "P1": p1,
-        "P_nontrivial": p_non_trivial,
-        "blocks_file": str(sf_blocks_file),
-    }
+    return load_run_summary(run_dir, n_particles, temp, n_beads, swap_enabled)
 
 
 def save_figure(fig, path_without_ext):
@@ -253,21 +351,69 @@ def save_figure(fig, path_without_ext):
 # ==============================================================================
 # 3. GENERACIÓN DE GRÁFICOS
 # ==============================================================================
+def _format_beads_subtitle(runs, default_beads):
+    distinct_p = sorted({int(d.get("P", default_beads)) for d in runs})
+    if len(distinct_p) <= 1:
+        return f"P={distinct_p[0] if distinct_p else default_beads}"
+    low_t_beads = [int(d["P"]) for d in runs if d["T"] < 0.4]
+    if low_t_beads and len(set(low_t_beads)) == 1 and default_beads != low_t_beads[0]:
+        return f"P={default_beads} (P={low_t_beads[0]} si T<0.4)"
+    return f"P={','.join(str(p) for p in distinct_p)}"
+
+
+def _plot_low_t_extra_beads(ax, n_part, runs, default_beads, t_min, add_labels=True):
+    """Dibuja segmentos de referencia exacta para puntos con distinto número de beads P."""
+    extra_ps = sorted({int(d.get("P", default_beads)) for d in runs} - {int(default_beads)})
+    for p_extra in extra_ps:
+        t_extra_max = max(d["T"] for d in runs if int(d.get("P", default_beads)) == p_extra)
+        t_seg = np.linspace(t_min, t_extra_max + 0.05, 60)
+        bose_seg = [exact_bose_superfluid(n_part, t, n_beads=p_extra)[0] for t in t_seg]
+        dist_seg = [exact_bose_superfluid(1, t, n_beads=p_extra)[0] for t in t_seg]
+        ax.plot(
+            t_seg,
+            bose_seg,
+            color=COLOR_BOSE,
+            lw=1.6,
+            ls="-.",
+            alpha=0.85,
+            label=f"Exacta Bose (P={p_extra}, T<{t_extra_max + 0.05:.2f})" if add_labels else None,
+        )
+        ax.plot(
+            t_seg,
+            dist_seg,
+            color=COLOR_DIST,
+            lw=1.5,
+            ls=":",
+            alpha=0.85,
+            label=f"Exacta Dist. (P={p_extra}, T<{t_extra_max + 0.05:.2f})" if add_labels else None,
+        )
+
+
 def plot_temperature_dependence(data_temp):
     n_part = data_temp["N"]
     n_beads = data_temp["P"]
-    temps = np.array([d["T"] for d in data_temp["swap"]])
-    rhos_swap = np.array([d["rho_s_block_mean"] for d in data_temp["swap"]])
-    err_swap = np.array([d["rho_s_err"] for d in data_temp["swap"]])
-    rhos_noswap = np.array([d["rho_s_block_mean"] for d in data_temp["noswap"]])
-    err_noswap = np.array([d["rho_s_err"] for d in data_temp["noswap"]])
+    swap_runs = sorted(data_temp["swap"], key=lambda d: d["T"])
+    noswap_runs = sorted(data_temp["noswap"], key=lambda d: d["T"])
+
+    temps = np.array([d["T"] for d in swap_runs])
+    rhos_swap = np.array([d["rho_s_block_mean"] for d in swap_runs])
+    err_swap = np.array([d["rho_s_err"] for d in swap_runs])
+    rhos_noswap = np.array([d["rho_s_block_mean"] for d in noswap_runs])
+    err_noswap = np.array([d["rho_s_err"] for d in noswap_runs])
 
     t_grid = np.linspace(min(temps) * 0.85, max(temps) * 1.05, 200)
     exact_bose_grid = np.array([exact_bose_superfluid(n_part, t, n_beads=n_beads)[0] for t in t_grid])
     exact_dist_grid = np.array([exact_bose_superfluid(1, t, n_beads=n_beads)[0] for t in t_grid])
 
-    exact_bose_pts = np.array([exact_bose_superfluid(n_part, t, n_beads=n_beads)[0] for t in temps])
-    exact_dist_pts = np.array([exact_bose_superfluid(1, t, n_beads=n_beads)[0] for t in temps])
+    exact_bose_pts = np.array([
+        exact_bose_superfluid(n_part, d["T"], n_beads=int(d.get("P", n_beads)))[0]
+        for d in swap_runs
+    ])
+    exact_dist_pts = np.array([
+        exact_bose_superfluid(1, d["T"], n_beads=int(d.get("P", n_beads)))[0]
+        for d in noswap_runs
+    ])
+    beads_label = _format_beads_subtitle(swap_runs, n_beads)
 
     # --- Figura 1: rho_s/rho vs T (simple) ---
     fig, ax = plt.subplots(figsize=(7.5, 5.2))
@@ -275,6 +421,7 @@ def plot_temperature_dependence(data_temp):
             label=f"Teoría exacta Bose (N={n_part}, P={n_beads})")
     ax.plot(t_grid, exact_dist_grid, color=COLOR_DIST, lw=2.0, ls="--",
             label=f"Teoría exacta Distinguibles (P={n_beads})")
+    _plot_low_t_extra_beads(ax, n_part, swap_runs, n_beads, t_grid[0], add_labels=True)
     ax.errorbar(temps, rhos_swap, yerr=err_swap, fmt="o", color=COLOR_PIMC_SWAP,
                 ms=6.5, capsize=3.5, elinewidth=1.4, label="Worm PIMC — Bosones (Swap)")
     ax.errorbar(temps, rhos_noswap, yerr=err_noswap, fmt="s", color=COLOR_PIMC_NOSWAP,
@@ -282,7 +429,7 @@ def plot_temperature_dependence(data_temp):
 
     ax.set_xlabel(r"Temperatura $T$ ($\hbar\omega / k_B$)")
     ax.set_ylabel(r"Fracción superfluida $\rho_s / \rho$")
-    ax.set_title(f"Fracción superfluida vs Temperatura (Trampa armónica 2D, N={n_part})")
+    ax.set_title(f"Fracción superfluida vs Temperatura (Trampa armónica 2D, N={n_part}, {beads_label})")
     ax.set_ylim(-0.02, 1.05)
     ax.legend(frameon=True, facecolor="white", framealpha=0.92)
     save_figure(fig, DIR_TEMP / "01_rhos_vs_T_bosones_vs_distinguibles")
@@ -290,14 +437,15 @@ def plot_temperature_dependence(data_temp):
     # --- Figura 2: rho_s/rho vs T con panel de residuos normalizados (pull plot) ---
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7.6, 6.8), sharex=True,
                                    gridspec_kw={"height_ratios": [2.4, 1.0], "hspace": 0.08})
-    ax1.plot(t_grid, exact_bose_grid, color=COLOR_BOSE, lw=2.2, label="Teoría exacta Bose")
-    ax1.plot(t_grid, exact_dist_grid, color=COLOR_DIST, lw=2.0, ls="--", label="Teoría exacta Distinguibles")
+    ax1.plot(t_grid, exact_bose_grid, color=COLOR_BOSE, lw=2.2, label=f"Teoría exacta Bose (P={n_beads})")
+    ax1.plot(t_grid, exact_dist_grid, color=COLOR_DIST, lw=2.0, ls="--", label=f"Teoría exacta Distinguibles (P={n_beads})")
+    _plot_low_t_extra_beads(ax1, n_part, swap_runs, n_beads, t_grid[0], add_labels=True)
     ax1.errorbar(temps, rhos_swap, yerr=err_swap, fmt="o", color=COLOR_PIMC_SWAP,
                  ms=6.5, capsize=3.5, label="PIMC Bosones (Swap)")
     ax1.errorbar(temps, rhos_noswap, yerr=err_noswap, fmt="s", color=COLOR_PIMC_NOSWAP,
                  ms=6.0, capsize=3.5, label="PIMC Distinguibles (Sin Swap)")
     ax1.set_ylabel(r"$\rho_s / \rho$")
-    ax1.set_title(f"Verificación térmica de la fracción superfluida y residuos ($N={n_part}$, $P={n_beads}$)")
+    ax1.set_title(f"Verificación térmica de la fracción superfluida y residuos ($N={n_part}$, {beads_label})")
     ax1.set_ylim(-0.02, 1.05)
     ax1.legend(frameon=True, facecolor="white", framealpha=0.92)
 
@@ -310,18 +458,21 @@ def plot_temperature_dependence(data_temp):
     ax2.plot(temps, pull_noswap, "s--", color=COLOR_PIMC_NOSWAP, ms=5.0, lw=1.1, label="Pull Distinguibles")
     ax2.set_xlabel(r"Temperatura $T$")
     ax2.set_ylabel(r"Residuo $(y - y_{\mathrm{ex}})/\sigma$")
-    ax2.set_ylim(-4.2, 4.2)
-    ax2.legend(loc="upper right", ncol=2, fontsize=8.5, frameon=True)
+    ax2.set_ylim(-4.5, 4.2)
+    ax2.legend(loc="lower left", ncol=2, fontsize=8.5, frameon=True)
     save_figure(fig, DIR_TEMP / "02_rhos_vs_T_con_residuos")
 
 
 def plot_permutations_and_mcmc(data_temp, mcmc_case):
-    temps = np.array([d["T"] for d in data_temp["swap"]])
-    rhos_swap = np.array([d["rho_s_block_mean"] for d in data_temp["swap"]])
-    err_swap = np.array([d["rho_s_err"] for d in data_temp["swap"]])
-    rhos_noswap = np.array([d["rho_s_block_mean"] for d in data_temp["noswap"]])
+    swap_runs = sorted(data_temp["swap"], key=lambda d: d["T"])
+    noswap_runs = sorted(data_temp["noswap"], key=lambda d: d["T"])
+
+    temps = np.array([d["T"] for d in swap_runs])
+    rhos_swap = np.array([d["rho_s_block_mean"] for d in swap_runs])
+    err_swap = np.array([d["rho_s_err"] for d in swap_runs])
+    rhos_noswap = np.array([d["rho_s_block_mean"] for d in noswap_runs])
     delta_rhos = rhos_swap - rhos_noswap
-    p_nontriv = np.array([d["P_nontrivial"] for d in data_temp["swap"]])
+    p_nontriv = np.array([d["P_nontrivial"] for d in swap_runs])
 
     # --- Figura 3: Correlación entre exceso superfluido y ciclos de permutación ---
     fig, ax1 = plt.subplots(figsize=(7.6, 5.2))
@@ -349,22 +500,32 @@ def plot_permutations_and_mcmc(data_temp, mcmc_case):
     save_figure(fig, DIR_PERM / "03_rhos_vs_ciclos_permutacion")
 
     # --- Figura 4: Convergencia MCMC por bloques y chequeo de simetría <A_z> ~ 0 ---
-    blk_data = np.loadtxt(mcmc_case["blocks_file"], comments="#")
+    blk_data = np.loadtxt(mcmc_case["blocks_file"], comments="#", ndmin=2)
+    blk_data = blk_data[blk_data[:, 1] > 0]
     blocks = blk_data[:, 0]
     samples = blk_data[:, 1]
     rho_blk = blk_data[:, 2]
     a_blk = blk_data[:, 4]
 
     cum_weights = np.cumsum(samples)
-    cum_rho = np.cumsum(rho_blk * samples) / cum_weights
+    if blk_data.shape[1] >= 6:
+        a2_blk = blk_data[:, 3]
+        icl_blk = blk_data[:, 5]
+        cum_rho = 4.0 * mcmc_case["T"] * np.cumsum(a2_blk * samples) / np.cumsum(icl_blk * samples)
+    else:
+        cum_rho = np.cumsum(rho_blk * samples) / cum_weights
     cum_a = np.cumsum(a_blk * samples) / cum_weights
     exact_val, _, _ = exact_bose_superfluid(mcmc_case["N"], mcmc_case["T"], n_beads=mcmc_case["P"])
+    burn_idx = int(len(blocks) * DEFAULT_BURN_IN)
 
     fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=(7.6, 6.4), sharex=True,
                                          gridspec_kw={"height_ratios": [1.6, 1.0], "hspace": 0.1})
     ax_top.plot(blocks, rho_blk, ".", color="#90e0ef", alpha=0.75, label="Estimación por bloque")
-    ax_top.plot(blocks, cum_rho, "-", color=COLOR_PIMC_SWAP, lw=2.2, label="Media acumulada PIMC")
+    ax_top.plot(blocks, cum_rho, "-", color=COLOR_PIMC_SWAP, lw=2.2, label="Estimador acumulado PIMC")
     ax_top.axhline(exact_val, color=COLOR_BOSE, lw=2.0, ls="--", label=f"Valor exacto ({exact_val:.4f})")
+    if 0 < burn_idx < len(blocks):
+        ax_top.axvline(blocks[burn_idx], color="#6c757d", lw=1.1, ls=":", label="Fin burn-in (20%)")
+        ax_bot.axvline(blocks[burn_idx], color="#6c757d", lw=1.1, ls=":")
     ax_top.set_ylabel(r"$\rho_s / \rho$")
     ax_top.set_title(f"Convergencia MCMC y simetría temporal (N={mcmc_case['N']}, T={mcmc_case['T']}, P={mcmc_case['P']})")
     ax_top.legend(frameon=True, facecolor="white", framealpha=0.92)
@@ -380,9 +541,10 @@ def plot_permutations_and_mcmc(data_temp, mcmc_case):
 
 def plot_convergence_and_n_scaling(data_beads, data_n):
     # --- Figura 5: Convergencia con número de beads P ---
-    p_vals = np.array([d["P"] for d in data_beads["runs"]])
-    rhos_p = np.array([d["rho_s_block_mean"] for d in data_beads["runs"]])
-    err_p = np.array([d["rho_s_err"] for d in data_beads["runs"]])
+    runs_beads = sorted(data_beads["runs"], key=lambda d: d["P"])
+    p_vals = np.array([d["P"] for d in runs_beads])
+    rhos_p = np.array([d["rho_s_block_mean"] for d in runs_beads])
+    err_p = np.array([d["rho_s_err"] for d in runs_beads])
 
     n_part = data_beads["N"]
     temp = data_beads["T"]
@@ -402,11 +564,13 @@ def plot_convergence_and_n_scaling(data_beads, data_n):
     save_figure(fig, DIR_CONV / "05_convergencia_beads_P")
 
     # --- Figura 6: Escalado con el número de partículas N ---
-    n_vals = np.array([d["N"] for d in data_n["swap"]])
-    rhos_n_swap = np.array([d["rho_s_block_mean"] for d in data_n["swap"]])
-    err_n_swap = np.array([d["rho_s_err"] for d in data_n["swap"]])
-    rhos_n_noswap = np.array([d["rho_s_block_mean"] for d in data_n["noswap"]])
-    err_n_noswap = np.array([d["rho_s_err"] for d in data_n["noswap"]])
+    n_swap_runs = sorted(data_n["swap"], key=lambda d: d["N"])
+    n_noswap_runs = sorted(data_n["noswap"], key=lambda d: d["N"])
+    n_vals = np.array([d["N"] for d in n_swap_runs])
+    rhos_n_swap = np.array([d["rho_s_block_mean"] for d in n_swap_runs])
+    err_n_swap = np.array([d["rho_s_err"] for d in n_swap_runs])
+    rhos_n_noswap = np.array([d["rho_s_block_mean"] for d in n_noswap_runs])
+    err_n_noswap = np.array([d["rho_s_err"] for d in n_noswap_runs])
 
     n_grid = np.arange(1, max(n_vals) + 1)
     temp_n = data_n["T"]
@@ -431,29 +595,34 @@ def plot_convergence_and_n_scaling(data_beads, data_n):
 
 
 def plot_dashboard(data_temp, mcmc_case, data_beads, data_n):
+    _ = mcmc_case
     fig, axes = plt.subplots(2, 2, figsize=(13.2, 9.8))
     ((ax1, ax2), (ax3, ax4)) = axes
 
     # Panel A: rho_s vs T
     n_part, n_beads = data_temp["N"], data_temp["P"]
-    temps = np.array([d["T"] for d in data_temp["swap"]])
-    rhos_s = np.array([d["rho_s_block_mean"] for d in data_temp["swap"]])
-    err_s = np.array([d["rho_s_err"] for d in data_temp["swap"]])
-    rhos_ns = np.array([d["rho_s_block_mean"] for d in data_temp["noswap"]])
-    err_ns = np.array([d["rho_s_err"] for d in data_temp["noswap"]])
+    swap_runs = sorted(data_temp["swap"], key=lambda d: d["T"])
+    noswap_runs = sorted(data_temp["noswap"], key=lambda d: d["T"])
+    temps = np.array([d["T"] for d in swap_runs])
+    rhos_s = np.array([d["rho_s_block_mean"] for d in swap_runs])
+    err_s = np.array([d["rho_s_err"] for d in swap_runs])
+    rhos_ns = np.array([d["rho_s_block_mean"] for d in noswap_runs])
+    err_ns = np.array([d["rho_s_err"] for d in noswap_runs])
     t_grid = np.linspace(min(temps) * 0.85, max(temps) * 1.05, 160)
-    ax1.plot(t_grid, [exact_bose_superfluid(n_part, t, n_beads)[0] for t in t_grid], color=COLOR_BOSE, lw=2.0, label="Exacta Bose")
-    ax1.plot(t_grid, [exact_bose_superfluid(1, t, n_beads)[0] for t in t_grid], color=COLOR_DIST, lw=1.8, ls="--", label="Exacta Dist.")
+    beads_label = _format_beads_subtitle(swap_runs, n_beads)
+    ax1.plot(t_grid, [exact_bose_superfluid(n_part, t, n_beads)[0] for t in t_grid], color=COLOR_BOSE, lw=2.0, label=f"Exacta Bose (P={n_beads})")
+    ax1.plot(t_grid, [exact_bose_superfluid(1, t, n_beads)[0] for t in t_grid], color=COLOR_DIST, lw=1.8, ls="--", label=f"Exacta Dist. (P={n_beads})")
+    _plot_low_t_extra_beads(ax1, n_part, swap_runs, n_beads, t_grid[0], add_labels=True)
     ax1.errorbar(temps, rhos_s, yerr=err_s, fmt="o", color=COLOR_PIMC_SWAP, ms=5.5, capsize=3, label="PIMC Swap")
     ax1.errorbar(temps, rhos_ns, yerr=err_ns, fmt="s", color=COLOR_PIMC_NOSWAP, ms=5.0, capsize=3, label="PIMC No-Swap")
-    ax1.set_title(f"(a) Fracción superfluida vs T (N={n_part})")
+    ax1.set_title(f"(a) Fracción superfluida vs T (N={n_part}, {beads_label})")
     ax1.set_xlabel("Temperatura $T$")
     ax1.set_ylabel(r"$\rho_s / \rho$")
     ax1.set_ylim(-0.02, 1.05)
-    ax1.legend(fontsize=8.5, frameon=True)
+    ax1.legend(fontsize=8.2, frameon=True)
 
     # Panel B: Correlación con ciclos de permutación
-    p_nontriv = np.array([d["P_nontrivial"] for d in data_temp["swap"]])
+    p_nontriv = np.array([d["P_nontrivial"] for d in swap_runs])
     ax2.errorbar(temps, rhos_s, yerr=err_s, fmt="o-", color=COLOR_PIMC_SWAP, ms=5.5, lw=1.5, capsize=3, label=r"$\rho_s/\rho$ (Bosones)")
     ax2.plot(temps, p_nontriv, "s-", color=COLOR_PERM, ms=5.5, lw=1.6, label=r"Fracción ciclos $L \geq 2$")
     ax2.plot(temps, rhos_s - rhos_ns, "d--", color=COLOR_ACCENT, ms=5.0, lw=1.4, label=r"$\Delta(\rho_s/\rho)_{\mathrm{Swap}}$")
@@ -464,9 +633,10 @@ def plot_dashboard(data_temp, mcmc_case, data_beads, data_n):
     ax2.legend(fontsize=8.5, frameon=True)
 
     # Panel C: Convergencia en beads P
-    p_vals = np.array([d["P"] for d in data_beads["runs"]])
-    rhos_p = np.array([d["rho_s_block_mean"] for d in data_beads["runs"]])
-    err_p = np.array([d["rho_s_err"] for d in data_beads["runs"]])
+    runs_beads = sorted(data_beads["runs"], key=lambda d: d["P"])
+    p_vals = np.array([d["P"] for d in runs_beads])
+    rhos_p = np.array([d["rho_s_block_mean"] for d in runs_beads])
+    err_p = np.array([d["rho_s_err"] for d in runs_beads])
     p_grid = np.arange(min(p_vals), max(p_vals) + 4, 2)
     exact_cont, _, _ = exact_bose_superfluid(data_beads["N"], data_beads["T"], n_beads=None)
     ax3.axhline(exact_cont, color=COLOR_BOSE, lw=1.8, ls=":", label=f"Continuo ({exact_cont:.3f})")
@@ -479,15 +649,17 @@ def plot_dashboard(data_temp, mcmc_case, data_beads, data_n):
     ax3.legend(fontsize=8.5, frameon=True)
 
     # Panel D: Escalado con N partículas
-    n_vals = np.array([d["N"] for d in data_n["swap"]])
+    n_swap_runs = sorted(data_n["swap"], key=lambda d: d["N"])
+    n_noswap_runs = sorted(data_n["noswap"], key=lambda d: d["N"])
+    n_vals = np.array([d["N"] for d in n_swap_runs])
     n_grid = np.arange(1, max(n_vals) + 1)
     ax4.plot(n_grid, [exact_bose_superfluid(int(nn), data_n["T"], data_n["P"])[0] for nn in n_grid],
              "o-", color=COLOR_BOSE, lw=1.8, ms=4, label="Exacta Bose")
     ax4.axhline(exact_bose_superfluid(1, data_n["T"], data_n["P"])[0], color=COLOR_DIST, lw=1.8, ls="--", label="Exacta Dist.")
-    ax4.errorbar(n_vals, [d["rho_s_block_mean"] for d in data_n["swap"]],
-                 yerr=[d["rho_s_err"] for d in data_n["swap"]], fmt="o", color=COLOR_PIMC_SWAP, ms=6, capsize=3, label="PIMC Swap")
-    ax4.errorbar(n_vals, [d["rho_s_block_mean"] for d in data_n["noswap"]],
-                 yerr=[d["rho_s_err"] for d in data_n["noswap"]], fmt="s", color=COLOR_PIMC_NOSWAP, ms=5.5, capsize=3, label="PIMC No-Swap")
+    ax4.errorbar(n_vals, [d["rho_s_block_mean"] for d in n_swap_runs],
+                 yerr=[d["rho_s_err"] for d in n_swap_runs], fmt="o", color=COLOR_PIMC_SWAP, ms=6, capsize=3, label="PIMC Swap")
+    ax4.errorbar(n_vals, [d["rho_s_block_mean"] for d in n_noswap_runs],
+                 yerr=[d["rho_s_err"] for d in n_noswap_runs], fmt="s", color=COLOR_PIMC_NOSWAP, ms=5.5, capsize=3, label="PIMC No-Swap")
     ax4.set_title(f"(d) Escalado con N partículas (T={data_n['T']}, P={data_n['P']})")
     ax4.set_xlabel("Número de partículas $N$")
     ax4.set_ylabel(r"$\rho_s / \rho$")
@@ -504,9 +676,42 @@ def plot_dashboard(data_temp, mcmc_case, data_beads, data_n):
 # ==============================================================================
 # 4. ORQUESTACIÓN PRINCIPAL
 # ==============================================================================
+def reconstruct_dataset_from_disk(n_temp=4, p_temp=30, temps=None, p_list=None, n_list=None):
+    """Reconstruye el dataset desde las carpetas ya simuladas en DIR_DATA."""
+    temps = temps or [0.25, 0.35, 0.5, 0.7, 1.0, 1.4, 2.0, 2.6]
+    p_list = p_list or [10, 20, 30, 50, 80]
+    n_list = n_list or [1, 2, 3, 5, 8]
+
+    swap_runs = [
+        load_run_summary(DIR_DATA / f"T_{t:g}_swap", n_temp, t, 40 if t < 0.4 else p_temp, True)
+        for t in temps
+    ]
+    noswap_runs = [
+        load_run_summary(DIR_DATA / f"T_{t:g}_noswap", n_temp, t, 40 if t < 0.4 else p_temp, False)
+        for t in temps
+    ]
+    beads_runs = [
+        load_run_summary(DIR_DATA / f"P_{p}", 4, 0.5, p, True)
+        for p in p_list
+    ]
+    n_swap_runs = [
+        load_run_summary(DIR_DATA / f"N_{nn}_swap", nn, 0.5, 30, True)
+        for nn in n_list
+    ]
+    n_noswap_runs = [
+        load_run_summary(DIR_DATA / f"N_{nn}_noswap", nn, 0.5, 30, False)
+        for nn in n_list
+    ]
+    return {
+        "temp_sweep": {"N": n_temp, "P": p_temp, "swap": swap_runs, "noswap": noswap_runs},
+        "beads_sweep": {"N": 4, "T": 0.5, "runs": beads_runs},
+        "n_sweep": {"T": 0.5, "P": 30, "swap": n_swap_runs, "noswap": n_noswap_runs},
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generar gráficos de fracción superfluida Worm PIMC")
-    parser.add_argument("--no-run", action="store_true", help="Reutilizar datos JSON existentes sin re-ejecutar C")
+    parser.add_argument("--no-run", action="store_true", help="Reutilizar datos JSON o carpetas existentes sin re-ejecutar C")
     parser.add_argument("-j", "--jobs", type=int, default=min(4, os.cpu_count() or 1),
                         help="Simulaciones en paralelo al ejecutar C")
     args = parser.parse_args()
@@ -514,10 +719,22 @@ def main():
         parser.error("--jobs debe ser >= 1")
 
     summary_json = DIR_DATA / "resumen_superfluidez.json"
+    n_temp = 4
+    p_temp = 30
+    temps = [0.25, 0.35, 0.5, 0.7, 1.0, 1.4, 2.0, 2.6]
+    p_list = [10, 20, 30, 50, 80]
+    n_list = [1, 2, 3, 5, 8]
 
-    if args.no_run and summary_json.is_file():
-        print("[1/2] Cargando datos existentes desde resumen_superfluidez.json...")
-        dataset = json.loads(summary_json.read_text(encoding="utf-8"))
+    if args.no_run:
+        if summary_json.is_file():
+            print("[1/2] Cargando datos existentes desde resumen_superfluidez.json...")
+            dataset = refresh_dataset_stats(json.loads(summary_json.read_text(encoding="utf-8")))
+        else:
+            print("[1/2] Reconstruyendo estadísticas ponderadas desde datos en disco...")
+            dataset = reconstruct_dataset_from_disk(
+                n_temp=n_temp, p_temp=p_temp, temps=temps, p_list=p_list, n_list=n_list
+            )
+            summary_json.write_text(json.dumps(dataset, indent=2), encoding="utf-8")
     else:
         print("=================================================================")
         print("  ESTUDIO COMPLETO DE FRACCIÓN SUPERFLUIDA (WORM PIMC 2D)")
@@ -527,12 +744,9 @@ def main():
         t0 = time.time()
 
         single_thread = args.jobs > 1
+        total_jobs = 2 * len(temps) + len(p_list) + 2 * len(n_list)
+        print(f"Lanzando {total_jobs} simulaciones en paralelo (jobs={args.jobs})...")
 
-        # 1. Barrido en temperatura (N=4, P=30)
-        n_temp = 4
-        p_temp = 30
-        temps = [0.25, 0.35, 0.5, 0.7, 1.0, 1.4, 2.0, 2.6]
-        print(f"[1/3] Barrido en temperatura T ({len(temps)} puntos, N={n_temp}, P={p_temp}, jobs={args.jobs})...")
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:
             temp_tasks = [
                 (
@@ -548,6 +762,32 @@ def main():
                 )
                 for t in temps
             ]
+            beads_tasks = [
+                (
+                    p,
+                    pool.submit(
+                        run_pimc_case, exe, base_cfg, DIR_DATA / f"P_{p}",
+                        4, 0.5, p, 25, 100, 1500, True, single_thread
+                    ),
+                )
+                for p in p_list
+            ]
+            n_tasks = [
+                (
+                    nn,
+                    pool.submit(
+                        run_pimc_case, exe, base_cfg, DIR_DATA / f"N_{nn}_swap",
+                        nn, 0.5, 30, 25, 100, 1500, True, single_thread
+                    ),
+                    pool.submit(
+                        run_pimc_case, exe, base_cfg, DIR_DATA / f"N_{nn}_noswap",
+                        nn, 0.5, 30, 25, 100, 1500, False, single_thread
+                    ),
+                )
+                for nn in n_list
+            ]
+
+            print(f"[1/3] Barrido en temperatura T ({len(temps)} puntos, N={n_temp}, P={p_temp}; P=40 si T<0.4)...")
             swap_runs, noswap_runs = [], []
             for t, fut_s, fut_ns in temp_tasks:
                 r_s = fut_s.result()
@@ -557,33 +797,14 @@ def main():
                 print(f"      T={t:4.2f} | Swap: {r_s['rho_s_block_mean']:.4f}+/-{r_s['rho_s_err']:.4f} | "
                       f"NoSwap: {r_ns['rho_s_block_mean']:.4f}+/-{r_ns['rho_s_err']:.4f} | P(L>=2)={r_s['P_nontrivial']:.3f}")
 
-            # 2. Convergencia en beads P (N=4, T=0.5)
-            p_list = [10, 20, 30, 50, 80]
             print(f"[2/3] Convergencia en número de beads P ({p_list}, N=4, T=0.5)...")
-            beads_tasks = [
-                (p, pool.submit(run_pimc_case, exe, base_cfg, DIR_DATA / f"P_{p}",
-                                4, 0.5, p, 25, 100, 1500, True, single_thread))
-                for p in p_list
-            ]
             beads_runs = []
             for p, fut_p in beads_tasks:
                 r_p = fut_p.result()
                 beads_runs.append(r_p)
                 print(f"      P={p:2d} | rho_s/rho = {r_p['rho_s_block_mean']:.4f}+/-{r_p['rho_s_err']:.4f}")
 
-            # 3. Escalado con N partículas (T=0.5, P=30)
-            n_list = [1, 2, 3, 5, 8]
             print(f"[3/3] Escalado con número de partículas N ({n_list}, T=0.5, P=30)...")
-            n_tasks = [
-                (
-                    nn,
-                    pool.submit(run_pimc_case, exe, base_cfg, DIR_DATA / f"N_{nn}_swap",
-                                nn, 0.5, 30, 25, 100, 1500, True, single_thread),
-                    pool.submit(run_pimc_case, exe, base_cfg, DIR_DATA / f"N_{nn}_noswap",
-                                nn, 0.5, 30, 25, 100, 1500, False, single_thread),
-                )
-                for nn in n_list
-            ]
             n_swap_runs, n_noswap_runs = [], []
             for nn, fut_ns_s, fut_ns_ns in n_tasks:
                 r_ns_s = fut_ns_s.result()
@@ -602,7 +823,10 @@ def main():
         print(f"\n  Simulaciones completadas en {time.time() - t0:.1f} s.")
 
     print("\nGenerando figuras científicas en Resultados/Verificacion_Superfluidez/...")
-    mcmc_case = dataset["temp_sweep"]["swap"][2]  # T = 0.5
+    mcmc_case = next(
+        (d for d in dataset["temp_sweep"]["swap"] if np.isclose(d["T"], 0.5)),
+        dataset["temp_sweep"]["swap"][0],
+    )
     plot_temperature_dependence(dataset["temp_sweep"])
     plot_permutations_and_mcmc(dataset["temp_sweep"], mcmc_case)
     plot_convergence_and_n_scaling(dataset["beads_sweep"], dataset["n_sweep"])
