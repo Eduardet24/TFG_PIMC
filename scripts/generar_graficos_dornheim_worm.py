@@ -16,7 +16,14 @@ Cada ejecución actualiza automáticamente los archivos PNG (300 DPI) y PDF en:
 """
 
 import argparse
+import os
 from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+
+from matplotlib.collections import LineCollection
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -24,6 +31,10 @@ import numpy as np
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = SCRIPT_DIR / "Resultados" / "Figuras_Worm_Dornheim"
 OVERLEAF_DIR = SCRIPT_DIR.parent / "overleaf" / "imágenes"
+DEFAULT_DORNHEIM_PDF = SCRIPT_DIR.parent / "Bibliografía" / "PhD Dornheim 2014.pdf"
+
+_DORNHEIM_CACHE = {}
+_DORNHEIM_FALLBACK_WARNED = False
 
 
 # ==============================================================================
@@ -56,25 +67,28 @@ COLOR_MASHA = "#008080"        # Teal / Verde azulado profundo (cola Masha)
 
 
 def save_figure(fig, filename):
-    """Guarda y reemplaza automáticamente la figura en formato PNG y PDF en ambas carpetas."""
+    """Guarda en Resultados (PNG 300 DPI y PDF) y copia a Overleaf si es accesible."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    OVERLEAF_DIR.mkdir(parents=True, exist_ok=True)
-
     png_out = OUTPUT_DIR / filename
     pdf_out = png_out.with_suffix(".pdf")
-    png_overleaf = OVERLEAF_DIR / filename
-    pdf_overleaf = png_overleaf.with_suffix(".pdf")
 
-    # Guardar en carpeta local de Resultados
+    # Renderizar una sola vez y copiar a Overleaf si es posible
     fig.savefig(png_out, dpi=300, bbox_inches="tight")
     fig.savefig(pdf_out, bbox_inches="tight")
 
-    # Reemplazar directamente en la carpeta de imágenes de Overleaf
-    fig.savefig(png_overleaf, dpi=300, bbox_inches="tight")
-    fig.savefig(pdf_overleaf, bbox_inches="tight")
+    copied_overleaf = False
+    try:
+        OVERLEAF_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(png_out, OVERLEAF_DIR / png_out.name)
+        shutil.copy2(pdf_out, OVERLEAF_DIR / pdf_out.name)
+        copied_overleaf = True
+    except OSError as exc:
+        print(f"  [AVISO] No se pudo exportar a {OVERLEAF_DIR}: {exc}")
 
     plt.close(fig)
-    print(f"  [REEMPLAZADO] {filename:<42} -> Resultados/ y overleaf/imágenes/")
+    dest = "Resultados/ y overleaf/imágenes/" if copied_overleaf else "Resultados/"
+    print(f"  [REEMPLAZADO] {filename:<42} -> {dest}")
+    return copied_overleaf
 
 
 def clean_obsolete_didactic_files():
@@ -110,15 +124,77 @@ BOXES = [
 ]
 
 
-def ensure_dornheim_svg(page_num):
-    svg_path = Path(f"/tmp/page_{page_num}.svg")
-    if not svg_path.exists():
-        pdf_path = SCRIPT_DIR.parent / "Bibliografía" / "PhD Dornheim 2014.pdf"
-        if pdf_path.exists():
-            import subprocess
-            subprocess.run(["pdftocairo", "-svg", "-f", str(page_num), "-l", str(page_num),
-                            str(pdf_path), str(svg_path)], check=True)
-    return svg_path
+def _build_fallback_dornheim_paths(page_num):
+    """Genera trayectorias esquemáticas autocontenidas si falta el PDF externo."""
+    tau = np.linspace(0.0, 20.0, 21)
+    p1 = list(zip(-1.25 + 0.30 * np.sin(0.25 * np.pi * tau / 2.5 + 0.3), tau))
+    p2_full = list(zip(1.10 + 0.32 * np.cos(0.22 * np.pi * tau / 2.2), tau))
+    beads = {0: {"red": [], "blue": []}, 1: {"red": [], "blue": []}}
+
+    if page_num == 22:
+        p_ins = list(zip(1.05 + 0.22 * np.sin(0.5 * (tau[4:13] - 4.0)), tau[4:13]))
+        cut_link = p2_full[9:12]
+        return [(0, "blue", p1), (0, "red", p_ins), (1, "blue", p1), (1, "blue", p2_full), (1, "red", cut_link)], beads
+
+    if page_num == 24:
+        adv_seg = p2_full[8:13]
+        bis_x = np.array([p2_full[k][0] for k in range(6, 14)], dtype=float)
+        bis_x[1:-1] += np.array([-0.24, -0.35, -0.28, -0.10, 0.14, 0.22])
+        bis_seg = list(zip(bis_x, tau[6:14]))
+        return [
+            (0, "blue", p1),
+            (0, "blue", p2_full[2:9]),
+            (0, "red", adv_seg),
+            (1, "blue", p1),
+            (1, "blue", p2_full),
+            (1, "red", bis_seg),
+        ], beads
+
+    if page_num == 26:
+        p1_low = p1[0:13]
+        p1_high = p1[16:21]
+        bridge_tau = tau[13:17]
+        bridge_x = np.linspace(p2_full[12][0], p1_high[0][0], 5)[1:]
+        p5 = list(p2_full[2:13]) + list(zip(bridge_x, bridge_tau))
+        return [
+            (0, "blue", p1),
+            (0, "blue", p2_full),
+            (0, "red", p2_full[2:13]),
+            (1, "blue", p1_low),
+            (1, "blue", p1_high),
+            (1, "red", p5),
+        ], beads
+
+    raise ValueError(f"Página Dornheim no soportada: {page_num}")
+
+
+def ensure_dornheim_svg(page_num, pdf_path=None):
+    """Localiza o genera el SVG de la página de Dornheim si existen PDF y pdftocairo."""
+    legacy_svg = Path(tempfile.gettempdir()) / f"page_{page_num}.svg"
+    if legacy_svg.is_file():
+        return legacy_svg
+
+    cached_svg = Path(tempfile.gettempdir()) / f"dornheim_page_{page_num}.svg"
+    if cached_svg.is_file():
+        return cached_svg
+
+    pdf = Path(pdf_path) if pdf_path is not None else Path(
+        os.environ.get("DORNHEIM_PDF", str(DEFAULT_DORNHEIM_PDF))
+    )
+    if pdf.is_file() and shutil.which("pdftocairo"):
+        try:
+            subprocess.run(
+                ["pdftocairo", "-svg", "-f", str(page_num), "-l", str(page_num),
+                 str(pdf), str(cached_svg)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if cached_svg.is_file():
+                return cached_svg
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return None
 
 
 def to_dornheim_coords(px, py, box_idx):
@@ -129,9 +205,7 @@ def to_dornheim_coords(px, py, box_idx):
 
 
 def parse_dornheim_svg(svg_file):
-    import re
-    with open(svg_file) as f:
-        text = f.read()
+    text = Path(svg_file).read_text(encoding="utf-8", errors="ignore")
 
     matches = re.findall(r'<path[^>]+stroke=\"(rgb\([^)]+\))\"[^>]*d=\"([^\"]+)\"', text)
     paths = []
@@ -167,6 +241,26 @@ def parse_dornheim_svg(svg_file):
     return paths, beads
 
 
+def load_dornheim_paths(page_num, pdf_path=None):
+    """Carga y cachea las trayectorias SVG de Dornheim o usa fallback autocontenido."""
+    global _DORNHEIM_FALLBACK_WARNED
+    cache_key = (page_num, str(pdf_path) if pdf_path else "")
+    if cache_key in _DORNHEIM_CACHE:
+        return _DORNHEIM_CACHE[cache_key]
+
+    svg_path = ensure_dornheim_svg(page_num, pdf_path=pdf_path)
+    if svg_path is not None and svg_path.is_file():
+        parsed = parse_dornheim_svg(svg_path)
+    else:
+        if not _DORNHEIM_FALLBACK_WARNED:
+            print("  [AVISO] No se encontró el PDF de Dornheim o pdftocairo; usando trayectorias esquemáticas autocontenidas.")
+            _DORNHEIM_FALLBACK_WARNED = True
+        parsed = _build_fallback_dornheim_paths(page_num)
+
+    _DORNHEIM_CACHE[cache_key] = parsed
+    return parsed
+
+
 def setup_dornheim_axis(ax, xlabel="x", ylabel=r"$\tau/\epsilon$"):
     """Configuración tipográfica clara con marcas internas y rejilla suave de orientación."""
     ax.set_xlim(-3.0, 3.0)
@@ -179,9 +273,11 @@ def setup_dornheim_axis(ax, xlabel="x", ylabel=r"$\tau/\epsilon$"):
     ax.grid(True, linestyle=":", alpha=0.45, color="#b0b0b0")
 
 
-def draw_annot_box(ax, x, y, text, color, fontsize=11.5, weight='bold', ha='left', va='center'):
+def draw_annot_box(ax, x, y, text, color, fontsize=11.5, weight='bold', ha='left', va='center', xycoords='data'):
     """Dibuja una anotación con fondo blanco redondeado para máxima legibilidad."""
+    transform = ax.transAxes if xycoords == 'axes fraction' else ax.transData
     return ax.text(x, y, text, color=color, fontsize=fontsize, weight=weight, ha=ha, va=va,
+                   transform=transform,
                    bbox=dict(boxstyle="round,pad=0.24", facecolor="white", edgecolor=color, alpha=0.92, lw=0.85),
                    zorder=10)
 
@@ -190,9 +286,8 @@ def draw_annot_box(ax, x, y, text, color, fontsize=11.5, weight='bold', ha='left
 # FIGURAS DISCRETAS INDIVIDUALES (PÁGINAS 22, 24 Y 26)
 # ==============================================================================
 
-def make_dornheim_fig7_open_close():
-    svg22 = ensure_dornheim_svg(22)
-    paths22, _ = parse_dornheim_svg(svg22)
+def make_dornheim_fig7_open_close(pdf_path=None):
+    paths22, _ = load_dornheim_paths(22, pdf_path=pdf_path)
 
     fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.4), dpi=300)
 
@@ -242,12 +337,11 @@ def make_dornheim_fig7_open_close():
     draw_annot_box(ax, 2.2, 8.5, "Enlace cortado (Open)\no cerrado (Close)", COLOR_MODIFIED, fontsize=10.5, ha="center")
 
     plt.tight_layout()
-    save_figure(fig, "dornheim_fig7_open_close.png")
+    return save_figure(fig, "dornheim_fig7_open_close.png")
 
 
-def make_dornheim_fig8_advance_recede_bisection():
-    svg24 = ensure_dornheim_svg(24)
-    paths24, _ = parse_dornheim_svg(svg24)
+def make_dornheim_fig8_advance_recede_bisection(pdf_path=None):
+    paths24, _ = load_dornheim_paths(24, pdf_path=pdf_path)
     p2_full = paths24[4][2] # Trayectoria completa de la Partícula 2 (tau 0..20)
 
     fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.4), dpi=300)
@@ -317,14 +411,12 @@ def make_dornheim_fig8_advance_recede_bisection():
     draw_annot_box(ax, 2.25, 9.5, "Segmento interno\nremuestreado (azul)", COLOR_MODIFIED, fontsize=10.5, ha="center")
 
     plt.tight_layout()
-    save_figure(fig, "dornheim_fig8_advance_recede_bisection.png")
+    return save_figure(fig, "dornheim_fig8_advance_recede_bisection.png")
 
 
-def make_dornheim_fig9_swap():
-    svg24 = ensure_dornheim_svg(24)
-    svg26 = ensure_dornheim_svg(26)
-    paths24, _ = parse_dornheim_svg(svg24)
-    paths26, _ = parse_dornheim_svg(svg26)
+def make_dornheim_fig9_swap(pdf_path=None):
+    paths24, _ = load_dornheim_paths(24, pdf_path=pdf_path)
+    paths26, _ = load_dornheim_paths(26, pdf_path=pdf_path)
     p2_full = paths24[4][2] # Trayectoria completa Partícula 2
 
     fig, axs = plt.subplots(1, 2, figsize=(11.5, 5.4), dpi=300)
@@ -403,20 +495,17 @@ def make_dornheim_fig9_swap():
     draw_annot_box(ax, masha_sw[0] + 0.35, masha_sw[1], r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=11.5)
 
     plt.tight_layout()
-    save_figure(fig, "dornheim_fig9_swap.png")
+    return save_figure(fig, "dornheim_fig9_swap.png")
 
 
 # ==============================================================================
 # PANEL COMPLETO 2x2: TODOS LOS MOVIMIENTOS WORM
 # ==============================================================================
 
-def make_dornheim_panel_completo():
-    svg22 = ensure_dornheim_svg(22)
-    svg24 = ensure_dornheim_svg(24)
-    svg26 = ensure_dornheim_svg(26)
-    paths22, _ = parse_dornheim_svg(svg22)
-    paths24, _ = parse_dornheim_svg(svg24)
-    paths26, _ = parse_dornheim_svg(svg26)
+def make_dornheim_panel_completo(pdf_path=None):
+    paths22, _ = load_dornheim_paths(22, pdf_path=pdf_path)
+    paths24, _ = load_dornheim_paths(24, pdf_path=pdf_path)
+    paths26, _ = load_dornheim_paths(26, pdf_path=pdf_path)
     p2_full = paths24[4][2] # Trayectoria completa Partícula 2 (tau 0..20)
 
     fig, axs = plt.subplots(2, 2, figsize=(13.5, 11.5), dpi=300)
@@ -649,43 +738,85 @@ def open_worm_edges(state):
     return edges
 
 
+PARTICLE_PALETTE = [
+    (COLOR_P1, COLOR_P1_BEAD),
+    (COLOR_P2, COLOR_P2_BEAD),
+    ("#8c564b", "#c49c94"),
+    ("#e377c2", "#f7b6d2"),
+    ("#7f7f7f", "#c7c7c7"),
+    ("#bcbd22", "#dbdb8d"),
+    ("#17becf", "#9edae5"),
+]
+
+
+def _particle_colors(particle, p0_color=COLOR_P1, p0_bead=COLOR_P1_BEAD,
+                     p1_color=COLOR_P2, p1_bead=COLOR_P2_BEAD):
+    if particle == 0:
+        return p0_color, p0_bead
+    if particle == 1:
+        return p1_color, p1_bead
+    return PARTICLE_PALETTE[particle % len(PARTICLE_PALETTE)]
+
+
+def _add_segments(ax, segments, **kwargs):
+    if segments:
+        ax.add_collection(LineCollection(segments, **kwargs))
+
+
 def draw_simulation_state(ax, state, title):
     n_beads = state["n_beads"]
+    n_particles = state["n_particles"]
     tau = np.arange(n_beads + 1) / n_beads
     open_edges = open_worm_edges(state)
 
+    open_segments = []
+    closed_by_particle = [[] for _ in range(n_particles)]
     for bead in range(n_beads):
         next_bead = (bead + 1) % n_beads
-        for particle in range(state["n_particles"]):
-            next_particle = state["next"][bead, particle]
+        t0, t1 = tau[bead], tau[bead + 1]
+        for particle in range(n_particles):
+            next_particle = int(state["next"][bead, particle])
             if next_particle < 0:
                 continue
-            is_open = (bead, particle) in open_edges
-            color = COLOR_MODIFIED if is_open else COLOR_P1
-            lw = 2.4 if is_open else 1.5
-            ax.plot([state["x"][bead, particle], state["x"][next_bead, next_particle]],
-                    [tau[bead], tau[bead + 1]], color=color, linewidth=lw, zorder=2)
+            seg = [
+                (state["x"][bead, particle], t0),
+                (state["x"][next_bead, next_particle], t1),
+            ]
+            if (bead, particle) in open_edges:
+                open_segments.append(seg)
+            else:
+                closed_by_particle[particle].append(seg)
+
+    for particle, segs in enumerate(closed_by_particle):
+        c_line, _ = _particle_colors(particle)
+        _add_segments(ax, segs, colors=c_line, linewidths=1.5, zorder=2)
+    _add_segments(ax, open_segments, colors=COLOR_MODIFIED, linewidths=2.4, zorder=3)
 
     bead_times = np.arange(n_beads) / n_beads
-    ax.scatter(state["x"].ravel(), np.repeat(bead_times, state["n_particles"]),
-               color=COLOR_P1_BEAD, edgecolor=COLOR_P1, s=18, zorder=3)
+    for particle in range(n_particles):
+        c_line, c_bead = _particle_colors(particle)
+        ax.scatter(state["x"][:, particle], bead_times,
+                   color=c_bead, edgecolor=c_line, s=18, zorder=4)
+
+    xmin = float(np.min(state["x"]))
+    xmax = float(np.max(state["x"]))
+    span = max(xmax - xmin, 0.5)
+    offset = max(0.06, 0.04 * span)
 
     if state["worm_open"]:
         ira_bead, ira_particle = state["ira"]
         masha_bead, masha_particle = state["masha"]
         ax.scatter([state["x"][ira_bead, ira_particle]], [bead_times[ira_bead]],
                    color=COLOR_IRA, edgecolor="black", linewidth=1.0, s=70, zorder=5)
-        draw_annot_box(ax, state["x"][ira_bead, ira_particle] + 0.1, bead_times[ira_bead],
+        draw_annot_box(ax, state["x"][ira_bead, ira_particle] + offset, bead_times[ira_bead],
                        r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=10.5)
 
         ax.scatter([state["x"][masha_bead, masha_particle]], [bead_times[masha_bead]],
                    color=COLOR_MASHA, edgecolor="black", linewidth=1.0, s=70, zorder=5, marker="s")
-        draw_annot_box(ax, state["x"][masha_bead, masha_particle] - 0.1, bead_times[masha_bead],
+        draw_annot_box(ax, state["x"][masha_bead, masha_particle] - offset, bead_times[masha_bead],
                        r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10.5, ha="right")
 
-    xmin = float(np.min(state["x"]))
-    xmax = float(np.max(state["x"]))
-    padding = max(0.35, 0.12 * (xmax - xmin))
+    padding = max(0.35, 0.12 * span)
     ax.set_xlim(xmin - padding, xmax + padding)
     ax.set_ylim(0, 1)
     ax.set_xlabel("x (coordenada de la simulación)", fontsize=12, fontweight="bold")
@@ -701,40 +832,39 @@ def _draw_sim_panel_worldlines(ax, state, p0_color=COLOR_P1, p0_bead=COLOR_P1_BE
                                rest_edges=None, skip_edges=None):
     """Dibuja las trayectorias reales de la simulación diferenciando partículas y tramos."""
     n_beads = state["n_beads"]
+    n_particles = state["n_particles"]
     tau = np.arange(n_beads + 1) / n_beads
     rest_edges = rest_edges or set()
     skip_edges = skip_edges or set()
 
+    rest_segments = []
+    particle_segments = [[] for _ in range(n_particles)]
     for bead in range(n_beads):
         next_bead = (bead + 1) % n_beads
-        for particle in range(state["n_particles"]):
-            next_particle = state["next"][bead, particle]
+        t0, t1 = tau[bead], tau[bead + 1]
+        for particle in range(n_particles):
+            next_particle = int(state["next"][bead, particle])
             if next_particle < 0 or (bead, particle) in skip_edges:
                 continue
+            seg = [
+                (state["x"][bead, particle], t0),
+                (state["x"][next_bead, next_particle], t1),
+            ]
             if (bead, particle) in rest_edges:
-                color = "#4b5563"
-                ls = ":"
-                lw = 2.0
-                z = 2
-            elif particle == 0:
-                color = p0_color
-                ls = "-"
-                lw = 2.0
-                z = 2
+                rest_segments.append(seg)
             else:
-                color = p1_color
-                ls = "-"
-                lw = 2.0
-                z = 2
-            ax.plot([state["x"][bead, particle], state["x"][next_bead, next_particle]],
-                    [tau[bead], tau[bead + 1]], color=color, linestyle=ls, linewidth=lw, zorder=z)
+                particle_segments[particle].append(seg)
+
+    _add_segments(ax, rest_segments, colors="#4b5563", linestyles=":", linewidths=2.0, zorder=2)
+    for particle, segs in enumerate(particle_segments):
+        c_edge, _ = _particle_colors(particle, p0_color=p0_color, p0_bead=p0_bead,
+                                     p1_color=p1_color, p1_bead=p1_bead)
+        _add_segments(ax, segs, colors=c_edge, linestyles="-", linewidths=2.0, zorder=2)
 
     bead_times = np.arange(n_beads) / n_beads
-    for particle in range(state["n_particles"]):
-        if particle == 0:
-            c_bead, c_edge = p0_bead, p0_color
-        else:
-            c_bead, c_edge = p1_bead, p1_color
+    for particle in range(n_particles):
+        c_edge, c_bead = _particle_colors(particle, p0_color=p0_color, p0_bead=p0_bead,
+                                          p1_color=p1_color, p1_bead=p1_bead)
         ax.scatter(state["x"][:, particle], bead_times, color=c_bead, edgecolor=c_edge, s=26, zorder=3)
 
 
@@ -750,6 +880,7 @@ def _setup_sim_panel_axis(ax, state, title):
     ax.grid(True, linestyle=":", alpha=0.45, color="#b0b0b0")
     ax.set_axisbelow(True)
     ax.tick_params(direction="in", length=5, width=1.0, top=True, right=True, labelsize=10.5)
+    return xmin, xmax, span
 
 
 def make_simulation_panel_completo(snapshot_file):
@@ -770,7 +901,7 @@ def make_simulation_panel_completo(snapshot_file):
     a_open = events["Open"]["after"]
     n_beads = a_open["n_beads"]
     tau = np.arange(n_beads + 1) / n_beads
-    _setup_sim_panel_axis(ax, a_open, r"$\mathbf{(a)\ Movimiento\ Open\ /\ Close}$ ($Z \leftrightarrow G$)")
+    _, _, span = _setup_sim_panel_axis(ax, a_open, r"$\mathbf{(a)\ Movimiento\ Open\ /\ Close}$ ($Z \leftrightarrow G$)")
     _draw_sim_panel_worldlines(ax, a_open)
 
     # Enlace cortado en Open (presente en before, -1 en after)
@@ -792,11 +923,17 @@ def make_simulation_panel_completo(snapshot_file):
     ax.scatter([ix], [itau], color=COLOR_IRA, edgecolor="black", s=120, zorder=6, marker="o")
     ax.scatter([mx], [mtau], color=COLOR_MASHA, edgecolor="black", s=120, zorder=6, marker="s")
 
-    draw_annot_box(ax, -1.35, 0.90, "Partícula 1\n(Sector G)", COLOR_P1, fontsize=10, ha="center")
-    draw_annot_box(ax, 0.85, 0.90, "Partícula 2\n(Cerrada)", COLOR_P2, fontsize=10, ha="center")
-    draw_annot_box(ax, ix - 0.12, itau - 0.08, r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=10.5, ha="right")
-    draw_annot_box(ax, mx + 0.12, mtau + 0.05, r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10.5, ha="left")
-    draw_annot_box(ax, 0.78, 0.15, "Enlace cortado (Open)\no cerrado (Close)", COLOR_MODIFIED, fontsize=9.5, ha="center")
+    dx = 0.05 * span
+    draw_annot_box(ax, 0.03, 0.94, "Partícula 1\n(Sector G)", COLOR_P1, fontsize=10,
+                   ha="left", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, 0.97, 0.94, "Partícula 2\n(Cerrada)", COLOR_P2, fontsize=10,
+                   ha="right", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, ix - dx, float(np.clip(itau - 0.07, 0.06, 0.94)),
+                   r"$\mathcal{I}$ (Ira)", COLOR_IRA, fontsize=10.5, ha="right")
+    draw_annot_box(ax, mx + dx, float(np.clip(mtau + 0.05, 0.06, 0.94)),
+                   r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10.5, ha="left")
+    draw_annot_box(ax, 0.97, 0.07, "Enlace cortado (Open)\no cerrado (Close)", COLOR_MODIFIED,
+                   fontsize=9.5, ha="right", va="bottom", xycoords="axes fraction")
 
     # --------------------------------------------------------------------------
     # (0, 1): Advance / Recede
@@ -806,7 +943,7 @@ def make_simulation_panel_completo(snapshot_file):
     a_adv = events["Advance"]["after"]
     n_beads = a_adv["n_beads"]
     tau = np.arange(n_beads + 1) / n_beads
-    _setup_sim_panel_axis(ax, a_adv, r"$\mathbf{(b)\ Movimiento\ Advance\ /\ Recede}$ (Sector $G$)")
+    _, _, span = _setup_sim_panel_axis(ax, a_adv, r"$\mathbf{(b)\ Movimiento\ Advance\ /\ Recede}$ (Sector $G$)")
 
     open_after = open_worm_edges(a_adv)
     all_edges_adv = {
@@ -835,12 +972,19 @@ def make_simulation_panel_completo(snapshot_file):
     ax.scatter([b_adv["x"][ib_b, ib_p]], [tau[ib_b]], color=COLOR_IRA, edgecolor="black", s=115, zorder=6, marker="o")
     ax.scatter([a_adv["x"][ma_b, ma_p]], [tau[ma_b]], color=COLOR_MASHA, edgecolor="black", s=120, zorder=6, marker="s")
 
-    draw_annot_box(ax, -1.35, 0.90, "Partícula 1", COLOR_P1, fontsize=10, ha="center")
-    draw_annot_box(ax, 0.85, 0.90, "Partícula 2\n(Gusano activo)", COLOR_P2, fontsize=10, ha="center")
-    draw_annot_box(ax, a_adv["x"][ia_b, ia_p] + 0.14, tau[ia_b] + 0.04, r"$\mathcal{I}_{\mathrm{new}}$ (Advance $\uparrow$)", COLOR_MODIFIED, fontsize=10)
-    draw_annot_box(ax, b_adv["x"][ib_b, ib_p] + 0.14, tau[ib_b] - 0.04, r"$\mathcal{I}_{\mathrm{old}}$ (Recede $\downarrow$)", COLOR_IRA, fontsize=10)
-    draw_annot_box(ax, a_adv["x"][ma_b, ma_p] + 0.12, tau[ma_b] + 0.05, r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10)
-    draw_annot_box(ax, -1.25, 0.14, "Enlace añadido\n(Advance azul)", COLOR_MODIFIED, fontsize=9.5, ha="center")
+    dx = 0.05 * span
+    draw_annot_box(ax, 0.03, 0.94, "Partícula 1", COLOR_P1, fontsize=10,
+                   ha="left", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, 0.97, 0.94, "Partícula 2\n(Gusano activo)", COLOR_P2, fontsize=10,
+                   ha="right", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, a_adv["x"][ia_b, ia_p] + dx, float(np.clip(tau[ia_b] + 0.04, 0.06, 0.94)),
+                   r"$\mathcal{I}_{\mathrm{new}}$ (Advance $\uparrow$)", COLOR_MODIFIED, fontsize=10)
+    draw_annot_box(ax, b_adv["x"][ib_b, ib_p] + dx, float(np.clip(tau[ib_b] - 0.04, 0.06, 0.94)),
+                   r"$\mathcal{I}_{\mathrm{old}}$ (Recede $\downarrow$)", COLOR_IRA, fontsize=10)
+    draw_annot_box(ax, a_adv["x"][ma_b, ma_p] + dx, float(np.clip(tau[ma_b] + 0.05, 0.06, 0.94)),
+                   r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10)
+    draw_annot_box(ax, 0.03, 0.07, "Enlace añadido\n(Advance azul)", COLOR_MODIFIED, fontsize=9.5,
+                   ha="left", va="bottom", xycoords="axes fraction")
 
     # --------------------------------------------------------------------------
     # (1, 0): Bisección / IraSpatialMove
@@ -850,13 +994,13 @@ def make_simulation_panel_completo(snapshot_file):
     a_ira = events["IraSpatialMove"]["after"]
     n_beads = a_ira["n_beads"]
     tau = np.arange(n_beads + 1) / n_beads
-    _setup_sim_panel_axis(ax, a_ira, r"$\mathbf{(c)\ Bisección\ /\ IraSpatialMove}$")
+    _, _, span = _setup_sim_panel_axis(ax, a_ira, r"$\mathbf{(c)\ Bisección\ /\ IraSpatialMove}$")
     _draw_sim_panel_worldlines(ax, a_ira)
 
-    # Resaltar enlace incidente a la cuenta desplazada
+    # Resaltar enlace incidente a la cuenta desplazada (en x o y)
     moved = [
         (m, p) for m in range(n_beads) for p in range(a_ira["n_particles"])
-        if abs(b_ira["x"][m, p] - a_ira["x"][m, p]) > 1e-9
+        if np.hypot(b_ira["x"][m, p] - a_ira["x"][m, p], b_ira["y"][m, p] - a_ira["y"][m, p]) > 1e-9
     ]
     for m, p in moved:
         prev_b = (m - 1) % n_beads
@@ -872,11 +1016,17 @@ def make_simulation_panel_completo(snapshot_file):
     ax.scatter([ix], [itau], color=COLOR_IRA, edgecolor="black", s=120, zorder=6, marker="o")
     ax.scatter([mx], [mtau], color=COLOR_MASHA, edgecolor="black", s=120, zorder=6, marker="s")
 
-    draw_annot_box(ax, -1.35, 0.90, "Partícula 1", COLOR_P1, fontsize=10, ha="center")
-    draw_annot_box(ax, 0.85, 0.90, "Partícula 2", COLOR_P2, fontsize=10, ha="center")
-    draw_annot_box(ax, ix - 0.10, itau - 0.08, r"$\mathcal{I}$ (Ira movida)", COLOR_IRA, fontsize=10, ha="right")
-    draw_annot_box(ax, mx + 0.12, mtau + 0.05, r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10)
-    draw_annot_box(ax, 0.78, 0.15, "Enlace remuestreado\n(IraSpatialMove azul)", COLOR_MODIFIED, fontsize=9.5, ha="center")
+    dx = 0.05 * span
+    draw_annot_box(ax, 0.03, 0.94, "Partícula 1", COLOR_P1, fontsize=10,
+                   ha="left", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, 0.97, 0.94, "Partícula 2", COLOR_P2, fontsize=10,
+                   ha="right", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, ix - dx, float(np.clip(itau - 0.07, 0.06, 0.94)),
+                   r"$\mathcal{I}$ (Ira movida)", COLOR_IRA, fontsize=10, ha="right")
+    draw_annot_box(ax, mx + dx, float(np.clip(mtau + 0.05, 0.06, 0.94)),
+                   r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10)
+    draw_annot_box(ax, 0.97, 0.07, "Enlace remuestreado\n(IraSpatialMove azul)", COLOR_MODIFIED,
+                   fontsize=9.5, ha="right", va="bottom", xycoords="axes fraction")
 
     # --------------------------------------------------------------------------
     # (1, 1): Swap
@@ -886,7 +1036,7 @@ def make_simulation_panel_completo(snapshot_file):
     a_sw = events["Swap"]["after"]
     n_beads = a_sw["n_beads"]
     tau = np.arange(n_beads + 1) / n_beads
-    _setup_sim_panel_axis(ax, a_sw, r"$\mathbf{(d)\ Movimiento\ Swap}$ (Permutación Cuántica)")
+    _, _, span = _setup_sim_panel_axis(ax, a_sw, r"$\mathbf{(d)\ Movimiento\ Swap}$ (Permutación Cuántica)")
 
     swap_created = [
         (m, p, int(a_sw["next"][m, p]))
@@ -902,25 +1052,37 @@ def make_simulation_panel_completo(snapshot_file):
     ]
     swap_set = {(m, p) for m, p, _ in swap_created}
 
-    # Tramo restante de P2 abierta desde el corte hacia arriba en tau
+    # Tramo restante de cadena abierta siguiendo next periódicamente tras el corte
     p2_rest_edges = set()
     if swap_cut:
-        cut_bead = (swap_cut[0][0] + 1) % n_beads
-        cut_part = swap_cut[0][2]
-        for m in range(cut_bead, n_beads):
-            if a_sw["next"][m, cut_part] >= 0:
-                p2_rest_edges.add((m, cut_part))
+        curr_b = (swap_cut[0][0] + 1) % n_beads
+        curr_p = swap_cut[0][2]
+        visited_rest = set()
+        for _ in range(n_beads * a_sw["n_particles"]):
+            state_key = (curr_b, curr_p)
+            if state_key in visited_rest or state_key == a_sw["masha"]:
+                break
+            visited_rest.add(state_key)
+            next_p = int(a_sw["next"][curr_b, curr_p])
+            if next_p < 0:
+                break
+            p2_rest_edges.add(state_key)
+            curr_b = (curr_b + 1) % n_beads
+            curr_p = next_p
 
     _draw_sim_panel_worldlines(ax, a_sw, rest_edges=p2_rest_edges, skip_edges=swap_set)
 
-    # Dibujar cuentas del tramo restante de P2 con color gris pizarra para máxima distinción
+    # Dibujar cuentas del tramo restante con color gris pizarra para máxima distinción
     color_p2_open_rest = "#4b5563"
     color_p2_open_rest_bead = "#9ca3af"
     if p2_rest_edges:
-        rest_beads_idx = sorted({m for m, _ in p2_rest_edges} | {(m + 1) % n_beads for m, _ in p2_rest_edges})
-        rest_part = next(iter(p2_rest_edges))[1]
-        ax.scatter(a_sw["x"][rest_beads_idx, rest_part], [tau[m] for m in rest_beads_idx],
-                   color=color_p2_open_rest_bead, edgecolor=color_p2_open_rest, s=28, zorder=4)
+        rest_nodes = sorted(
+            set(p2_rest_edges)
+            | {((m + 1) % n_beads, int(a_sw["next"][m, p])) for m, p in p2_rest_edges}
+        )
+        rest_x = [a_sw["x"][m, p] for m, p in rest_nodes]
+        rest_t = [tau[m] for m, _ in rest_nodes]
+        ax.scatter(rest_x, rest_t, color=color_p2_open_rest_bead, edgecolor=color_p2_open_rest, s=28, zorder=4)
 
     for m, p, np_a in swap_created:
         nb = (m + 1) % n_beads
@@ -939,12 +1101,19 @@ def make_simulation_panel_completo(snapshot_file):
     ax.scatter([b_sw["x"][ib_sw]], [tau[ib_sw[0]]], color=COLOR_SWAP, edgecolor="black", s=115, zorder=7, marker="o")
     ax.scatter([a_sw["x"][ma_sw]], [tau[ma_sw[0]]], color=COLOR_MASHA, edgecolor="black", s=120, zorder=7, marker="s")
 
-    draw_annot_box(ax, -1.35, 0.90, "Partícula 1", COLOR_P1, fontsize=10, ha="center")
-    draw_annot_box(ax, 0.82, 0.88, "Cadena P2 abierta\n(tramo restante)", color_p2_open_rest, fontsize=9.5, ha="center")
-    draw_annot_box(ax, -1.30, 0.36, "Enlace Swap\n(P1 → P2)", COLOR_SWAP, fontsize=9.5, ha="center")
-    draw_annot_box(ax, a_sw["x"][ia_sw] - 0.10, tau[ia_sw[0]] - 0.08, r"$\mathcal{I}_{\mathrm{new}}$ (Nueva Ira)", COLOR_IRA, fontsize=9.5, ha="right")
-    draw_annot_box(ax, b_sw["x"][ib_sw] + 0.14, tau[ib_sw[0]] - 0.06, r"$\mathcal{I}_{\mathrm{old}}$ (Vieja Ira)", COLOR_SWAP, fontsize=9.5, ha="left")
-    draw_annot_box(ax, a_sw["x"][ma_sw] + 0.12, tau[ma_sw[0]] + 0.05, r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10)
+    dx = 0.05 * span
+    draw_annot_box(ax, 0.03, 0.94, "Partícula 1", COLOR_P1, fontsize=10,
+                   ha="left", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, 0.97, 0.94, "Cadena P2 abierta\n(tramo restante)", color_p2_open_rest,
+                   fontsize=9.5, ha="right", va="top", xycoords="axes fraction")
+    draw_annot_box(ax, 0.03, 0.36, "Enlace Swap\n(P1 → P2)", COLOR_SWAP, fontsize=9.5,
+                   ha="left", va="center", xycoords="axes fraction")
+    draw_annot_box(ax, a_sw["x"][ia_sw] - dx, float(np.clip(tau[ia_sw[0]] - 0.07, 0.06, 0.94)),
+                   r"$\mathcal{I}_{\mathrm{new}}$ (Nueva Ira)", COLOR_IRA, fontsize=9.5, ha="right")
+    draw_annot_box(ax, b_sw["x"][ib_sw] + dx, float(np.clip(tau[ib_sw[0]] - 0.06, 0.06, 0.94)),
+                   r"$\mathcal{I}_{\mathrm{old}}$ (Vieja Ira)", COLOR_SWAP, fontsize=9.5, ha="left")
+    draw_annot_box(ax, a_sw["x"][ma_sw] + dx, float(np.clip(tau[ma_sw[0]] + 0.05, 0.06, 0.94)),
+                   r"$\mathcal{M}$ (Masha)", COLOR_MASHA, fontsize=10)
 
     fig.suptitle("Transiciones reales del algoritmo Worm (outworm_snapshots.dat)", fontweight="bold", fontsize=15, y=0.99)
     plt.tight_layout(rect=(0, 0, 1, 0.97))
@@ -987,6 +1156,13 @@ def main():
         metavar="SNAPSHOTS",
         help="Genera figuras before/after a partir de outworm_snapshots.dat",
     )
+    parser.add_argument(
+        "--dornheim-pdf",
+        type=Path,
+        default=None,
+        metavar="PDF",
+        help="Ruta opcional a PhD Dornheim 2014.pdf (o usar variable DORNHEIM_PDF)",
+    )
     args = parser.parse_args()
 
     if args.from_simulation is not None:
@@ -1002,20 +1178,27 @@ def main():
     clean_obsolete_didactic_files()
 
     print("\nGenerando gráficos.")
-    make_dornheim_fig7_open_close()
-    make_dornheim_fig8_advance_recede_bisection()
-    make_dornheim_fig9_swap()
+    make_dornheim_fig7_open_close(pdf_path=args.dornheim_pdf)
+    make_dornheim_fig8_advance_recede_bisection(pdf_path=args.dornheim_pdf)
+    make_dornheim_fig9_swap(pdf_path=args.dornheim_pdf)
+
     default_snapshots = SCRIPT_DIR / "outworm_snapshots.dat"
+    copied_panel = False
     if default_snapshots.exists():
-        make_simulation_panel_completo(default_snapshots)
-    else:
-        make_dornheim_panel_completo()
+        try:
+            make_simulation_panel_completo(default_snapshots)
+            copied_panel = True
+        except ValueError as exc:
+            print(f"  [AVISO] {exc}. Generando panel completo desde esquemas de Dornheim...")
+
+    if not copied_panel:
+        make_dornheim_panel_completo(pdf_path=args.dornheim_pdf)
 
     print("\n" + "=" * 76)
     print("¡Éxito! Todas las figuras han sido generadas y reemplazadas.")
-    print("Ubicaciones actualizadas (PNG 300 DPI y PDF):")
+    print("Ubicaciones configuradas (PNG 300 DPI y PDF):")
     print(f"  1. {OUTPUT_DIR}")
-    print(f"  2. {OVERLEAF_DIR}")
+    print(f"  2. {OVERLEAF_DIR} (si es accesible)")
     print("=" * 76)
 
 

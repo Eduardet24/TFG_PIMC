@@ -32,13 +32,17 @@ Uso:
 
 import os
 import sys
-import re
 import shutil
 import argparse
+import re
 import subprocess
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+
+_THIS_DIR = Path(__file__).resolve().parent
+if str(_THIS_DIR) not in sys.path:
+    sys.path.insert(0, str(_THIS_DIR))
 
 from pimc_common import (
     analytical_bose_cycle_fractions,
@@ -46,17 +50,18 @@ from pimc_common import (
     analytical_distinguishable_energy,
     blocked_ratio_stats,
     canonical_bose_partition,
+    compile_mc_binary,
+    replace_cfg_value,
 )
 
 # ==============================================================================
 # CONFIGURACIÓN DE RUTAS Y CONSTANTES
 # ==============================================================================
-SCRIPT_DIR = Path(__file__).resolve().parent.parent
+SCRIPT_DIR = _THIS_DIR.parent
 PROJECT_DIR = SCRIPT_DIR
 RESULTS_DIR = SCRIPT_DIR / "Resultados" / "Verificacion_Energia"
 OVERLEAF_DIR = SCRIPT_DIR.parent / "overleaf" / "imágenes"
-
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+_TEMP_DIR_RE = re.compile(r"^sim_T([0-9.eE+-]+)$")
 
 # Paleta cromática científica de alto contraste (ColorBrewer / PRX style)
 COLOR_BOSE = "#d90429"         # Rojo carmesí intenso (Teoría Bose)
@@ -69,24 +74,33 @@ COLOR_VIRIAL = "#7b1fa2"       # Púrpura intenso (Residuo Virial)
 COLOR_RESIDUES = "#3182bd"     # Azul para residuos normalizados pull
 
 OMEGA = 1.0
+DEFAULT_SWEEP_TEMPS = (0.2, 0.5, 1.0, 1.5, 2.0, 3.0)
 
 
 # Los modelos analíticos y blocked_ratio_stats se importan desde pimc_common.py
 
 
 def save_figure(fig, filename_base):
-    """Guarda en PNG (300 DPI) y PDF vectorial tanto en Resultados como en Overleaf."""
-    for folder in [RESULTS_DIR, OVERLEAF_DIR]:
-        try:
-            folder.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            print(f"  [AVISO] No se pudo crear {folder}: {exc}")
-            continue
-        png_path = folder / f"{filename_base}.png"
-        pdf_path = folder / f"{filename_base}.pdf"
-        fig.savefig(png_path, dpi=300, bbox_inches="tight")
-        fig.savefig(pdf_path, bbox_inches="tight")
-    print(f"  [GUARDADO] {filename_base}.png/.pdf -> Resultados/ y overleaf/imágenes/")
+    """Guarda en PNG (300 DPI) y PDF vectorial en Resultados y los copia a Overleaf si es posible."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    png_path = RESULTS_DIR / f"{filename_base}.png"
+    pdf_path = RESULTS_DIR / f"{filename_base}.pdf"
+    fig.savefig(png_path, dpi=300, bbox_inches="tight")
+    fig.savefig(pdf_path, bbox_inches="tight")
+
+    copied_overleaf = False
+    try:
+        OVERLEAF_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(png_path, OVERLEAF_DIR / png_path.name)
+        shutil.copy2(pdf_path, OVERLEAF_DIR / pdf_path.name)
+        copied_overleaf = True
+    except OSError as exc:
+        print(f"  [AVISO] No se pudo exportar a {OVERLEAF_DIR}: {exc}")
+
+    if copied_overleaf:
+        print(f"  [GUARDADO] {filename_base}.png/.pdf -> Resultados/ y overleaf/imágenes/")
+    else:
+        print(f"  [GUARDADO] {filename_base}.png/.pdf -> Resultados/")
     plt.close(fig)
 
 
@@ -95,10 +109,7 @@ def save_figure(fig, filename_base):
 # ==============================================================================
 def load_energy_blocks(filepath, burn_in_frac=0.20):
     """Carga outworm_energy_blocks.dat y descarta el calentamiento inicial."""
-    data = np.loadtxt(filepath, skiprows=1)
-    if data.ndim == 1:
-        data = data.reshape(1, -1)
-    # data cols: block, samples, Etot, Epot, Ekin
+    data = np.loadtxt(filepath, skiprows=1, ndmin=2)
     useful = data[int(len(data) * burn_in_frac):]
     valid = useful[:, 1] > 0
     return useful[valid]
@@ -106,66 +117,204 @@ def load_energy_blocks(filepath, burn_in_frac=0.20):
 
 def load_cycle_blocks(filepath, burn_in_frac=0.20):
     """Carga bloques de ciclos, descartando calentamiento y bloques sin muestras."""
-    data = np.loadtxt(filepath, skiprows=1)
-    if data.ndim == 1:
-        data = data.reshape(1, -1)
+    data = np.loadtxt(filepath, skiprows=1, ndmin=2)
     useful = data[int(len(data) * burn_in_frac):]
     return useful[useful[:, 1] > 0]
 
 
+def _get_mc_binary():
+    """Devuelve el binario MC del proyecto, compilándolo solo si no existe."""
+    mc_bin = PROJECT_DIR / "MC"
+    if mc_bin.is_file():
+        return mc_bin
+    return compile_mc_binary(PROJECT_DIR, mc_bin, only_if_stale=True)
+
+
+def _run_mc_simulation(run_dir, n_particles, temp, disable_swap,
+                       beads=30, blck_heating=20, blck=80, niter=500, force_run=False):
+    """Ejecuta una simulación PIMC aislada actualizando MC.cfg de forma segura."""
+    energy_blocks = run_dir / "outworm_energy_blocks.dat"
+    if not force_run and energy_blocks.is_file():
+        return run_dir
+
+    run_dir.mkdir(parents=True, exist_ok=True)
+    mc_bin = _get_mc_binary()
+
+    cfg = (PROJECT_DIR / "MC.cfg").read_text(encoding="utf-8", errors="ignore")
+    p_close = 0.60 if (disable_swap or n_particles == 1) else 0.40
+    worm_c = 0.1 / (p_close * n_particles * beads)
+
+    updates = (
+        ("MC", "3"),
+        ("N", str(n_particles)),
+        ("T", f"{temp:g}"),
+        ("Npop", str(beads)),
+        ("NwalkersMax", str(max(60, beads * 2))),
+        ("worm_C", f"{worm_c:.6f}"),
+        ("blck_heating", str(blck_heating)),
+        ("blck", str(blck)),
+        ("Niter", str(niter)),
+        ("Nmeasure", "1"),
+    )
+    for key, val in updates:
+        cfg = replace_cfg_value(cfg, key, val)
+
+    (run_dir / "MC.cfg").write_text(cfg, encoding="utf-8")
+
+    env = os.environ.copy()
+    if disable_swap:
+        env["WORM_DISABLE_SWAP"] = "1"
+    else:
+        env.pop("WORM_DISABLE_SWAP", None)
+
+    tag = "sin Swap" if disable_swap else "con Swap"
+    print(f"-> Ejecutando simulación PIMC {tag} para N={n_particles}, T={temp:g}...")
+    log_path = run_dir / "run.log"
+    with log_path.open("w", encoding="utf-8") as log_file:
+        proc = subprocess.run(
+            [str(mc_bin), "MC.cfg"],
+            cwd=run_dir,
+            env=env,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+    if proc.returncode != 0:
+        log_tail = log_path.read_text(encoding="utf-8", errors="ignore")[-2000:]
+        raise RuntimeError(
+            f"Error al ejecutar MC ({tag}) en {run_dir} (código {proc.returncode}):\n{log_tail}"
+        )
+    if not energy_blocks.is_file():
+        raise FileNotFoundError(f"La simulación no generó {energy_blocks}")
+    print(f"  -> Simulación {tag} completada con éxito.")
+    return run_dir
+
+
 def ensure_simulation_data(n_particles=5, temp=0.5, force_run=False):
-    """Asegura que los datos de simulación existen para las comparativas."""
+    """Asegura que existen los datos con/sin Swap para la temperatura de referencia."""
     if n_particles == 2:
-        sim_swap = SCRIPT_DIR / "Resultados" / "Verificacion_Densidad" / "sim_swap"
-        sim_noswap = SCRIPT_DIR / "Resultados" / "Verificacion_Densidad" / "sim_noswap"
-        if sim_swap.exists() and sim_noswap.exists() and not force_run:
+        sim_swap = PROJECT_DIR / "Resultados" / "Verificacion_Densidad" / "sim_swap"
+        sim_noswap = PROJECT_DIR / "Resultados" / "Verificacion_Densidad" / "sim_noswap"
+        if (not force_run
+                and (sim_swap / "outworm_energy_blocks.dat").is_file()
+                and (sim_noswap / "outworm_energy_blocks.dat").is_file()):
             return sim_swap, sim_noswap
 
-    base_n = SCRIPT_DIR / "Resultados" / "NParticulas2D" / f"N{n_particles}"
+    base_n = PROJECT_DIR / "Resultados" / "NParticulas2D" / f"N{n_particles}"
     sim_swap = base_n / f"sim_T{temp:g}"
     sim_noswap = base_n / f"sim_noswap_T{temp:g}"
 
-    # Si falta la simulación sin swap para N=5, la ejecutamos rápidamente
-    if force_run or not (sim_noswap / "outworm_energy_blocks.dat").exists():
-        print(f"-> Generando simulación sin Swap para N={n_particles}, T={temp}...")
-        sim_noswap.mkdir(parents=True, exist_ok=True)
-        mc_bin = SCRIPT_DIR / "MC"
-        if not mc_bin.exists():
-            raise RuntimeError("Ejecutable MC no encontrado. Compilar primero.")
-        shutil.copy2(mc_bin, sim_noswap / "MC")
-
-        with open(SCRIPT_DIR / "MC.cfg", "r") as f:
-            cfg = f.read()
-        cfg = re.sub(r"N=\s*\d+", f"N= {n_particles}", cfg)
-        cfg = re.sub(r"T=\s*[\d\.]+", f"T= {temp}", cfg)
-        cfg = re.sub(r"Npop=\s*\d+", "Npop= 30", cfg)
-        cfg = re.sub(r"NwalkersMax=\s*\d+", "NwalkersMax= 60", cfg)
-        cfg = re.sub(r"blck_heating=\s*\d+", "blck_heating= 20", cfg)
-        cfg = re.sub(r"blck=\s*[\d\s]+", "blck= 80", cfg)
-        cfg = re.sub(r"Niter=\s*\d+", "Niter= 500", cfg)
-        cfg = re.sub(r"Nmeasure=\s*\d+", "Nmeasure= 1", cfg)
-
-        with open(sim_noswap / "MC.cfg", "w") as f:
-            f.write(cfg)
-
-        env = os.environ.copy()
-        env["WORM_DISABLE_SWAP"] = "1"
-        subprocess.run(["./MC", "MC.cfg"], cwd=sim_noswap, env=env, check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print("  -> Simulación sin Swap completada con éxito.")
-
+    _run_mc_simulation(sim_swap, n_particles, temp, disable_swap=False,
+                       blck=80, force_run=force_run)
+    _run_mc_simulation(sim_noswap, n_particles, temp, disable_swap=True,
+                       blck=80, force_run=force_run)
     return sim_swap, sim_noswap
+
+
+def _discover_temp_dirs(base_dir):
+    """Descubre subdirectorios `sim_T*` válidos ordenados por temperatura."""
+    discovered = {}
+    if not base_dir.is_dir():
+        return discovered
+    for entry in base_dir.iterdir():
+        if not entry.is_dir():
+            continue
+        match = _TEMP_DIR_RE.fullmatch(entry.name)
+        if match and (entry / "outworm_energy_blocks.dat").is_file():
+            discovered[float(match.group(1))] = entry
+    return dict(sorted(discovered.items()))
+
+
+def _resolve_sweep_dir(n_particles, requested_temps=None, force_run=False):
+    """Resuelve el directorio de barrido térmico para `n_particles`."""
+    base_root = PROJECT_DIR / "Resultados" / "NParticulas2D"
+    base_dir = base_root / f"N{n_particles}"
+    temp_dirs = _discover_temp_dirs(base_dir)
+
+    if force_run:
+        temps_to_run = sorted(set(requested_temps or temp_dirs.keys() or DEFAULT_SWEEP_TEMPS))
+        for temp in temps_to_run:
+            sim_dir = base_dir / f"sim_T{temp:g}"
+            _run_mc_simulation(sim_dir, n_particles, temp, disable_swap=False,
+                               blck=120, force_run=True)
+        return n_particles, _discover_temp_dirs(base_dir)
+
+    if not temp_dirs:
+        fallback_dir = base_root / "N5"
+        fallback_temps = _discover_temp_dirs(fallback_dir)
+        if n_particles != 5 and fallback_temps and requested_temps is None:
+            print(f"  [AVISO] No hay barrido en {base_dir}; usando datos existentes de N=5 ({fallback_dir}).")
+            return 5, fallback_temps
+        if requested_temps:
+            for temp in sorted(set(requested_temps)):
+                sim_dir = base_dir / f"sim_T{temp:g}"
+                _run_mc_simulation(sim_dir, n_particles, temp, disable_swap=False,
+                                   blck=120, force_run=False)
+            return n_particles, _discover_temp_dirs(base_dir)
+        raise FileNotFoundError(
+            f"No se encontraron simulaciones sim_T* en {base_dir}. Ejecuta con --run."
+        )
+
+    if requested_temps is not None:
+        selected = {}
+        for temp in sorted(set(requested_temps)):
+            matched = next((t for t in temp_dirs if np.isclose(t, temp)), None)
+            if matched is None:
+                sim_dir = base_dir / f"sim_T{temp:g}"
+                _run_mc_simulation(sim_dir, n_particles, temp, disable_swap=False,
+                                   blck=120, force_run=False)
+                selected[temp] = sim_dir
+            else:
+                selected[matched] = temp_dirs[matched]
+        return n_particles, dict(sorted(selected.items()))
+
+    return n_particles, temp_dirs
+
+
+def load_temperature_sweep(n_particles=5, requested_temps=None, force_run=False):
+    """Carga y resume todas las temperaturas disponibles para `n_particles`."""
+    resolved_n, temp_dirs = _resolve_sweep_dir(
+        n_particles, requested_temps=requested_temps, force_run=force_run
+    )
+    records = []
+    for temp, sim_dir in temp_dirs.items():
+        data_e = load_energy_blocks(sim_dir / "outworm_energy_blocks.dat")
+        if len(data_e) < 2:
+            raise ValueError(f"Bloques insuficientes en {sim_dir / 'outworm_energy_blocks.dat'}")
+        weights = data_e[:, 1]
+        etot, err_tot = blocked_ratio_stats(data_e[:, 2], weights)
+        diff, err_diff = blocked_ratio_stats(data_e[:, 3] - data_e[:, 4], weights)
+
+        f_c = sim_dir / "outworm_cycle_blocks.dat"
+        macro_mean, macro_err = 0.0, 0.0
+        if f_c.is_file():
+            u_c = load_cycle_blocks(f_c)
+            if len(u_c) >= 2 and u_c.shape[1] > 3:
+                macro_frac = np.sum(u_c[:, 3:], axis=1)
+                macro_mean, macro_err = blocked_ratio_stats(macro_frac, u_c[:, 1])
+
+        records.append({
+            "temp": temp,
+            "etot": etot,
+            "etot_err": err_tot,
+            "virial_diff": diff,
+            "virial_err": err_diff,
+            "macro_frac": macro_mean,
+            "macro_err": macro_err,
+        })
+    return resolved_n, records
 
 
 # ==============================================================================
 # 1. FIGURA 1: DEMOSTRACIÓN CUÁNTICA - EFECTO SWAP (BOSE VS DISTINGUIBLE)
 # ==============================================================================
-def plot_01_demostracion_swap(n_particles=5, temp=0.5):
+def plot_01_demostracion_swap(n_particles=5, temp=0.5, force_run=False):
     """
     Demostración visual del colapso energético cuántico inducido por las permutaciones
     (movimiento Swap) frente al gas clásico sin permutaciones.
     """
-    sim_swap, sim_noswap = ensure_simulation_data(n_particles, temp)
+    sim_swap, sim_noswap = ensure_simulation_data(n_particles, temp, force_run=force_run)
 
     data_swap = load_energy_blocks(sim_swap / "outworm_energy_blocks.dat")
     data_noswap = load_energy_blocks(sim_noswap / "outworm_energy_blocks.dat")
@@ -220,18 +369,20 @@ def plot_01_demostracion_swap(n_particles=5, temp=0.5):
     ax_main.axhline(e_bose, color=COLOR_BOSE, linestyle="--", linewidth=2.0,
                     label=rf"Analítico Bose Exacto ($E_{{\mathrm{{Bose}}}}/N = {e_bose:.4f}$)")
 
-    # Flecha y anotación del salto cuántico
-    arrow_x = blocks_s[len(blocks_s) // 2]
-    ax_main.annotate(
-        "", xy=(arrow_x, e_bose), xytext=(arrow_x, e_dist),
-        arrowprops=dict(arrowstyle="<->", color="#5c0099", lw=2.2, shrinkA=0, shrinkB=0)
-    )
-    ax_main.text(
-        arrow_x + 1.5, (e_dist + e_bose) / 2.0,
-        rf"$\Delta E_{{\mathrm{{cu\acute{{a}}ntica}}}} = {delta_quantum:.4f}$" + "\n" +
-        rf"Caída: ${(delta_quantum / e_dist) * 100:.1f}\%$",
-        color="#5c0099", fontsize=9.8, fontweight="bold", va="center"
-    )
+    # Flecha y anotación del salto cuántico con offset relativo al rango
+    x_span = max(float(max(blocks_s[-1], blocks_ns[-1]) - min(blocks_s[0], blocks_ns[0])), 1.0)
+    if abs(delta_quantum) > 1e-12:
+        arrow_x = blocks_s[len(blocks_s) // 2]
+        ax_main.annotate(
+            "", xy=(arrow_x, e_bose), xytext=(arrow_x, e_dist),
+            arrowprops=dict(arrowstyle="<->", color="#5c0099", lw=2.2, shrinkA=0, shrinkB=0)
+        )
+        ax_main.text(
+            arrow_x + 0.03 * x_span, (e_dist + e_bose) / 2.0,
+            rf"$\Delta E_{{\mathrm{{cu\acute{{a}}ntica}}}} = {delta_quantum:.4f}$" + "\n" +
+            rf"Caída: ${(delta_quantum / e_dist) * 100:.1f}\%$",
+            color="#5c0099", fontsize=9.8, fontweight="bold", va="center"
+        )
 
     ax_main.set_xlabel("Bloque de Medición Monte Carlo", fontsize=11)
     ax_main.set_ylabel(r"Energía por partícula $\langle E \rangle / N$ [$\hbar\omega$]", fontsize=11)
@@ -295,12 +446,12 @@ def plot_01_demostracion_swap(n_particles=5, temp=0.5):
 # ==============================================================================
 # 2. FIGURA 2: COMPROBACIÓN FÍSICA - TEOREMA DEL VIRIAL (<Epot> = <Ekin>)
 # ==============================================================================
-def plot_02_comprobacion_virial(n_particles=5, temp=0.5):
+def plot_02_comprobacion_virial(n_particles=5, temp=0.5, force_run=False):
     """
     Comprueba la consistencia del estimador virial centroidal por ciclos con
     Epot - Ekin = 0 dentro de la incertidumbre estadística.
     """
-    sim_swap, _ = ensure_simulation_data(n_particles, temp)
+    sim_swap, _ = ensure_simulation_data(n_particles, temp, force_run=force_run)
     data = load_energy_blocks(sim_swap / "outworm_energy_blocks.dat")
 
     blocks = data[:, 0]
@@ -404,13 +555,13 @@ def plot_02_comprobacion_virial(n_particles=5, temp=0.5):
 # ==============================================================================
 # 3. FIGURA 3: VERIFICACIÓN ESTADÍSTICA - CONVERGENCIA MCMC Y PULL PLOT
 # ==============================================================================
-def plot_03_verificacion_convergencia_mcmc(n_particles=5, temp=0.5):
+def plot_03_verificacion_convergencia_mcmc(n_particles=5, temp=0.5, force_run=False):
     """
     Verificación rigurosa de convergencia estocástica en Sector Z:
       - Media acumulada ponderada con banda de error 1-sigma y 3-sigma.
       - Panel inferior con pull estandarizado z(b) = (E_cum - E_exact) / sigma_cum.
     """
-    sim_swap, _ = ensure_simulation_data(n_particles, temp)
+    sim_swap, _ = ensure_simulation_data(n_particles, temp, force_run=force_run)
     data = load_energy_blocks(sim_swap / "outworm_energy_blocks.dat")
 
     blocks = data[:, 0]
@@ -478,7 +629,8 @@ def plot_03_verificacion_convergencia_mcmc(n_particles=5, temp=0.5):
     ax_bot.axhline(+3.0, color="#dc3545", linestyle=":", linewidth=1.1)
     ax_bot.axhline(-3.0, color="#dc3545", linestyle=":", linewidth=1.1)
 
-    ax_bot.plot(blocks[2:], z_scores[2:], color=COLOR_PIMC_SWAP, linewidth=1.8, marker="o", markersize=3.2)
+    start_idx = 2 if n_blocks >= 3 else 0
+    ax_bot.plot(blocks[start_idx:], z_scores[start_idx:], color=COLOR_PIMC_SWAP, linewidth=1.8, marker="o", markersize=3.2)
     ax_bot.set_ylim(-3.8, 3.8)
     ax_bot.set_xlabel("Bloque de Medición Monte Carlo", fontsize=11)
     ax_bot.set_ylabel(r"Pull $z = \frac{\bar{E} - E_{\mathrm{exact}}}{\sigma_{\bar{E}}}$", fontsize=10.5)
@@ -527,45 +679,30 @@ def plot_03_verificacion_convergencia_mcmc(n_particles=5, temp=0.5):
 # ==============================================================================
 # 4. FIGURA 4: VERIFICACIÓN TERMODINÁMICA - CURVA E(T) Y CONDENSADO N0/N
 # ==============================================================================
-def plot_04_termodinamica_temperatura(n_particles=5):
+def plot_04_termodinamica_temperatura(n_particles=5, requested_temps=None,
+                                      force_run=False, sweep_data=None):
     """
     Curva completa E(T) vs Temperatura con:
       - Comparativa Bose Analítico vs Distinguible Analítico vs PIMC Worm.
-    - Panel inferior con ocupación del estado fundamental N0/N y ciclos no triviales L >= 2.
+      - Panel inferior con ocupación del estado fundamental N0/N y ciclos no triviales L >= 2.
     """
-    temps = [0.2, 0.5, 1.0, 1.5, 2.0, 3.0]
-    base_dir = SCRIPT_DIR / "Resultados" / "NParticulas2D" / f"N{n_particles}"
-    if not base_dir.exists():
-        base_dir = SCRIPT_DIR / "Resultados" / "NParticulas2D" / "N5"
-        n_particles = 5
+    if sweep_data is None:
+        n_particles, records = load_temperature_sweep(
+            n_particles, requested_temps=requested_temps, force_run=force_run
+        )
+    else:
+        n_particles, records = sweep_data
 
-    pimc_e = []
-    pimc_err = []
-    pimc_permuted_cycles = []
-    pimc_permuted_err = []
+    temps = np.array([r["temp"] for r in records], dtype=float)
+    pimc_e = np.array([r["etot"] for r in records], dtype=float)
+    pimc_err = np.array([r["etot_err"] for r in records], dtype=float)
+    pimc_permuted_cycles = np.array([r["macro_frac"] for r in records], dtype=float)
+    pimc_permuted_err = np.array([r["macro_err"] for r in records], dtype=float)
 
-    for t in temps:
-        sim_dir = base_dir / f"sim_T{t:g}"
-        f_e = sim_dir / "outworm_energy_blocks.dat"
-        data_e = load_energy_blocks(f_e)
-        m, e = blocked_ratio_stats(data_e[:, 2], data_e[:, 1])
-        pimc_e.append(m)
-        pimc_err.append(e)
-
-        f_c = sim_dir / "outworm_cycle_blocks.dat"
-        if f_c.exists():
-            u_c = load_cycle_blocks(f_c)
-            w_c = u_c[:, 1]
-            macro_frac = np.sum(u_c[:, 3:], axis=1)  # L >= 2
-            m_c, e_c = blocked_ratio_stats(macro_frac, w_c)
-            pimc_permuted_cycles.append(m_c)
-            pimc_permuted_err.append(e_c)
-        else:
-            pimc_permuted_cycles.append(0.0)
-            pimc_permuted_err.append(0.0)
-
-    # Curvas analíticas continuas
-    t_fine = np.linspace(0.15, 3.2, 200)
+    # Curvas analíticas continuas adaptadas al rango real de temperaturas
+    t_lo = max(0.05, min(0.15, float(temps.min()) * 0.85))
+    t_hi = max(float(temps.max()) * 1.08, t_lo + 0.4)
+    t_fine = np.linspace(t_lo, t_hi, 200)
     e_dist_fine = [analytical_distinguishable_energy(t) for t in t_fine]
     bose_res = [analytical_bose_energy(n_particles, t) for t in t_fine]
     e_bose_fine = [r[0] for r in bose_res]
@@ -589,19 +726,25 @@ def plot_04_termodinamica_temperatura(n_particles=5):
                     ecolor="black", elinewidth=1.2, capsize=3.5, markersize=5.8,
                     label=rf"PIMC Worm Algorithm ($N={n_particles}$)", zorder=5)
 
-    # Anotaciones físicas del límite fundamental y clásico
-    ax_top.annotate(
-        r"Límite Fundamental ($T \to 0$):" + "\n" + r"$E/N \to 1.0\ \hbar\omega$",
-        xy=(0.2, 1.0), xytext=(0.43, 0.08), textcoords="axes fraction",
-        arrowprops=dict(arrowstyle="->", color=COLOR_BOSE, lw=1.3),
-        fontsize=8.8, bbox=dict(boxstyle="round,pad=0.4", facecolor="#fff", edgecolor="#ccc", alpha=0.9)
-    )
-    ax_top.annotate(
-        r"Límite Clásico ($T \gg 1$):" + "\n" + r"$E/N \to 2 k_B T$",
-        xy=(3.0, analytical_distinguishable_energy(3.0)), xytext=(2.1, 4.9),
-        arrowprops=dict(arrowstyle="->", color=COLOR_DIST, lw=1.3),
-        fontsize=8.8, bbox=dict(boxstyle="round,pad=0.4", facecolor="#fff", edgecolor="#ccc", alpha=0.9)
-    )
+    # Anotaciones físicas dinámicas dentro del rango visible
+    t_ref_lo = float(temps.min())
+    if t_ref_lo <= 0.6:
+        e_ref_lo, _ = analytical_bose_energy(n_particles, t_ref_lo)
+        ax_top.annotate(
+            r"Límite Fundamental ($T \to 0$):" + "\n" + r"$E/N \to 1.0\ \hbar\omega$",
+            xy=(t_ref_lo, e_ref_lo), xytext=(0.43, 0.08), textcoords="axes fraction",
+            arrowprops=dict(arrowstyle="->", color=COLOR_BOSE, lw=1.3),
+            fontsize=8.8, bbox=dict(boxstyle="round,pad=0.4", facecolor="#fff", edgecolor="#ccc", alpha=0.9)
+        )
+    t_ref_hi = float(temps.max())
+    if t_ref_hi >= 1.5:
+        e_ref_hi = analytical_distinguishable_energy(t_ref_hi)
+        ax_top.annotate(
+            r"Límite Clásico ($T \gg 1$):" + "\n" + r"$E/N \to 2 k_B T$",
+            xy=(t_ref_hi, e_ref_hi), xytext=(0.64, 0.66), textcoords="axes fraction",
+            arrowprops=dict(arrowstyle="->", color=COLOR_DIST, lw=1.3),
+            fontsize=8.8, bbox=dict(boxstyle="round,pad=0.4", facecolor="#fff", edgecolor="#ccc", alpha=0.9)
+        )
 
     ax_top.set_ylabel(r"Energía por partícula $\langle E \rangle / N$ [$\hbar\omega$]", fontsize=11)
     ax_top.set_title(
@@ -614,9 +757,10 @@ def plot_04_termodinamica_temperatura(n_particles=5):
     # Panel Inferior: Ocupación fundamental y ciclos no triviales
     ax_bot.plot(t_fine, n0_fine, color=COLOR_BOSE, linewidth=2.0,
                 label=r"Ocupación del Estado Fundamental $N_0/N$ (Bose)")
-    ax_bot.errorbar(temps, pimc_permuted_cycles, yerr=pimc_permuted_err, fmt="s", color="#5c0099",
-                    ecolor="black", elinewidth=1.1, capsize=3.0, markersize=5.0,
-                    label=r"Fracción PIMC en Ciclos No Triviales ($L \geq 2$)", zorder=4)
+    if n_particles > 1:
+        ax_bot.errorbar(temps, pimc_permuted_cycles, yerr=pimc_permuted_err, fmt="s", color="#5c0099",
+                        ecolor="black", elinewidth=1.1, capsize=3.0, markersize=5.0,
+                        label=r"Fracción PIMC en Ciclos No Triviales ($L \geq 2$)", zorder=4)
 
     ax_bot.set_ylim(-0.05, 1.05)
     ax_bot.set_xlabel(r"Temperatura reducida $T$ [$k_B / \hbar\omega$]", fontsize=11)
@@ -646,7 +790,8 @@ def plot_04_termodinamica_temperatura(n_particles=5):
 # ==============================================================================
 # 5. FIGURA 5: PANEL COMPLETO MULTICOMPONENTE (DASHBOARD 2x2)
 # ==============================================================================
-def plot_05_panel_completo_dashboard(n_particles=5, temp=0.5):
+def plot_05_panel_completo_dashboard(n_particles=5, temp=0.5, requested_temps=None,
+                                     force_run=False, sweep_data=None):
     """
     Panel panorámico 2x2 que reúne las 4 demostraciones y comprobaciones clave:
       (a) Efecto cuántico Swap (Caída bosónica)
@@ -658,7 +803,7 @@ def plot_05_panel_completo_dashboard(n_particles=5, temp=0.5):
     ax_a, ax_b = axes[0, 0], axes[0, 1]
     ax_c, ax_d = axes[1, 0], axes[1, 1]
 
-    sim_swap, sim_noswap = ensure_simulation_data(n_particles, temp)
+    sim_swap, sim_noswap = ensure_simulation_data(n_particles, temp, force_run=force_run)
     data_s = load_energy_blocks(sim_swap / "outworm_energy_blocks.dat")
     data_ns = load_energy_blocks(sim_noswap / "outworm_energy_blocks.dat")
 
@@ -706,23 +851,29 @@ def plot_05_panel_completo_dashboard(n_particles=5, temp=0.5):
     ax_c.legend(loc="upper right", fontsize=8.2, framealpha=0.9)
 
     # (d) Termodinámica E(T)
-    temps = [0.2, 0.5, 1.0, 1.5, 2.0, 3.0]
-    base_dir = SCRIPT_DIR / "Resultados" / "NParticulas2D" / f"N{n_particles}"
-    if not base_dir.exists():
-        base_dir = SCRIPT_DIR / "Resultados" / "NParticulas2D" / "N5"
-        n_particles = 5
-    p_e, p_err = [], []
-    for t in temps:
-        d = load_energy_blocks(base_dir / f"sim_T{t:g}" / "outworm_energy_blocks.dat")
-        m, e = blocked_ratio_stats(d[:, 2], d[:, 1])
-        p_e.append(m)
-        p_err.append(e)
+    if sweep_data is None:
+        resolved_n, records = load_temperature_sweep(
+            n_particles, requested_temps=requested_temps, force_run=force_run
+        )
+    else:
+        resolved_n, records = sweep_data
 
-    t_f = np.linspace(0.15, 3.2, 150)
+    temps = [r["temp"] for r in records]
+    p_e = [r["etot"] for r in records]
+    p_err = [r["etot_err"] for r in records]
+
+    t_lo = max(0.05, min(0.15, float(min(temps)) * 0.85))
+    t_hi = max(float(max(temps)) * 1.08, t_lo + 0.4)
+    t_f = np.linspace(t_lo, t_hi, 150)
     ax_d.plot(t_f, [analytical_distinguishable_energy(t) for t in t_f], color=COLOR_DIST, linewidth=1.8, label="Distinguible")
-    ax_d.plot(t_f, [analytical_bose_energy(n_particles, t)[0] for t in t_f], color=COLOR_BOSE, linestyle="--", linewidth=1.8, label="Bose Canónico")
+    ax_d.plot(t_f, [analytical_bose_energy(resolved_n, t)[0] for t in t_f], color=COLOR_BOSE, linestyle="--", linewidth=1.8, label="Bose Canónico")
     ax_d.errorbar(temps, p_e, yerr=p_err, fmt="o", color=COLOR_PIMC_SWAP, ecolor="black", capsize=3, markersize=5, label="PIMC Worm")
-    ax_d.set_title(r"(d) Verificación Térmica $E(T)$ vs Temperatura", fontsize=11, fontweight="bold")
+    panel_d_title = (
+        r"(d) Verificación Térmica $E(T)$ vs Temperatura"
+        if resolved_n == n_particles
+        else rf"(d) Verificación Térmica $E(T)$ ($N={resolved_n}$)"
+    )
+    ax_d.set_title(panel_d_title, fontsize=11, fontweight="bold")
     ax_d.set_xlabel(r"Temperatura $T$ [$k_B/\hbar\omega$]", fontsize=10)
     ax_d.set_ylabel(r"$\langle E \rangle / N$ [$\hbar\omega$]", fontsize=10)
     ax_d.grid(True, linestyle=":", alpha=0.55)
@@ -735,13 +886,15 @@ def plot_05_panel_completo_dashboard(n_particles=5, temp=0.5):
 # ==============================================================================
 # IMPRESIÓN DE INFORME Y TABLAS CUANTITATIVAS
 # ==============================================================================
-def print_verification_report(n_particles=5):
+def print_verification_report(n_particles=5, requested_temps=None,
+                              force_run=False, sweep_data=None):
     """Imprime por consola la tabla completa de verificación energética."""
-    temps = [0.2, 0.5, 1.0, 1.5, 2.0, 3.0]
-    base_dir = SCRIPT_DIR / "Resultados" / "NParticulas2D" / f"N{n_particles}"
-    if not base_dir.exists():
-        base_dir = SCRIPT_DIR / "Resultados" / "NParticulas2D" / "N5"
-        n_particles = 5
+    if sweep_data is None:
+        n_particles, records = load_temperature_sweep(
+            n_particles, requested_temps=requested_temps, force_run=force_run
+        )
+    else:
+        n_particles, records = sweep_data
 
     print("\n" + "=" * 122)
     print(f"  INFORME CUANTITATIVO DE VERIFICACIÓN Y COMPROBACIÓN ENERGÉTICA (N = {n_particles})")
@@ -751,13 +904,12 @@ def print_verification_report(n_particles=5):
 
     latex_rows = []
 
-    for t in temps:
-        d = load_energy_blocks(base_dir / f"sim_T{t:g}" / "outworm_energy_blocks.dat")
-        w = d[:, 1]
-        etot, err_tot = blocked_ratio_stats(d[:, 2], w)
-        diff, err_diff = blocked_ratio_stats(d[:, 3] - d[:, 4], w)
+    for r in records:
+        t = r["temp"]
+        etot, err_tot = r["etot"], r["etot_err"]
+        diff, err_diff = r["virial_diff"], r["virial_err"]
 
-        e_bose, n0 = analytical_bose_energy(n_particles, t)
+        e_bose, _ = analytical_bose_energy(n_particles, t)
         e_dist = analytical_distinguishable_energy(t)
         disc_pct = abs(etot - e_bose) / e_bose * 100.0
         z_score = (etot - e_bose) / err_tot if err_tot > 0 else 0.0
@@ -768,7 +920,8 @@ def print_verification_report(n_particles=5):
         print(f"{t:5.2f} | {etot:8.4f} +/- {err_tot:.4f} | {e_bose:10.4f} | {e_dist:10.4f} | {disc_pct:8.2f}% | {discrepancy_ok:>6} | {z_score:+7.2f} sigma | {diff:+8.4f} +/- {err_diff:.4f} | {z_vir:5.2f} | {vir_ok:>6}")
         latex_discrepancy = r"\checkmark" if disc_pct < 1.0 else r"\times"
         latex_virial = r"\checkmark" if z_vir <= 3.0 else r"\times"
-        latex_rows.append(f"  {t:.1f} & ${etot:.4f} \\pm {err_tot:.4f}$ & ${e_bose:.4f}$ & ${e_dist:.4f}$ & ${disc_pct:.2f}\\%$ & ${diff:+.4f} \\pm {err_diff:.4f}$ & ${latex_discrepancy}$ & ${latex_virial}$ \\\\")
+        t_tex = f"{t:.1f}" if abs(t * 10 - round(t * 10)) < 1e-9 else f"{t:g}"
+        latex_rows.append(f"  {t_tex} & ${etot:.4f} \\pm {err_tot:.4f}$ & ${e_bose:.4f}$ & ${e_dist:.4f}$ & ${disc_pct:.2f}\\%$ & ${diff:+.4f} \\pm {err_diff:.4f}$ & ${latex_discrepancy}$ & ${latex_virial}$ \\\\")
 
     print("=" * 122)
     print("\n[TABLA LATEX LISTA PARA OVERLEAF / MEMORIA TFG]:")
@@ -795,41 +948,66 @@ def main():
                         help="Número de partículas (por defecto: 5)")
     parser.add_argument("--temp", type=float, default=0.5,
                         help="Temperatura de referencia para pruebas de convergencia (por defecto: 0.5)")
+    parser.add_argument("--temperatures", type=str, default=None,
+                        help="Lista separada por comas de temperaturas para el barrido térmico (ej: 0.2,0.5,1.0)")
     parser.add_argument("--run", action="store_true",
-                        help="Forzar reejecución de simulaciones C si no existen")
+                        help="Forzar reejecución de simulaciones C")
     args = parser.parse_args()
+
+    requested_temps = None
+    if args.temperatures:
+        try:
+            requested_temps = [float(x.strip()) for x in args.temperatures.split(",") if x.strip()]
+        except ValueError as exc:
+            parser.error(f"Lista --temperatures inválida ({args.temperatures!r}): {exc}")
+        if not requested_temps:
+            parser.error("--temperatures no puede estar vacío")
+
+    temps_label = "automáticas (sim_T*)" if requested_temps is None else ", ".join(f"{t:g}" for t in requested_temps)
 
     print("=" * 72)
     print("  GENERADOR DE FIGURAS Y COMPROBACIÓN DE ENERGÍA (PIMC WORM 2D)")
     print("=" * 72)
     print(f"  Partículas N : {args.particles}")
-    print(f"  Temperatura  : {args.temp}")
+    print(f"  Temp. ref.   : {args.temp:g}")
+    print(f"  Barrido T    : {temps_label}")
+    print(f"  Forzar --run : {args.run}")
     print(f"  Destinos     : {RESULTS_DIR}")
-    print(f"                 {OVERLEAF_DIR}")
+    print(f"                 {OVERLEAF_DIR} (si es accesible)")
     print("=" * 72)
 
     # 1. Figura 1: Demostración cuántica del Swap
     print("\n[1/5] Generando Figura 1: Demostración Cuántica (Efecto Swap)...")
-    plot_01_demostracion_swap(args.particles, args.temp)
+    plot_01_demostracion_swap(args.particles, args.temp, force_run=args.run)
 
     # 2. Figura 2: Comprobación del Teorema del Virial
     print("\n[2/5] Generando Figura 2: Comprobación del Teorema del Virial...")
-    plot_02_comprobacion_virial(args.particles, args.temp)
+    plot_02_comprobacion_virial(args.particles, args.temp, force_run=False)
 
     # 3. Figura 3: Verificación de Convergencia MCMC y Pull 3-Sigma
     print("\n[3/5] Generando Figura 3: Verificación de Convergencia MCMC (3-Sigma)...")
-    plot_03_verificacion_convergencia_mcmc(args.particles, args.temp)
+    plot_03_verificacion_convergencia_mcmc(args.particles, args.temp, force_run=False)
 
     # 4. Figura 4: Verificación Termodinámica E(T) y Fracción de Condensado
     print("\n[4/5] Generando Figura 4: Termodinámica E(T) y Condensación...")
-    plot_04_termodinamica_temperatura(args.particles)
+    sweep_data = load_temperature_sweep(
+        args.particles, requested_temps=requested_temps, force_run=args.run
+    )
+    plot_04_termodinamica_temperatura(
+        args.particles, requested_temps=requested_temps, force_run=False, sweep_data=sweep_data
+    )
 
     # 5. Figura 5: Dashboard Panorámico Completo
     print("\n[5/5] Generando Figura 5: Panel Completo Dashboard 2x2...")
-    plot_05_panel_completo_dashboard(args.particles, args.temp)
+    plot_05_panel_completo_dashboard(
+        args.particles, args.temp, requested_temps=requested_temps,
+        force_run=False, sweep_data=sweep_data
+    )
 
     # Informe por terminal
-    print_verification_report(args.particles)
+    print_verification_report(
+        args.particles, requested_temps=requested_temps, force_run=False, sweep_data=sweep_data
+    )
     print(">>> ¡Proceso completado con éxito! Todas las figuras han sido actualizadas.")
 
 
