@@ -278,6 +278,9 @@
 #if !defined(TRIAL_1D) && !defined(TRIAL_2D) && !defined(TRIAL_3D)
 #  define TRIAL_2D
 #endif
+#if (defined(TRIAL_1D) + defined(TRIAL_2D) + defined(TRIAL_3D)) != 1
+#  error "Define exactly one of TRIAL_1D, TRIAL_2D, or TRIAL_3D"
+#endif
 
 /* define ONLY ONE of following boundary conditions */
 #if !defined(BC_ABSENT) && !defined(BC_1DPBC_Z) && !defined(BC_1DPBC_X) && \
@@ -295,15 +298,36 @@
 //#define  BC_SPHERE   /* sphere of size Rsphere */
 
 /* define if trap potential is present */
-#define TRAP_POTENTIAL
+#if defined(TRAP_POTENTIAL) && defined(NO_TRAP_POTENTIAL)
+#  error "TRAP_POTENTIAL and NO_TRAP_POTENTIAL cannot both be defined"
+#endif
+#ifndef NO_TRAP_POTENTIAL
+#  ifndef TRAP_POTENTIAL
+#    define TRAP_POTENTIAL
+#  endif
+#endif
 
 /* Exact Fourier-mode sampling for noninteracting particles in a harmonic trap. */
-#define PIMC_HARMONIC_NORMAL_MODES
+#if defined(PIMC_HARMONIC_NORMAL_MODES) && defined(NO_PIMC_HARMONIC_NORMAL_MODES)
+#  error "PIMC_HARMONIC_NORMAL_MODES and NO_PIMC_HARMONIC_NORMAL_MODES cannot both be defined"
+#endif
+#ifndef NO_PIMC_HARMONIC_NORMAL_MODES
+#  ifndef PIMC_HARMONIC_NORMAL_MODES
+#    define PIMC_HARMONIC_NORMAL_MODES
+#  endif
+#endif
 
 /* Algoritmo Worm (Prokof'ev-Svistunov) para estadística de Bose-Einstein (1D/2D/3D).
    Requiere: PIMC + INTERACTION_ABSENT (+ BC_ABSENT o PBC ortogonales).
-   Descomentar la siguiente línea para activar el worm. */
-#define WORM_ALGORITHM
+   Definir NO_WORM_ALGORITHM al compilar para desactivarlo sin editar main.h. */
+#if defined(WORM_ALGORITHM) && defined(NO_WORM_ALGORITHM)
+#  error "WORM_ALGORITHM and NO_WORM_ALGORITHM cannot both be defined"
+#endif
+#ifndef NO_WORM_ALGORITHM
+#  ifndef WORM_ALGORITHM
+#    define WORM_ALGORITHM
+#  endif
+#endif
 
 /* if trap one-body terms are present in the trial w.f., enable ONE_BODY_TRIAL_TERMS*/
 //#define ONE_BODY_TRIAL_TERMS

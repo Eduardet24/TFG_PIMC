@@ -3,6 +3,7 @@ MC
 MC_*
 !MC.cfg
 *.o
+build/
 
 # Salidas de datos y registros
 *.dat

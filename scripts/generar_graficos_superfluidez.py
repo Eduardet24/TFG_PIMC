@@ -165,7 +165,15 @@ def exact_bose_superfluid(n_particles, temp, n_beads=None, omega=OMEGA):
 # 2. COMPILACIÓN Y EJECUCIÓN DE SIMULACIONES PIMC
 # ==============================================================================
 def get_or_compile_mc():
-    return compile_mc_binary(SCRIPT_DIR, SCRIPT_DIR / "MC", only_if_stale=True, compiler="gcc")
+    return compile_mc_binary(
+        SCRIPT_DIR,
+        SCRIPT_DIR / "MC",
+        only_if_stale=True,
+        compiler="gcc",
+        dim="2D",
+        worm=True,
+        normal_modes=True,
+    )
 
 
 def run_pimc_case(exe, base_cfg_text, run_dir, n_particles, temp, n_beads,

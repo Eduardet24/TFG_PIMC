@@ -60,7 +60,16 @@ def get_worm_executable():
         return configured_executable
 
     executable = os.path.join(SCRIPT_DIR, "MC_snapshots")
-    return str(compile_mc_binary(SCRIPT_DIR, executable, only_if_stale=True))
+    return str(
+        compile_mc_binary(
+            SCRIPT_DIR,
+            executable,
+            only_if_stale=True,
+            dim="2D",
+            worm=True,
+            normal_modes=True,
+        )
+    )
 
 print(f"=================================================================")
 print(f"  VERIFICACIÓN FASE 4: MOVIMIENTO SWAP Y PERMUTACIONES BOSÓNICAS  ")

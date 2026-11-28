@@ -63,7 +63,16 @@ N_ITER = int(os.environ.get("WORM_OBDM_NITER", 1000))
 
 
 def get_or_compile_executable():
-    return str(compile_mc_binary(SCRIPT_DIR, os.path.join(SCRIPT_DIR, "MC"), only_if_stale=True))
+    return str(
+        compile_mc_binary(
+            SCRIPT_DIR,
+            os.path.join(SCRIPT_DIR, "MC"),
+            only_if_stale=True,
+            dim="2D",
+            worm=True,
+            normal_modes=True,
+        )
+    )
 
 
 def main():

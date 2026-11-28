@@ -54,8 +54,15 @@ OMEGA = 1.0
 # ==============================================================================
 
 def build_mc_binary(output_path):
-    """Compile the current C sources into an isolated executable."""
-    return compile_mc_binary(SCRIPT_DIR, output_path, only_if_stale=False)
+    """Compile the current C sources (2D + Worm + NormalModes) into an isolated executable."""
+    return compile_mc_binary(
+        SCRIPT_DIR,
+        output_path,
+        only_if_stale=False,
+        dim="2D",
+        worm=True,
+        normal_modes=True,
+    )
 
 
 def run_simulation(binary_path, n_particles, temp, beads, run_dir,

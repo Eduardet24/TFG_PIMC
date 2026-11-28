@@ -13,7 +13,8 @@ Grigori_codigo/
 ├── MC                      # Binario compilado
 ├── MC.cfg                  # Configuración principal de la simulación
 ├── *.c, *.h                # Código fuente en C (MC, PIMC, DMC, VMC, Worm, etc.)
-├── Makefile.txt / .AMD     # Makefiles para compilación (icc / AMD)
+├── Makefile                # Makefile unificado con compilación incremental (gcc)
+├── Makefile.txt / .AMD     # Makefiles heredados (icc / AMD)
 ├── scritpt_Rdz_grigori     # Script de graficación rápida con gnuplot
 ├── scripts/                # Scripts de análisis, verificación y campañas en Python
 └── Resultados/             # Salidas organizadas por estudio/campaña
@@ -30,18 +31,25 @@ Grigori_codigo/
 Compilación desde la raíz (`Grigori_codigo/`):
 
 ```bash
-# GCC con OpenMP (recomendada)
-gcc -O2 -fopenmp -std=c99 *.c -lm -o MC
+# Compilación incremental recomendada con Makefile (por defecto: 2D + Worm + Modos normales)
+make -j
 
-# Alternativa con mayor optimización
+# Targets predefinidos y selección de macros sin editar main.h
+make -j MC_1D                       # 1D sin algoritmo Worm (campañas 1D)
+make -j MC_2D_worm                  # 2D con Worm y modos normales
+make -j MC_noworm                   # 2D sin Worm
+make -j MC_3D                       # 3D con Worm y modos normales
+make -j MC_asan                     # Con AddressSanitizer (-fsanitize=address)
+
+# Combinación personalizada sobre ./MC
+make -j DIM=1D WORM=0 NORMAL_MODES=1
+
+# Compilación manual equivalente con GCC
 gcc -O3 -fopenmp -std=c99 *.c -lm -o MC
-
-# Alternativa con Intel (icc)
-make -f Makefile.txt
 ```
 
 > [!NOTE]
-> Las macros principales de compilación se configuran en `main.h` antes de compilar: dimensionalidad (`TRIAL_1D`, `TRIAL_2D`, `TRIAL_3D`), muestreo exacto armónico (`PIMC_HARMONIC_NORMAL_MODES`) y algoritmo Worm (`WORM_ALGORITHM`).
+> Las macros por defecto de `main.h` (`TRIAL_2D`, `PIMC_HARMONIC_NORMAL_MODES`, `WORM_ALGORITHM`, `TRAP_POTENTIAL`) pueden seleccionarse o desactivarse por línea de comandos (`-DTRIAL_1D`, `-DTRIAL_3D`, `-DNO_WORM_ALGORITHM`, `-DNO_PIMC_HARMONIC_NORMAL_MODES`, `-DNO_TRAP_POTENTIAL`) o vía `make DIM=... WORM=... NORMAL_MODES=...` sin editar `main.h`.
 
 ---
 

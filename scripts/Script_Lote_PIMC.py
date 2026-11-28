@@ -8,7 +8,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from pimc_common import read_cfg_value as read_config_value, replace_cfg_value as replace_setting
+from pimc_common import (
+    compile_mc_binary,
+    read_cfg_value as read_config_value,
+    replace_cfg_value as replace_setting,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -62,9 +66,9 @@ def completed_run(run_dir, required_rows):
     return (run_dir / '.complete').is_file() and valid_output(run_dir, required_rows)
 
 
-def copy_run_inputs(run_dir, config_text):
+def copy_run_inputs(run_dir, config_text, binary_path):
     (run_dir / 'MC.cfg').write_text(config_text, encoding='utf-8')
-    shutil.copy2(PROJECT_DIR / 'MC', run_dir / 'MC')
+    shutil.copy2(binary_path, run_dir / 'MC')
 
     for key in INPUT_FILE_KEYS:
         match = re.search(rf'\b{key}\s*=\s*(\S+)', config_text)
@@ -85,6 +89,8 @@ def main():
                         help='números de beads separados por comas; requiere --temperatures')
     parser.add_argument('--campaign', default='lote_modos_normales_blck1000',
                         help='nombre del subdirectorio para guardar esta campaña')
+    parser.add_argument('--build', action='store_true',
+                        help='compila MC_1D (1D sin Worm) antes de ejecutar')
     parser.add_argument('-j', '--jobs', type=int, default=min(4, os.cpu_count() or 1),
                         help='simulaciones en paralelo al usar --run')
     args = parser.parse_args()
@@ -108,9 +114,18 @@ def main():
     if not re.fullmatch(r'[A-Za-z0-9_-]+', args.campaign):
         parser.error('--campaign solo puede contener letras, números, guion y guion bajo')
 
-    binary = PROJECT_DIR / 'MC'
-    if not binary.is_file():
-        raise FileNotFoundError(f'No se encontró el ejecutable {binary}; compila MC primero')
+    binary = PROJECT_DIR / 'MC_1D'
+    if args.build or args.run:
+        binary = compile_mc_binary(
+            PROJECT_DIR,
+            binary,
+            only_if_stale=True,
+            dim='1D',
+            worm=False,
+            normal_modes=True,
+        )
+    elif not binary.is_file():
+        binary = PROJECT_DIR / 'MC'
     template = (PROJECT_DIR / 'MC.cfg').read_text(encoding='utf-8')
     acceptance_rate = read_config_value(template, 'acceptance_rate')
     root = RESULTS_DIR / f'AR{acceptance_rate:g}' / args.campaign
@@ -150,7 +165,7 @@ def main():
     def _run_one(item):
         temperature, beads, run_dir, run_config, expected_rows = item
         run_dir.mkdir(parents=True, exist_ok=True)
-        copy_run_inputs(run_dir, run_config)
+        copy_run_inputs(run_dir, run_config, binary)
         env = os.environ.copy()
         if args.jobs > 1:
             env['OMP_NUM_THREADS'] = '1'

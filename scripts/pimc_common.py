@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 import numpy as np
@@ -109,13 +110,68 @@ def blocked_ratio_stats(values, counts):
     return mean, error
 
 
-def compile_mc_binary(project_dir, output_path, only_if_stale=False, compiler=None):
-    """Compila los fuentes C del repositorio en output_path usando gcc/CC."""
-    project_path = Path(project_dir)
-    output = Path(output_path)
+def compile_mc_binary(
+    project_dir,
+    output_path,
+    only_if_stale=False,
+    compiler=None,
+    dim=None,
+    worm=None,
+    normal_modes=None,
+    opt_level="-O3",
+    extra_defs=None,
+):
+    """Compila los fuentes C del repositorio en output_path usando Makefile/gcc.
+
+    Permite fijar dimensionalidad (`dim`: '1D'|'2D'|'3D'), `worm` (bool),
+    `normal_modes` (bool), nivel de optimización (`opt_level`) y macros extra
+    sin modificar `main.h`.
+    """
+    project_path = Path(project_dir).resolve()
+    output = Path(output_path).resolve()
     sources = sorted(project_path.glob("*.c"))
     if not sources:
         raise RuntimeError(f"No se encontraron fuentes C en {project_path}")
+
+    cc = compiler or os.environ.get("CC", "gcc")
+    makefile = project_path / "Makefile"
+    make_bin = shutil.which("make")
+
+    if dim is not None:
+        dim_norm = str(dim).upper()
+        if dim_norm not in ("1D", "2D", "3D"):
+            raise ValueError(f"Dimensionalidad no válida: {dim} (esperado 1D, 2D o 3D)")
+    else:
+        dim_norm = None
+
+    if makefile.is_file() and make_bin:
+        jobs = str(max(1, min(os.cpu_count() or 1, 8)))
+        cmd = [
+            make_bin,
+            "-C",
+            str(project_path),
+            f"-j{jobs}",
+            "--no-print-directory",
+            f"TARGET={output}",
+            f"CC={cc}",
+            f"OPT={opt_level}",
+        ]
+        if dim_norm is not None:
+            cmd.append(f"DIM={dim_norm}")
+        if worm is not None:
+            cmd.append(f"WORM={1 if worm else 0}")
+        if normal_modes is not None:
+            cmd.append(f"NORMAL_MODES={1 if normal_modes else 0}")
+        if extra_defs:
+            defs_str = " ".join(
+                d if d.startswith("-D") else f"-D{d}" for d in extra_defs
+            )
+            cmd.append(f"EXTRA_CPPFLAGS={defs_str}")
+        result = subprocess.run(cmd, cwd=project_path, capture_output=True, text=True)
+        if result.returncode != 0:
+            detail = result.stderr or result.stdout
+            raise RuntimeError(f"Error compilando {output.name}:\n{detail[-6000:]}")
+        return output
 
     if only_if_stale and output.is_file():
         headers = list(project_path.glob("*.h"))
@@ -123,8 +179,22 @@ def compile_mc_binary(project_dir, output_path, only_if_stale=False, compiler=No
         if output.stat().st_mtime >= newest_src:
             return output
 
-    cc = compiler or os.environ.get("CC", "gcc")
-    cmd = [cc, "-O2", "-fopenmp", "-std=c99", *(str(s) for s in sources), "-lm", "-o", str(output)]
+    flags = []
+    if dim_norm is not None:
+        flags.append(f"-DTRIAL_{dim_norm}")
+    if worm is True:
+        flags.append("-DWORM_ALGORITHM")
+    elif worm is False:
+        flags.append("-DNO_WORM_ALGORITHM")
+    if normal_modes is True:
+        flags.append("-DPIMC_HARMONIC_NORMAL_MODES")
+    elif normal_modes is False:
+        flags.append("-DNO_PIMC_HARMONIC_NORMAL_MODES")
+    if extra_defs:
+        flags.extend(d if d.startswith("-D") else f"-D{d}" for d in extra_defs)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [cc, opt_level, "-fopenmp", "-std=c99", *flags, *(str(s) for s in sources), "-lm", "-o", str(output)]
     result = subprocess.run(cmd, cwd=project_path, capture_output=True, text=True)
     if result.returncode != 0:
         detail = result.stderr or result.stdout
