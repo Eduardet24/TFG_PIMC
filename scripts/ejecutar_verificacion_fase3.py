@@ -14,21 +14,39 @@ import sys
 import re
 import shutil
 import subprocess
+import time
 import numpy as np
 import matplotlib.pyplot as plt
-from Script_Comparacion_N_Particulas_2D import analytical_bose_density, analytical_bose_energy
+
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
+
+from pimc_common import (
+    analytical_bose_density,
+    analytical_bose_energy,
+    compile_mc_binary,
+    replace_cfg_value,
+)
 from worm_config import get_n_particles
 
-SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUN_DIR = os.environ.get("WORM_FASE3_RUN_DIR", SCRIPT_DIR)
+_trapezoid = getattr(np, "trapezoid", getattr(np, "trapz", None))
+
+SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 OUTPUT_DIR = os.environ.get(
     "WORM_FASE3_OUTPUT_DIR",
     os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Fase3_Worm"),
 )
+RUN_DIR = os.environ.get("WORM_FASE3_RUN_DIR", os.path.join(OUTPUT_DIR, "sim_run"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(RUN_DIR, exist_ok=True)
+
+DEFAULT_CFG_PATH = os.path.join(SCRIPT_DIR, "MC.cfg")
+RUN_CFG_PATH = os.path.join(RUN_DIR, "MC.cfg")
+TEMPLATE_CFG_PATH = RUN_CFG_PATH if os.path.isfile(RUN_CFG_PATH) else DEFAULT_CFG_PATH
 
 # Parámetros físicos y de simulación
-N_PARTICLES = get_n_particles(os.path.join(RUN_DIR, "MC.cfg"))
+N_PARTICLES = get_n_particles(TEMPLATE_CFG_PATH)
 TEMP = 0.5
 BETA = 1.0 / TEMP
 OMEGA = 1.0
@@ -38,6 +56,23 @@ WORM_C = 0.1 / (0.60 * N_PARTICLES * BEADS)
 HEATING_BLOCKS = 20
 MEASURE_BLOCKS = 100
 N_ITER = 500
+
+
+def get_worm_executable():
+    configured = os.environ.get("WORM_FASE3_EXECUTABLE")
+    if configured:
+        return configured
+    return str(
+        compile_mc_binary(
+            SCRIPT_DIR,
+            os.path.join(SCRIPT_DIR, "MC"),
+            only_if_stale=True,
+            dim="2D",
+            worm=True,
+            normal_modes=True,
+        )
+    )
+
 
 print(f"=================================================================")
 print(f"  VERIFICACIÓN FASE 3: MOVIMIENTOS ADVANCE / RECEDE DEL WORM     ")
@@ -49,36 +84,42 @@ print(f"  Frecuencia trampa    : {OMEGA}")
 print(f"  Número de beads P    : {BEADS} (tau = {TAU:.4f})")
 print(f"  Parámetro fugacidad C: {WORM_C}")
 print(f"  Bloques medición     : {MEASURE_BLOCKS} (iter por bloque: {N_ITER})")
+print(f"  Directorio ejecución : {RUN_DIR}")
 print(f"=================================================================\n")
 
-# 1. Configurar MC.cfg temporal para la prueba
-cfg_path = os.path.join(RUN_DIR, "MC.cfg")
-cfg_backup_path = os.path.join(SCRIPT_DIR, "MC.cfg.bak")
-shutil.copy(cfg_path, cfg_backup_path)
+# 1. Configurar MC.cfg en directorio aislado (sin mutar la raíz salvo que RUN_DIR == SCRIPT_DIR)
+is_root_run = os.path.abspath(RUN_DIR) == os.path.abspath(SCRIPT_DIR)
+cfg_backup_path = os.path.join(SCRIPT_DIR, "MC.cfg.bak") if is_root_run else None
+if is_root_run:
+    shutil.copy2(RUN_CFG_PATH, cfg_backup_path)
 
-with open(cfg_path, "r") as f:
+with open(TEMPLATE_CFG_PATH, "r", encoding="utf-8", errors="ignore") as f:
     cfg_text = f.read()
 
-cfg_text = re.sub(r"N=\s*\d+", f"N= {N_PARTICLES}", cfg_text)
-cfg_text = re.sub(r"T=\s*[\d\.]+", f"T= {TEMP}", cfg_text)
-cfg_text = re.sub(r"Npop=\s*\d+", f"Npop= {BEADS}", cfg_text)
-cfg_text = re.sub(r"NwalkersMax=\s*\d+", f"NwalkersMax= {BEADS * 2}", cfg_text)
-cfg_text = re.sub(r"worm_C=\s*[\d\.]+", f"worm_C= {WORM_C}", cfg_text)
-cfg_text = re.sub(r"blck_heating=\s*\d+", f"blck_heating= {HEATING_BLOCKS}", cfg_text)
-cfg_text = re.sub(r"blck=\s*[\d\s]+", f"blck= {MEASURE_BLOCKS}", cfg_text)
-cfg_text = re.sub(r"Niter=\s*\d+", f"Niter= {N_ITER}", cfg_text)
-cfg_text = re.sub(r"Nmeasure=\s*\d+", f"Nmeasure= 1", cfg_text)
+cfg_text = replace_cfg_value(cfg_text, "MC", 3)
+cfg_text = replace_cfg_value(cfg_text, "N", N_PARTICLES)
+cfg_text = replace_cfg_value(cfg_text, "T", TEMP)
+cfg_text = replace_cfg_value(cfg_text, "Npop", BEADS)
+cfg_text = replace_cfg_value(cfg_text, "NwalkersMax", BEADS * 2)
+cfg_text = replace_cfg_value(cfg_text, "worm_C", f"{WORM_C:.6g}")
+cfg_text = replace_cfg_value(cfg_text, "generate_new_coordinates", 1)
+cfg_text = replace_cfg_value(cfg_text, "blck_heating", HEATING_BLOCKS)
+cfg_text = replace_cfg_value(cfg_text, "blck", MEASURE_BLOCKS)
+cfg_text = replace_cfg_value(cfg_text, "Niter", N_ITER)
+cfg_text = replace_cfg_value(cfg_text, "Nmeasure", 1)
 
-with open(cfg_path, "w") as f:
+with open(RUN_CFG_PATH, "w", encoding="utf-8") as f:
     f.write(cfg_text)
 
 try:
     print("[1/4] Ejecutando simulación PIMC con Worm Fase 3 en C...")
-    cmd = [os.environ.get("WORM_FASE3_EXECUTABLE", os.path.join(RUN_DIR, "MC")), "MC.cfg"]
+    executable = get_worm_executable()
+    cmd = [executable, "MC.cfg"]
+    run_started = time.time()
     proc = subprocess.run(cmd, cwd=RUN_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     log_path = os.path.join(OUTPUT_DIR, "simulacion_terminal.log")
-    with open(log_path, "w") as f:
+    with open(log_path, "w", encoding="utf-8") as f:
         f.write(proc.stdout)
     print(f"  -> Simulación finalizada con código de salida {proc.returncode}")
     print(f"  -> Log guardado en: {log_path}")
@@ -87,34 +128,37 @@ try:
 
     for fname in ["oute.dat", "outrd.dat", "in3Dprev.in", "outworm_gap.dat"]:
         src = os.path.join(RUN_DIR, fname)
-        if os.path.exists(src):
-            shutil.copy(src, os.path.join(OUTPUT_DIR, fname))
+        dst = os.path.join(OUTPUT_DIR, fname)
+        if os.path.exists(src) and os.path.getmtime(src) >= run_started - 1.0:
+            if os.path.abspath(src) != os.path.abspath(dst):
+                shutil.copy2(src, dst)
             print(f"  -> Archivo de datos guardado: {fname}")
 
 finally:
-    if os.path.exists(cfg_backup_path):
-        shutil.move(cfg_backup_path, cfg_path)
+    if cfg_backup_path and os.path.exists(cfg_backup_path):
+        shutil.move(cfg_backup_path, RUN_CFG_PATH)
 
 # 2. Analizar datos de energía (oute.dat)
 print("\n[2/4] Procesando resultados de energía en Sector Z...")
 oute_file = os.path.join(OUTPUT_DIR, "oute.dat")
-data_e = np.loadtxt(oute_file)
+data_e = np.loadtxt(oute_file, comments="#", ndmin=2)
 
 etot_blocks = data_e[:, 0]
 epot_blocks = data_e[:, 1]
 ekin_vir_blocks = data_e[:, 2]
 
 n_use = len(etot_blocks)
-start_idx = int(0.1 * n_use)
+start_idx = int(0.1 * n_use) if n_use - int(0.1 * n_use) >= 2 else 0
+n_eff = n_use - start_idx
 
-etot_mean = np.mean(etot_blocks[start_idx:])
-etot_err = np.std(etot_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
+etot_mean = float(np.mean(etot_blocks[start_idx:]))
+etot_err = float(np.std(etot_blocks[start_idx:], ddof=1) / np.sqrt(n_eff)) if n_eff > 1 else 0.0
 
-epot_mean = np.mean(epot_blocks[start_idx:])
-epot_err = np.std(epot_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
+epot_mean = float(np.mean(epot_blocks[start_idx:]))
+epot_err = float(np.std(epot_blocks[start_idx:], ddof=1) / np.sqrt(n_eff)) if n_eff > 1 else 0.0
 
-ekin_mean = np.mean(ekin_vir_blocks[start_idx:])
-ekin_err = np.std(ekin_vir_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
+ekin_mean = float(np.mean(ekin_vir_blocks[start_idx:]))
+ekin_err = float(np.std(ekin_vir_blocks[start_idx:], ddof=1) / np.sqrt(n_eff)) if n_eff > 1 else 0.0
 
 e_analitica_bose = analytical_bose_energy(N_PARTICLES, TEMP, OMEGA)[0]
 
@@ -125,27 +169,61 @@ print(f"  Teorema del Virial <Epot>-<Ekin> : {epot_mean - ekin_mean:.6f} (debe s
 print(f"  Analítica canónica (Bosones): {e_analitica_bose:.6f}")
 print(f"  Diferencia vs Analítica    : {abs(etot_mean - e_analitica_bose) / e_analitica_bose * 100.0:.3f}%")
 
+gap_file = os.path.join(OUTPUT_DIR, "outworm_gap.dat")
+max_gap_from_hist = 0
+gap_data = None
+if os.path.exists(gap_file):
+    gap_data = np.atleast_2d(np.loadtxt(gap_file, comments="#"))
+    if gap_data.size > 0 and gap_data.shape[1] >= 2:
+        nonzero = gap_data[:, 1] > 0
+        if np.any(nonzero):
+            max_gap_from_hist = int(np.max(gap_data[nonzero, 0]))
+
 # 3. Analizar estadísticas de Fase 3 en el log
 print("\n[3/4] Extrayendo estadísticas de movimientos del Worm (Advance, Recede, Close, Open, Ira)...")
-worm_lines = [line for line in proc.stdout.splitlines() if "Worm F3:" in line]
+worm_lines = [
+    line for line in proc.stdout.splitlines()
+    if "Worm F4:" in line or "Worm F3:" in line
+]
 move_stats = {}
 if worm_lines:
     last_worm_line = worm_lines[-1]
     print(f"  Último estado: {last_worm_line}")
-    # Worm F3: Z=... G=... (fG=...) | Op: ...% | Cl: ...% | Adv: ...% | Rec: ...% | Ira: ...% | MaxGap: ...
-    m = re.search(r"Z=(\d+)\s+G=(\d+)\s+\(fG=([\d\.]+)\)\s+\|\s+Op:\s+([\d\.]+)%\s+\|\s+Cl:\s+([\d\.]+)%\s+\|\s+Adv:\s+([\d\.]+)%\s+\|\s+Rec:\s+([\d\.]+)%\s+\|\s+Ira:\s+([\d\.]+)%\s+\|\s+MaxGap:\s+(\d+)", last_worm_line)
-    if m:
+    m_f4 = re.search(
+        r"Worm F4:\s*Z=(\d+)\s+G=(\d+)\s+\(fG=([\d.]+)\)\s*\|\s*Op:\s*([\d.]+)%\s*\|\s*Cl:\s*([\d.]+)%\s*\|\s*Adv:\s*([\d.]+)%\s*\|\s*Rec:\s*([\d.]+)%(?:\s*\|\s*Sw:\s*[\d.]+%)?\s*\|\s*Ira:\s*([\d.]+)%",
+        last_worm_line,
+    )
+    m_f3 = re.search(
+        r"Z=(\d+)\s+G=(\d+)\s+\(fG=([\d\.]+)\)\s+\|\s+Op:\s+([\d\.]+)%\s+\|\s+Cl:\s+([\d\.]+)%\s+\|\s+Adv:\s+([\d\.]+)%\s+\|\s+Rec:\s+([\d\.]+)%\s+\|\s+Ira:\s+([\d\.]+)%\s+\|\s+MaxGap:\s+(\d+)",
+        last_worm_line,
+    )
+    if m_f4:
+        m_gap = re.search(r"MaxGap:\s*(\d+)", last_worm_line)
+        max_gap = int(m_gap.group(1)) if m_gap else max_gap_from_hist
         move_stats = {
-            'z_steps': int(m.group(1)),
-            'g_steps': int(m.group(2)),
-            'f_g': float(m.group(3)),
-            'pct_op': float(m.group(4)),
-            'pct_cl': float(m.group(5)),
-            'pct_adv': float(m.group(6)),
-            'pct_rec': float(m.group(7)),
-            'pct_ira': float(m.group(8)),
-            'max_gap': int(m.group(9)),
+            'z_steps': int(m_f4.group(1)),
+            'g_steps': int(m_f4.group(2)),
+            'f_g': float(m_f4.group(3)),
+            'pct_op': float(m_f4.group(4)),
+            'pct_cl': float(m_f4.group(5)),
+            'pct_adv': float(m_f4.group(6)),
+            'pct_rec': float(m_f4.group(7)),
+            'pct_ira': float(m_f4.group(8)),
+            'max_gap': max_gap,
         }
+    elif m_f3:
+        move_stats = {
+            'z_steps': int(m_f3.group(1)),
+            'g_steps': int(m_f3.group(2)),
+            'f_g': float(m_f3.group(3)),
+            'pct_op': float(m_f3.group(4)),
+            'pct_cl': float(m_f3.group(5)),
+            'pct_adv': float(m_f3.group(6)),
+            'pct_rec': float(m_f3.group(7)),
+            'pct_ira': float(m_f3.group(8)),
+            'max_gap': int(m_f3.group(9)),
+        }
+    if move_stats:
         print(f"  Pasos en Sector Z          : {move_stats['z_steps']:,}")
         print(f"  Pasos en Sector G          : {move_stats['g_steps']:,} ({move_stats['f_g']*100:.1f}%)")
         print(f"  Aceptación Open            : {move_stats['pct_op']:.1f}%")
@@ -154,33 +232,38 @@ if worm_lines:
         print(f"  Aceptación Recede          : {move_stats['pct_rec']:.1f}%")
         print(f"  Aceptación IraMove (espacio): {move_stats['pct_ira']:.1f}%")
         print(f"  Máximo gap observado en tau: {move_stats['max_gap']} beads (de {BEADS} posibles)")
+    else:
+        print("  (No se pudo parsear el formato de la línea Worm en el log)")
+else:
+    print("  (No se encontraron líneas de Worm F4/F3 en el log)")
 
 # 4. Procesar densidad radial (outrd.dat)
 print("\n[4/4] Procesando perfil de densidad radial...")
 outrd_file = os.path.join(OUTPUT_DIR, "outrd.dat")
 r_grid, dens_mean_norm, dens_err_norm, dens_analitica = None, None, None, None
 if os.path.exists(outrd_file):
-    rd_raw = np.loadtxt(outrd_file)
-    saltos = np.where(np.diff(rd_raw[:, 0]) < 0)[0] + 1
-    bloques = np.split(rd_raw, saltos)
-    bloques_validos = [b for b in bloques if len(b) > 0 and b[:, 1].sum() > 0]
-    bloques_utiles = bloques_validos[len(bloques_validos) // 4:] if len(bloques_validos) >= 4 else bloques_validos
-    if len(bloques_utiles) > 0:
-        r_grid = bloques_utiles[-1][:, 0]
-        profiles = []
-        for b in bloques_utiles:
-            p = b[:, 1]
-            norm = np.trapz(2.0 * np.pi * r_grid * p, r_grid)
-            if norm > 0:
-                profiles.append(p / norm)
-        if len(profiles) > 0:
-            profiles = np.array(profiles)
-            dens_mean_norm = np.mean(profiles, axis=0)
-            dens_err_norm = (np.std(profiles, axis=0, ddof=1) / np.sqrt(len(profiles))
-                             if len(profiles) > 1 else np.zeros_like(dens_mean_norm))
-            dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
-            print(f"  -> Densidad procesada sobre {len(profiles)} perfiles por bloques.")
-            print(f"  -> Error estándar estimado entre perfiles: {np.mean(dens_err_norm):.6e}")
+    rd_raw = np.loadtxt(outrd_file, ndmin=2)
+    if rd_raw.size > 0:
+        saltos = np.where(np.diff(rd_raw[:, 0]) < 0)[0] + 1
+        bloques = np.split(rd_raw, saltos)
+        bloques_validos = [b for b in bloques if len(b) > 0 and b[:, 1].sum() > 0]
+        bloques_utiles = bloques_validos[len(bloques_validos) // 4:] if len(bloques_validos) >= 4 else bloques_validos
+        if len(bloques_utiles) > 0:
+            r_grid = bloques_utiles[-1][:, 0]
+            profiles = []
+            for b in bloques_utiles:
+                p = b[:, 1]
+                norm = _trapezoid(2.0 * np.pi * r_grid * p, r_grid)
+                if norm > 0:
+                    profiles.append(p / norm)
+            if len(profiles) > 0:
+                profiles = np.array(profiles)
+                dens_mean_norm = np.mean(profiles, axis=0)
+                dens_err_norm = (np.std(profiles, axis=0, ddof=1) / np.sqrt(len(profiles))
+                                 if len(profiles) > 1 else np.zeros_like(dens_mean_norm))
+                dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
+                print(f"  -> Densidad procesada sobre {len(profiles)} perfiles por bloques.")
+                print(f"  -> Error estándar estimado entre perfiles: {np.mean(dens_err_norm):.6e}")
 
 # ==============================================================================
 # Gráficas de Verificación de la Fase 3
@@ -279,8 +362,8 @@ if move_stats:
 # Gráfica 4: Histograma de Longitud del Worm (Gap Delta w en tiempo imaginario)
 gap_file = os.path.join(OUTPUT_DIR, "outworm_gap.dat")
 if os.path.exists(gap_file):
-    gap_data = np.loadtxt(gap_file)
-    if gap_data.ndim == 2 and len(gap_data) > 0:
+    gap_data = np.atleast_2d(np.loadtxt(gap_file, comments="#"))
+    if gap_data.ndim == 2 and gap_data.shape[0] > 0 and gap_data.shape[1] >= 2 and np.sum(gap_data[:, 1]) > 0:
         gaps = gap_data[:, 0]
         counts = gap_data[:, 1]
         probs = counts / np.sum(counts) * 100.0

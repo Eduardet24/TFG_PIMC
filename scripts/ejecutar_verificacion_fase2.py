@@ -11,17 +11,39 @@ import sys
 import re
 import shutil
 import subprocess
+import time
 import numpy as np
 import matplotlib.pyplot as plt
-from Script_Comparacion_N_Particulas_2D import analytical_bose_density, analytical_bose_energy
+
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
+
+from pimc_common import (
+    analytical_bose_density,
+    analytical_bose_energy,
+    compile_mc_binary,
+    replace_cfg_value,
+)
 from worm_config import get_n_particles
 
-SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Fase2_Worm")
+_trapezoid = getattr(np, "trapezoid", getattr(np, "trapz", None))
+
+SCRIPT_DIR = os.path.dirname(_THIS_DIR)
+OUTPUT_DIR = os.environ.get(
+    "WORM_FASE2_OUTPUT_DIR",
+    os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_Fase2_Worm"),
+)
+RUN_DIR = os.environ.get("WORM_FASE2_RUN_DIR", os.path.join(OUTPUT_DIR, "sim_run"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(RUN_DIR, exist_ok=True)
+
+DEFAULT_CFG_PATH = os.path.join(SCRIPT_DIR, "MC.cfg")
+RUN_CFG_PATH = os.path.join(RUN_DIR, "MC.cfg")
+TEMPLATE_CFG_PATH = RUN_CFG_PATH if os.path.isfile(RUN_CFG_PATH) else DEFAULT_CFG_PATH
 
 # Parámetros físicos y de simulación
-N_PARTICLES = get_n_particles(os.path.join(SCRIPT_DIR, "MC.cfg"))
+N_PARTICLES = get_n_particles(TEMPLATE_CFG_PATH)
 TEMP = 0.5
 BETA = 1.0 / TEMP
 OMEGA = 1.0
@@ -31,6 +53,23 @@ WORM_C = 1.0
 HEATING_BLOCKS = 20
 MEASURE_BLOCKS = 100
 N_ITER = 500
+
+
+def get_worm_executable():
+    configured = os.environ.get("WORM_FASE2_EXECUTABLE")
+    if configured:
+        return configured
+    return str(
+        compile_mc_binary(
+            SCRIPT_DIR,
+            os.path.join(SCRIPT_DIR, "MC"),
+            only_if_stale=True,
+            dim="2D",
+            worm=True,
+            normal_modes=True,
+        )
+    )
+
 
 print(f"=================================================================")
 print(f"  VERIFICACIÓN FASE 2: ALGORITMO WORM EN OSCILADOR ARMÓNICO 2D   ")
@@ -42,57 +81,65 @@ print(f"  Frecuencia trampa    : {OMEGA}")
 print(f"  Número de beads P    : {BEADS} (tau = {TAU:.4f})")
 print(f"  Parámetro fugacidad C: {WORM_C}")
 print(f"  Bloques medición     : {MEASURE_BLOCKS} (iter por bloque: {N_ITER})")
+print(f"  Directorio ejecución : {RUN_DIR}")
 print(f"=================================================================\n")
 
-# 1. Configurar MC.cfg temporal para la prueba
-cfg_path = os.path.join(SCRIPT_DIR, "MC.cfg")
-cfg_backup_path = os.path.join(SCRIPT_DIR, "MC.cfg.bak")
-shutil.copy(cfg_path, cfg_backup_path)
+# 1. Configurar MC.cfg en directorio aislado (sin mutar la raíz salvo que RUN_DIR == SCRIPT_DIR)
+is_root_run = os.path.abspath(RUN_DIR) == os.path.abspath(SCRIPT_DIR)
+cfg_backup_path = os.path.join(SCRIPT_DIR, "MC.cfg.bak") if is_root_run else None
+if is_root_run:
+    shutil.copy2(RUN_CFG_PATH, cfg_backup_path)
 
-with open(cfg_path, "r") as f:
+with open(TEMPLATE_CFG_PATH, "r", encoding="utf-8", errors="ignore") as f:
     cfg_text = f.read()
 
-# Modificar parámetros clave
-cfg_text = re.sub(r"N=\s*\d+", f"N= {N_PARTICLES}", cfg_text)
-cfg_text = re.sub(r"T=\s*[\d\.]+", f"T= {TEMP}", cfg_text)
-cfg_text = re.sub(r"Npop=\s*\d+", f"Npop= {BEADS}", cfg_text)
-cfg_text = re.sub(r"NwalkersMax=\s*\d+", f"NwalkersMax= {BEADS * 2}", cfg_text)
-cfg_text = re.sub(r"worm_C=\s*[\d\.]+", f"worm_C= {WORM_C}", cfg_text)
-cfg_text = re.sub(r"blck_heating=\s*\d+", f"blck_heating= {HEATING_BLOCKS}", cfg_text)
-cfg_text = re.sub(r"blck=\s*[\d\s]+", f"blck= {MEASURE_BLOCKS}", cfg_text)
-cfg_text = re.sub(r"Niter=\s*\d+", f"Niter= {N_ITER}", cfg_text)
-cfg_text = re.sub(r"Nmeasure=\s*\d+", f"Nmeasure= 1", cfg_text)
+cfg_text = replace_cfg_value(cfg_text, "MC", 3)
+cfg_text = replace_cfg_value(cfg_text, "N", N_PARTICLES)
+cfg_text = replace_cfg_value(cfg_text, "T", TEMP)
+cfg_text = replace_cfg_value(cfg_text, "Npop", BEADS)
+cfg_text = replace_cfg_value(cfg_text, "NwalkersMax", BEADS * 2)
+cfg_text = replace_cfg_value(cfg_text, "worm_C", WORM_C)
+cfg_text = replace_cfg_value(cfg_text, "generate_new_coordinates", 1)
+cfg_text = replace_cfg_value(cfg_text, "blck_heating", HEATING_BLOCKS)
+cfg_text = replace_cfg_value(cfg_text, "blck", MEASURE_BLOCKS)
+cfg_text = replace_cfg_value(cfg_text, "Niter", N_ITER)
+cfg_text = replace_cfg_value(cfg_text, "Nmeasure", 1)
 
-with open(cfg_path, "w") as f:
+with open(RUN_CFG_PATH, "w", encoding="utf-8") as f:
     f.write(cfg_text)
 
 try:
     print("[1/4] Ejecutando simulación PIMC en C...")
-    cmd = ["./MC", "MC.cfg"]
-    proc = subprocess.run(cmd, cwd=SCRIPT_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    executable = get_worm_executable()
+    cmd = [executable, "MC.cfg"]
+    run_started = time.time()
+    proc = subprocess.run(cmd, cwd=RUN_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     log_path = os.path.join(OUTPUT_DIR, "simulacion_terminal.log")
-    with open(log_path, "w") as f:
+    with open(log_path, "w", encoding="utf-8") as f:
         f.write(proc.stdout)
     print(f"  -> Simulación finalizada con código de salida {proc.returncode}")
     print(f"  -> Log guardado en: {log_path}")
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=proc.stdout)
 
     # Copiar archivos generados al directorio de resultados
     for fname in ["oute.dat", "outrd.dat", "in3Dprev.in"]:
-        src = os.path.join(SCRIPT_DIR, fname)
-        if os.path.exists(src):
-            shutil.copy(src, os.path.join(OUTPUT_DIR, fname))
+        src = os.path.join(RUN_DIR, fname)
+        dst = os.path.join(OUTPUT_DIR, fname)
+        if os.path.exists(src) and os.path.getmtime(src) >= run_started - 1.0:
+            if os.path.abspath(src) != os.path.abspath(dst):
+                shutil.copy2(src, dst)
             print(f"  -> Archivo de datos guardado: {fname}")
 
 finally:
-    # Restaurar MC.cfg original
-    if os.path.exists(cfg_backup_path):
-        shutil.move(cfg_backup_path, cfg_path)
+    if cfg_backup_path and os.path.exists(cfg_backup_path):
+        shutil.move(cfg_backup_path, RUN_CFG_PATH)
 
 # 2. Analizar datos de energía (oute.dat)
 print("\n[2/4] Procesando resultados de energía...")
 oute_file = os.path.join(OUTPUT_DIR, "oute.dat")
-data_e = np.loadtxt(oute_file)
+data_e = np.loadtxt(oute_file, comments="#", ndmin=2)
 
 # oute.dat: Etot, Epot, Ekin (virial), Ekin_prim
 etot_blocks = data_e[:, 0]
@@ -101,16 +148,17 @@ ekin_vir_blocks = data_e[:, 2]
 
 # Descartar primeros 10% de bloques como equilibrado residual si fuera necesario
 n_use = len(etot_blocks)
-start_idx = int(0.1 * n_use)
+start_idx = int(0.1 * n_use) if n_use - int(0.1 * n_use) >= 2 else 0
+n_eff = n_use - start_idx
 
-etot_mean = np.mean(etot_blocks[start_idx:])
-etot_err = np.std(etot_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
+etot_mean = float(np.mean(etot_blocks[start_idx:]))
+etot_err = float(np.std(etot_blocks[start_idx:], ddof=1) / np.sqrt(n_eff)) if n_eff > 1 else 0.0
 
-epot_mean = np.mean(epot_blocks[start_idx:])
-epot_err = np.std(epot_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
+epot_mean = float(np.mean(epot_blocks[start_idx:]))
+epot_err = float(np.std(epot_blocks[start_idx:], ddof=1) / np.sqrt(n_eff)) if n_eff > 1 else 0.0
 
-ekin_mean = np.mean(ekin_vir_blocks[start_idx:])
-ekin_err = np.std(ekin_vir_blocks[start_idx:], ddof=1) / np.sqrt(n_use - start_idx)
+ekin_mean = float(np.mean(ekin_vir_blocks[start_idx:]))
+ekin_err = float(np.std(ekin_vir_blocks[start_idx:], ddof=1) / np.sqrt(n_eff)) if n_eff > 1 else 0.0
 
 e_analitica_bose = analytical_bose_energy(N_PARTICLES, TEMP, OMEGA)[0]
 
@@ -124,57 +172,89 @@ print(f"  Diferencia vs Analítica    : {diferencia_pct:.3f}%")
 
 # 3. Analizar estadísticas del Worm en el log
 print("\n[3/4] Extrayendo estadísticas de transición del Worm (Z <-> G)...")
-worm_lines = [line for line in proc.stdout.splitlines() if "Worm F2:" in line]
+worm_lines = [
+    line for line in proc.stdout.splitlines()
+    if "Worm F4:" in line or "Worm F2:" in line
+]
+worm_stats = None
 if worm_lines:
     last_worm_line = worm_lines[-1]
     print(f"  Último estado: {last_worm_line}")
-    # Extraer Z, G, frac_G, acc_open, acc_close
-    match = re.search(r"Z=(\d+)\s+G=(\d+)\s+\(frac_G=([\d\.]+)\).*Open:\s+(\d+)/(\d+)\s+\(([\d\.]+)%\).*Close:\s+(\d+)/(\d+)\s+\(([\d\.]+)%\)", last_worm_line)
-    if match:
-        z_steps = int(match.group(1))
-        g_steps = int(match.group(2))
-        frac_g = float(match.group(3))
-        acc_open_num = int(match.group(4))
-        try_open_num = int(match.group(5))
-        pct_open = float(match.group(6))
-        acc_close_num = int(match.group(7))
-        try_close_num = int(match.group(8))
-        pct_close = float(match.group(9))
+    m_f4 = re.search(
+        r"Worm F4:\s*Z=(\d+)\s+G=(\d+)\s+\(fG=([\d.]+)\)\s*\|\s*Op:\s*([\d.]+)%\s*\|\s*Cl:\s*([\d.]+)%",
+        last_worm_line,
+    )
+    m_f2 = re.search(
+        r"Z=(\d+)\s+G=(\d+)\s+\(frac_G=([\d\.]+)\).*Open:\s+(\d+)/(\d+)\s+\(([\d\.]+)%\).*Close:\s+(\d+)/(\d+)\s+\(([\d\.]+)%\)",
+        last_worm_line,
+    )
+    if m_f4:
+        worm_stats = {
+            "z_steps": int(m_f4.group(1)),
+            "g_steps": int(m_f4.group(2)),
+            "frac_g": float(m_f4.group(3)),
+            "pct_open": float(m_f4.group(4)),
+            "pct_close": float(m_f4.group(5)),
+            "acc_open_num": None,
+            "try_open_num": None,
+            "acc_close_num": None,
+            "try_close_num": None,
+        }
+    elif m_f2:
+        worm_stats = {
+            "z_steps": int(m_f2.group(1)),
+            "g_steps": int(m_f2.group(2)),
+            "frac_g": float(m_f2.group(3)),
+            "acc_open_num": int(m_f2.group(4)),
+            "try_open_num": int(m_f2.group(5)),
+            "pct_open": float(m_f2.group(6)),
+            "acc_close_num": int(m_f2.group(7)),
+            "try_close_num": int(m_f2.group(8)),
+            "pct_close": float(m_f2.group(9)),
+        }
 
-        print(f"  Pasos en Sector Z (cerrado): {z_steps:,}")
-        print(f"  Pasos en Sector G (abierto): {g_steps:,}")
-        print(f"  Fracción de tiempo en G    : {frac_g*100:.1f}%")
-        print(f"  Aceptación Open (Z -> G)   : {acc_open_num}/{try_open_num} ({pct_open:.1f}%)")
-        print(f"  Aceptación Close (G -> Z)  : {acc_close_num}/{try_close_num} ({pct_close:.1f}%)")
+    if worm_stats:
+        print(f"  Pasos en Sector Z (cerrado): {worm_stats['z_steps']:,}")
+        print(f"  Pasos en Sector G (abierto): {worm_stats['g_steps']:,}")
+        print(f"  Fracción de tiempo en G    : {worm_stats['frac_g']*100:.1f}%")
+        if worm_stats["acc_open_num"] is not None:
+            print(f"  Aceptación Open (Z -> G)   : {worm_stats['acc_open_num']}/{worm_stats['try_open_num']} ({worm_stats['pct_open']:.1f}%)")
+            print(f"  Aceptación Close (G -> Z)  : {worm_stats['acc_close_num']}/{worm_stats['try_close_num']} ({worm_stats['pct_close']:.1f}%)")
+        else:
+            print(f"  Aceptación Open (Z -> G)   : {worm_stats['pct_open']:.1f}%")
+            print(f"  Aceptación Close (G -> Z)  : {worm_stats['pct_close']:.1f}%")
+    else:
+        print("  (No se pudo parsear el formato de la línea Worm en el log)")
 else:
-    print("  (No se encontraron líneas de Worm F2 en el log)")
+    print("  (No se encontraron líneas de Worm F4/F2 en el log)")
 
 # 4. Analizar densidad radial (outrd.dat)
 print("\n[4/4] Procesando perfil de densidad radial...")
 outrd_file = os.path.join(OUTPUT_DIR, "outrd.dat")
 r_grid, dens_mean_norm, dens_err_norm, dens_analitica = None, None, None, None
 if os.path.exists(outrd_file):
-    rd_raw = np.loadtxt(outrd_file)
-    saltos = np.where(np.diff(rd_raw[:, 0]) < 0)[0] + 1
-    bloques = np.split(rd_raw, saltos)
-    bloques_validos = [b for b in bloques if len(b) > 0 and b[:, 1].sum() > 0]
-    bloques_utiles = bloques_validos[len(bloques_validos) // 4:] if len(bloques_validos) >= 4 else bloques_validos
-    if len(bloques_utiles) > 0:
-        r_grid = bloques_utiles[-1][:, 0]
-        profiles = []
-        for b in bloques_utiles:
-            p = b[:, 1]
-            norm = np.trapz(2.0 * np.pi * r_grid * p, r_grid)
-            if norm > 0:
-                profiles.append(p / norm)
-        if len(profiles) > 0:
-            profiles = np.array(profiles)
-            dens_mean_norm = np.mean(profiles, axis=0)
-            dens_err_norm = (np.std(profiles, axis=0, ddof=1) / np.sqrt(len(profiles))
-                             if len(profiles) > 1 else np.zeros_like(dens_mean_norm))
-            dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
-            print(f"  -> Densidad procesada sobre {len(profiles)} perfiles por bloques.")
-            print(f"  -> Error estándar estimado entre perfiles: {np.mean(dens_err_norm):.6e}")
+    rd_raw = np.loadtxt(outrd_file, ndmin=2)
+    if rd_raw.size > 0:
+        saltos = np.where(np.diff(rd_raw[:, 0]) < 0)[0] + 1
+        bloques = np.split(rd_raw, saltos)
+        bloques_validos = [b for b in bloques if len(b) > 0 and b[:, 1].sum() > 0]
+        bloques_utiles = bloques_validos[len(bloques_validos) // 4:] if len(bloques_validos) >= 4 else bloques_validos
+        if len(bloques_utiles) > 0:
+            r_grid = bloques_utiles[-1][:, 0]
+            profiles = []
+            for b in bloques_utiles:
+                p = b[:, 1]
+                norm = _trapezoid(2.0 * np.pi * r_grid * p, r_grid)
+                if norm > 0:
+                    profiles.append(p / norm)
+            if len(profiles) > 0:
+                profiles = np.array(profiles)
+                dens_mean_norm = np.mean(profiles, axis=0)
+                dens_err_norm = (np.std(profiles, axis=0, ddof=1) / np.sqrt(len(profiles))
+                                 if len(profiles) > 1 else np.zeros_like(dens_mean_norm))
+                dens_analitica = analytical_bose_density(r_grid, N_PARTICLES, TEMP, OMEGA)
+                print(f"  -> Densidad procesada sobre {len(profiles)} perfiles por bloques.")
+                print(f"  -> Error estándar estimado entre perfiles: {np.mean(dens_err_norm):.6e}")
 
 # ==============================================================================
 # Generar Figuras de Verificación
@@ -246,29 +326,40 @@ if r_grid is not None:
         shutil.copy(fig_dens_path, overleaf_img)
 
 # Gráfica 3: Estadísticas del Worm
-if worm_lines:
+if worm_stats:
     fig, ax = plt.subplots(figsize=(7, 4.5))
     categorias = ["Open (Z -> G)", "Close (G -> Z)"]
-    aceptadas = [acc_open_num, acc_close_num]
-    totales = [try_open_num, try_close_num]
-    pcts = [pct_open, pct_close]
+    pcts = [worm_stats["pct_open"], worm_stats["pct_close"]]
+    z_steps = worm_stats["z_steps"]
+    g_steps = worm_stats["g_steps"]
+    frac_g = worm_stats["frac_g"]
 
     x = np.arange(len(categorias))
-    width = 0.35
+    if worm_stats["acc_open_num"] is not None and worm_stats["try_open_num"] is not None:
+        aceptadas = [worm_stats["acc_open_num"], worm_stats["acc_close_num"]]
+        totales = [worm_stats["try_open_num"], worm_stats["try_close_num"]]
+        width = 0.35
+        ax.bar(x - width/2, totales, width, label="Intentos", color="tab:gray", alpha=0.6)
+        ax.bar(x + width/2, aceptadas, width, label="Aceptados", color="tab:blue")
+        offset = max(totales) * 0.02 if max(totales) > 0 else 0.5
+        for i in range(len(categorias)):
+            ax.text(x[i] + width/2, aceptadas[i] + offset, f"{pcts[i]:.1f}%",
+                    ha="center", fontsize=11, fontweight="bold", color="tab:blue")
+        ax.set_ylabel("Número de movimientos", fontsize=11)
+        ax.legend(loc="upper right", fontsize=10)
+    else:
+        width = 0.45
+        ax.bar(x, pcts, width, color="tab:blue", alpha=0.85, edgecolor="black")
+        for i in range(len(categorias)):
+            ax.text(x[i], pcts[i] + 2.0, f"{pcts[i]:.1f}%",
+                    ha="center", fontsize=11, fontweight="bold", color="tab:blue")
+        ax.set_ylabel("Tasa de aceptación [%]", fontsize=11)
+        ax.set_ylim(0, max(115.0, max(pcts) * 1.15))
 
-    ax.bar(x - width/2, totales, width, label="Intentos", color="tab:gray", alpha=0.6)
-    ax.bar(x + width/2, aceptadas, width, label="Aceptados", color="tab:blue")
-
-    for i in range(len(categorias)):
-        ax.text(x[i] + width/2, aceptadas[i] + max(totales)*0.02, f"{pcts[i]:.1f}%",
-                ha="center", fontsize=11, fontweight="bold", color="tab:blue")
-
-    ax.set_ylabel("Número de movimientos", fontsize=11)
     ax.set_xticks(x)
     ax.set_xticklabels(categorias, fontsize=11)
     ax.set_title(f"Dinámica Worm: Sector Z ({z_steps:,} pasos) vs Sector G ({g_steps:,} pasos, {frac_g*100:.1f}%)",
                  fontsize=11.5, fontweight="bold")
-    ax.legend(loc="upper right", fontsize=10)
     ax.grid(True, linestyle=":", alpha=0.5, axis="y")
     fig.tight_layout()
     fig_worm_path = os.path.join(OUTPUT_DIR, "verificacion_worm_estadisticas.png")
