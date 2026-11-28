@@ -1,4 +1,4 @@
-## @file script_python_graficas.py
+## @file Script_Armonico1D_basico.py
 #  @brief Analiza la densidad de PIMC del oscilador armónico 1D.
 #
 #  Este script compara la distribución de posiciones obtenida mediante PIMC
@@ -10,8 +10,8 @@
 #  El programa MC guarda la distribución radial en `outrd.dat`. En 1D, esta
 #  salida representa la rama x >= 0 de una distribución simétrica y contiene
 #  varios bloques de Monte Carlo consecutivos. El script separa los bloques,
-#  comprueba que tienen la misma malla y calcula su promedio para reducir el
-#  ruido estadístico.
+#  descarta el periodo de termalización, comprueba que tienen la misma malla
+#  y calcula su promedio para reducir el ruido estadístico.
 #
 #  Para una partícula en un oscilador armónico con hbar = m = omega = 1, la
 #  predicción analítica usada es:
@@ -30,216 +30,235 @@
 #  contribuciones cinética y potencial se siguen comparando por separado
 #  mediante la densidad y el teorema del virial.
 #
-#  @pre `outrd.dat` debe estar en el directorio de ejecución.
-#  @post Se imprime la comparación entre simulación y teoría, se muestra una
-#        gráfica de la densidad y se muestra una gráfica de residuos con barras
-#        de error estándar.
+#  @pre `MC.cfg`, `outrd.dat` y `oute.dat` deben estar en el directorio de ejecución.
+#  @post Se guarda el resumen numérico y las figuras de densidad y residuos.
 
-import os
-import re
+import argparse
+from pathlib import Path
+import sys
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
-## Carpeta donde se guardan los resultados de esta simulación.
-resultados_dir = os.path.join(PROJECT_DIR, 'Resultados', '1DArmonico', 'ejecucion_actual')
-os.makedirs(resultados_dir, exist_ok=True)
-resultados_txt = os.path.join(resultados_dir, 'resultados_graficas_armonico_1D.txt')
+from pimc_common import read_cfg_value
 
-## Número de dimensiones del sistema.
+PROJECT_DIR = _SCRIPTS_DIR.parent
+DEFAULT_RESULTS_DIR = PROJECT_DIR / 'Resultados' / '1DArmonico' / 'ejecucion_actual'
 D = 1.0
-## Temperatura del sistema en unidades reducidas.
-T = 1.0
-## Temperatura inversa, beta = 1/T.
-beta = 1.0 / T
-
-## Leer la distribución radial 1D generada por PIMC.
-## Cada bloque de Monte Carlo contiene dos columnas: posición y densidad.
-## El programa concatena los bloques en el mismo archivo.
-data = np.loadtxt(os.path.join(PROJECT_DIR, 'outrd.dat'))
-## Índices donde empieza un bloque nuevo; la posición vuelve a disminuir.
-saltos = np.where(np.diff(data[:, 0]) < 0)[0] + 1
-## Lista de histogramas individuales, uno por bloque de Monte Carlo.
-bloques = np.split(data, saltos)
-
-## Comprobar que todos los bloques tienen el mismo número de bins.
-if any(len(bloque) != len(bloques[0]) for bloque in bloques):
-    raise ValueError('Los bloques de outrd.dat no tienen el mismo tamaño')
-
-## Coordenadas de los centros de bin de la distribución simulada.
-x_sim = bloques[0][:, 0]
-## Comprobar que todos los bloques usan los mismos centros de bin.
-if not all(np.allclose(bloque[:, 0], x_sim) for bloque in bloques[1:]):
-    raise ValueError('Los centros de bin cambian entre bloques')
-
-## Densidades de cada bloque, usadas para calcular el promedio y su error.
-n_bloques = np.array([bloque[:, 1] for bloque in bloques])
-##Descartar la primera mitad de bloques (termalización)
-inicio_valido = len(n_bloques) // 2
-n_bloques_utiles = n_bloques[inicio_valido:]
-## Densidad simulada promedio sobre todos los bloques.
-n_sim = np.mean(n_bloques, axis=0)
-## Error estándar del promedio en cada centro de bin.
-n_error = np.std(n_bloques, axis=0, ddof=1) / np.sqrt(len(bloques))
-
-## Coordenadas empleadas para dibujar la solución analítica.
-x_teo = np.linspace(x_sim.min(), x_sim.max(), 500)
-## Perfil de densidad analítico del oscilador armónico a temperatura T.
-n_teo = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(-(x_teo**2) * np.tanh(beta / 2.0))
-
-## Radio cuadrático medio teórico, <x^2>.
-r2_teo = D / (2.0 * np.tanh(beta / 2.0))
-## Energía cinética teórica; en este sistema coincide con la potencial.
-e_kin_teo = r2_teo / 2.0
-## Energía potencial teórica del potencial V(x) = x^2/2.
-e_pot_teo = r2_teo / 2.0
-## Energía total teórica, E = Ekin + Epot.
-e_teo = e_kin_teo + e_pot_teo
-
-## Anchura de los bins de la distribución simulada.
-dx = x_sim[1] - x_sim[0]
-## Estimación de <x^2>; se multiplica por 2 porque solo se guarda x >= 0.
-r2_sim = 2.0 * np.sum(x_sim**2 * n_sim) * dx
-
-## Energía potencial estimada a partir de la densidad simulada.
-e_pot_sim = r2_sim / 2.0
-## Energía cinética estimada mediante el teorema del virial.
-e_kin_sim = r2_sim / 2.0
-## Energía total estimada, suma de cinética y potencial.
-e_sim = e_kin_sim + e_pot_sim
-
-## `oute.dat` contiene Etot, Epot y Ekin en PIMC; los archivos antiguos solo Etot.
-energy_data = np.loadtxt(os.path.join(PROJECT_DIR, 'oute.dat'), comments='#', ndmin=2)
-## Se descarta la primera mitad para reducir el efecto del equilibrio inicial.
-equilibrio_inicio = energy_data.shape[0] // 2
-energy_measurements = energy_data[equilibrio_inicio:]
-e_pimc = np.mean(energy_measurements[:, 0])
-e_pimc_std = np.std(energy_measurements[:, 0], ddof=1)
-if energy_data.shape[1] >= 3:
-    e_pot_pimc = np.mean(energy_measurements[:, 1])
-    e_pot_pimc_std = np.std(energy_measurements[:, 1], ddof=1)
-    e_kin_pimc = np.mean(energy_measurements[:, 2])
-    e_kin_pimc_std = np.std(energy_measurements[:, 2], ddof=1)
-if energy_data.shape[1] >= 4:
-    e_kin_prim_pimc = np.mean(energy_measurements[:, 3])
-    e_kin_prim_pimc_std = np.std(energy_measurements[:, 3], ddof=1)
-
-## Residuo entre la densidad simulada y la solución teórica en los mismos bins.
-n_teo_sim = (np.tanh(beta / 2.0) / np.pi)**(D / 2.0) * np.exp(
-    -(x_sim**2) * np.tanh(beta / 2.0)
-)
-residuo = n_sim - n_teo_sim
-## RMS del residuo como medida global de la discrepancia simulación-teoría.
-residuo_rms = np.sqrt(np.mean(residuo**2))
 
 
+def load_density_blocks(rd_path, burn_in=0.5):
+    """Carga los bloques de `outrd.dat`, valida la malla y aplica el descarte de termalización."""
+    data = np.loadtxt(rd_path, comments='#', ndmin=2)
+    if data.size == 0 or data.shape[1] < 2:
+        raise ValueError(f'{rd_path} no contiene columnas válidas de densidad')
+
+    saltos = np.where(np.diff(data[:, 0]) < 0)[0] + 1
+    bloques = np.split(data, saltos)
+
+    if any(len(bloque) != len(bloques[0]) for bloque in bloques):
+        raise ValueError('Los bloques de outrd.dat no tienen el mismo tamaño')
+
+    x_sim = bloques[0][:, 0]
+    if x_sim.size < 2:
+        raise ValueError('Se necesitan al menos 2 bins en outrd.dat')
+    if not all(np.allclose(bloque[:, 0], x_sim) for bloque in bloques[1:]):
+        raise ValueError('Los centros de bin cambian entre bloques')
+
+    n_bloques = np.array([bloque[:, 1] for bloque in bloques], dtype=float)
+    inicio_valido = min(int(len(n_bloques) * burn_in), len(n_bloques) - 1)
+    n_bloques_utiles = n_bloques[inicio_valido:]
+
+    n_sim = np.mean(n_bloques_utiles, axis=0)
+    if len(n_bloques_utiles) > 1:
+        n_error = np.std(n_bloques_utiles, axis=0, ddof=1) / np.sqrt(len(n_bloques_utiles))
+    else:
+        n_error = np.zeros_like(n_sim)
+
+    return x_sim, n_sim, n_error, len(n_bloques_utiles), len(bloques)
 
 
+def load_energy_stats(energy_path, burn_in=0.5):
+    """Carga `oute.dat`, descarta la termalización y calcula medias y desviaciones."""
+    energy_data = np.loadtxt(energy_path, comments='#', ndmin=2)
+    if energy_data.size == 0:
+        raise ValueError(f'{energy_path} no contiene mediciones de energía')
+
+    equilibrio_inicio = min(int(energy_data.shape[0] * burn_in), energy_data.shape[0] - 1)
+    measurements = energy_data[equilibrio_inicio:]
+    ddof = 1 if measurements.shape[0] > 1 else 0
+
+    stats = {
+        'etot': (float(np.mean(measurements[:, 0])), float(np.std(measurements[:, 0], ddof=ddof))),
+    }
+    if measurements.shape[1] >= 3:
+        stats['epot'] = (float(np.mean(measurements[:, 1])), float(np.std(measurements[:, 1], ddof=ddof)))
+        stats['ekin_vir'] = (float(np.mean(measurements[:, 2])), float(np.std(measurements[:, 2], ddof=ddof)))
+    if measurements.shape[1] >= 4:
+        stats['ekin_prim'] = (float(np.mean(measurements[:, 3])), float(np.std(measurements[:, 3], ddof=ddof)))
+    return stats
 
 
-######################### RESULTADOS #########################
-## Guardar los resultados numéricos sobrescribiendo la ejecución anterior.
-with open(resultados_txt, 'w', encoding='utf-8') as resultados:
-    print(f'Ekin simulacion = {e_kin_sim:.6f}', file=resultados)
-    print(f'Epot simulacion = {e_pot_sim:.6f}', file=resultados)
-    print(f'E total simulacion = {e_sim:.6f}', file=resultados)
-    print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}', file=resultados)
-    if energy_data.shape[1] >= 3:
-        print(f'Epot PIMC directo = {e_pot_pimc:.6f} +/- {e_pot_pimc_std:.6f}', file=resultados)
-        print(f'Ekin (virial) PIMC = {e_kin_pimc:.6f} +/- {e_kin_pimc_std:.6f}', file=resultados)
-    if energy_data.shape[1] >= 4:
-        print(f'Ekin (primitivo) PIMC = {e_kin_prim_pimc:.6f} +/- {e_kin_prim_pimc_std:.6f}', file=resultados)
-    print(f'Ekin teoria = {e_kin_teo:.6f}', file=resultados)
-    print(f'Epot teoria = {e_pot_teo:.6f}', file=resultados)
-    print(f'E total teoria = {e_teo:.6f}', file=resultados)
-    print(f'<x^2> simulacion = {r2_sim:.6f}', file=resultados)
-    print(f'<x^2> teoria = {r2_teo:.6f}', file=resultados)
-    print(f'Residuo RMS = {residuo_rms:.6f}', file=resultados)
+def save_single_point_convergence(output_dir, n_beads, r2_sim, r2_teo, e_pimc, e_teo, save_plot=False):
+    """Exporta `convergencia_beads_1D.csv` y, si se solicita, la gráfica de un único punto."""
+    inverso_n = 1.0 / n_beads
+    tabla_estudio = np.array([[n_beads, inverso_n, r2_sim, r2_teo, e_pimc, e_teo]], dtype=float)
+    np.savetxt(
+        output_dir / 'convergencia_beads_1D.csv',
+        tabla_estudio,
+        delimiter=',',
+        header='N_beads,1/N,x2_PIMC,x2_analitico,E_PIMC,E_analitica',
+        comments='',
+        fmt=['%d', '%.8g', '%.10g', '%.10g', '%.10g', '%.10g'],
+    )
+    if not save_plot:
+        return
+
+    figura, ejes = plt.subplots(1, 2, figsize=(11, 4.5))
+    ejes[0].plot([inverso_n], [r2_sim], 'o', label=rf'PIMC $\langle x^2 \rangle$ (N={n_beads})')
+    ejes[0].axhline(r2_teo, color='black', linestyle='--', label='Analítico')
+    ejes[0].set_xlabel(r'$1/N_{beads}$')
+    ejes[0].set_ylabel(r'$\langle x^2 \rangle$')
+    ejes[0].set_title(r'Convergencia de $\langle x^2 \rangle$')
+    ejes[0].legend()
+    ejes[0].grid(True)
+
+    ejes[1].plot([inverso_n], [e_pimc], 's', color='tab:orange', label=f'PIMC (N={n_beads})')
+    ejes[1].axhline(e_teo, color='black', linestyle='--', label='Analítica')
+    ejes[1].set_xlabel(r'$1/N_{beads}$')
+    ejes[1].set_ylabel('Energía total')
+    ejes[1].set_title('Convergencia de la energía')
+    ejes[1].legend()
+    ejes[1].grid(True)
+
+    figura.tight_layout()
+    figura.savefig(output_dir / 'convergencia_beads_1D.png', dpi=300, bbox_inches='tight')
+    plt.close(figura)
 
 
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description='Analiza la corrida actual de PIMC en oscilador armónico 1D.')
+    parser.add_argument('-T', '--temperature', type=float, default=None,
+                        help='Temperatura T (por defecto se lee de MC.cfg)')
+    parser.add_argument('--burn-in', type=float, default=0.5,
+                        help='Fracción inicial de bloques/muestras descartadas por termalización (por defecto: 0.5)')
+    parser.add_argument('--input-dir', type=Path, default=PROJECT_DIR,
+                        help='Directorio con MC.cfg, outrd.dat y oute.dat')
+    parser.add_argument('--output-dir', type=Path, default=DEFAULT_RESULTS_DIR,
+                        help='Directorio donde guardar resultados y figuras')
+    parser.add_argument('--plot-convergencia', action='store_true',
+                        help='Genera también la gráfica de un único punto convergencia_beads_1D.png')
+    parser.add_argument('--no-show', action='store_true',
+                        help='No abre ventanas interactivas de matplotlib al finalizar')
+    return parser.parse_args(argv)
 
 
+def main(argv=None):
+    args = parse_args(argv)
+    if not (0.0 <= args.burn_in < 1.0):
+        raise ValueError('--burn-in debe estar en el intervalo [0.0, 1.0)')
 
-######################### TABLAS #########################
-## Dibujar la distribución analítica y la simulada.
-plt.plot(x_teo, n_teo, 'r-', linewidth=2, label='Teoría (Fórmula original)')
-## Cada punto azul representa un centro de bin de la densidad promediada.
-plt.plot(x_sim, n_sim, 'b.', markersize=5, label=f'Simulación PIMC ({len(bloques)} bloques)')
-## Etiquetas y formato de la figura.
-plt.title('Densidad Cartesiana del Oscilador Armónico 1D')
-plt.xlabel('Posición (z)')
-plt.ylabel('Densidad n(z)')
-plt.legend()
-plt.grid(True)
-plt.savefig(os.path.join(resultados_dir, 'densidad_armonico_1D.png'),
-            dpi=300, bbox_inches='tight')
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-## Dibujar el error de la simulación respecto a la teoría.
-## Las barras representan el error estándar del promedio de los bloques.
-plt.figure()
-plt.axhline(0.0, color='black', linewidth=1)
-plt.errorbar(x_sim, residuo, yerr=n_error, fmt='g.', markersize=5,
-             capsize=2, label='Residuo +/- error estándar')
-plt.title('Residuo de la densidad PIMC respecto a la teoría')
-plt.xlabel('Posición (z)')
-plt.ylabel(r'$n_{PIMC}(z) - n_{teoria}(z)$')
-plt.legend()
-plt.grid(True)
-plt.savefig(os.path.join(resultados_dir, 'residuo_armonico_1D.png'),
-            dpi=300, bbox_inches='tight')
+    config_text = (input_dir / 'MC.cfg').read_text(encoding='utf-8', errors='ignore')
+    temperature = args.temperature if args.temperature is not None else read_cfg_value(config_text, 'T')
+    if temperature <= 0.0:
+        raise ValueError(f'La temperatura T debe ser positiva; recibido {temperature}')
+    n_beads_actual = int(read_cfg_value(config_text, 'Npop'))
+    beta = 1.0 / temperature
 
-## Número de beads del cálculo actual, leído de la misma configuración que usa MC.
-with open(os.path.join(PROJECT_DIR, 'MC.cfg'), 'r', encoding='utf-8') as configuracion:
-    configuracion_mc = configuracion.read()
-coincidencia_npop = re.search(r'\bNpop=\s*(\d+)', configuracion_mc)
-if coincidencia_npop is None:
-    raise ValueError('No se pudo leer Npop de MC.cfg')
-n_beads_actual = int(coincidencia_npop.group(1))
+    x_sim, n_sim, n_error, used_blocks, total_blocks = load_density_blocks(
+        input_dir / 'outrd.dat', burn_in=args.burn_in
+    )
 
-## Este análisis corresponde únicamente a la ejecución actual.
-estudio = [(n_beads_actual, r2_sim, e_pimc)]
+    x_teo = np.linspace(x_sim.min(), x_sim.max(), 500)
+    alpha = np.tanh(beta / 2.0)
+    prefactor = (alpha / np.pi) ** (D / 2.0)
+    n_teo = prefactor * np.exp(-(x_teo ** 2) * alpha)
 
-## Ordenar por 1/N para mostrar la extrapolación hacia el límite continuo.
-estudio.sort(key=lambda fila: 1.0 / fila[0])
-n_estudio = np.array([fila[0] for fila in estudio], dtype=int)
-inverso_n = 1.0 / n_estudio
-r2_estudio = np.array([fila[1] for fila in estudio])
-energia_estudio = np.array([fila[2] for fila in estudio])
+    r2_teo = D / (2.0 * alpha)
+    e_kin_teo = r2_teo / 2.0
+    e_pot_teo = r2_teo / 2.0
+    e_teo = e_kin_teo + e_pot_teo
 
-## Guardar los valores medidos y sus referencias analíticas para facilitar su uso posterior.
-tabla_estudio = np.column_stack((
-    n_estudio, inverso_n, r2_estudio, np.full(len(estudio), r2_teo),
-    energia_estudio, np.full(len(estudio), e_teo),
-))
-np.savetxt(
-    os.path.join(resultados_dir, 'convergencia_beads_1D.csv'),
-    tabla_estudio,
-    delimiter=',',
-    header='N_beads,1/N,x2_PIMC,x2_analitico,E_PIMC,E_analitica',
-    comments='',
-    fmt=['%d', '%.8g', '%.10g', '%.10g', '%.10g', '%.10g'],
-)
+    dx = x_sim[1] - x_sim[0]
+    r2_sim = 2.0 * float(np.sum(x_sim ** 2 * n_sim)) * dx
+    e_pot_sim = r2_sim / 2.0
+    e_kin_sim = r2_sim / 2.0
+    e_sim = e_kin_sim + e_pot_sim
 
-## Comparar <x^2> y la energía con sus valores exactos frente a 1/N.
-figura, ejes = plt.subplots(1, 2, figsize=(11, 4.5))
-ejes[0].plot(inverso_n, r2_estudio, 'o-', label=r'PIMC $\langle x^2 \rangle$')
-ejes[0].axhline(r2_teo, color='black', linestyle='--', label='Analítico')
-ejes[0].set_xlabel(r'$1/N_{beads}$')
-ejes[0].set_ylabel(r'$\langle x^2 \rangle$')
-ejes[0].set_title(r'Convergencia de $\langle x^2 \rangle$')
-ejes[0].legend()
-ejes[0].grid(True)
-ejes[1].plot(inverso_n, energia_estudio, 's-', color='tab:orange', label='PIMC')
-ejes[1].axhline(e_teo, color='black', linestyle='--', label='Analítica')
-ejes[1].set_xlabel(r'$1/N_{beads}$')
-ejes[1].set_ylabel('Energía total')
-ejes[1].set_title('Convergencia de la energía')
-ejes[1].legend()
-ejes[1].grid(True)
-figura.tight_layout()
-figura.savefig(os.path.join(resultados_dir, 'convergencia_beads_1D.png'),
-               dpi=300, bbox_inches='tight')
+    energy_stats = load_energy_stats(input_dir / 'oute.dat', burn_in=args.burn_in)
+    e_pimc, e_pimc_std = energy_stats['etot']
 
-plt.show()
+    n_teo_sim = prefactor * np.exp(-(x_sim ** 2) * alpha)
+    residuo = n_sim - n_teo_sim
+    residuo_rms = float(np.sqrt(np.mean(residuo ** 2)))
+
+    resultados_txt = output_dir / 'resultados_graficas_armonico_1D.txt'
+    with resultados_txt.open('w', encoding='utf-8') as resultados:
+        print(f'T = {temperature:g}, N_beads = {n_beads_actual}, bloques utiles = {used_blocks}/{total_blocks}', file=resultados)
+        print(f'Ekin simulacion = {e_kin_sim:.6f}', file=resultados)
+        print(f'Epot simulacion = {e_pot_sim:.6f}', file=resultados)
+        print(f'E total simulacion = {e_sim:.6f}', file=resultados)
+        print(f'E total PIMC directo = {e_pimc:.6f} +/- {e_pimc_std:.6f}', file=resultados)
+        if 'epot' in energy_stats:
+            e_pot_pimc, e_pot_pimc_std = energy_stats['epot']
+            e_kin_pimc, e_kin_pimc_std = energy_stats['ekin_vir']
+            print(f'Epot PIMC directo = {e_pot_pimc:.6f} +/- {e_pot_pimc_std:.6f}', file=resultados)
+            print(f'Ekin (virial) PIMC = {e_kin_pimc:.6f} +/- {e_kin_pimc_std:.6f}', file=resultados)
+        if 'ekin_prim' in energy_stats:
+            e_kin_prim_pimc, e_kin_prim_pimc_std = energy_stats['ekin_prim']
+            print(f'Ekin (primitivo) PIMC = {e_kin_prim_pimc:.6f} +/- {e_kin_prim_pimc_std:.6f}', file=resultados)
+        print(f'Ekin teoria = {e_kin_teo:.6f}', file=resultados)
+        print(f'Epot teoria = {e_pot_teo:.6f}', file=resultados)
+        print(f'E total teoria = {e_teo:.6f}', file=resultados)
+        print(f'<x^2> simulacion = {r2_sim:.6f}', file=resultados)
+        print(f'<x^2> teoria = {r2_teo:.6f}', file=resultados)
+        print(f'Residuo RMS = {residuo_rms:.6f}', file=resultados)
+
+    fig_dens, ax_dens = plt.subplots()
+    ax_dens.plot(x_teo, n_teo, 'r-', linewidth=2, label=f'Teoría (T={temperature:g})')
+    ax_dens.plot(x_sim, n_sim, 'b.', markersize=5,
+                 label=f'Simulación PIMC ({used_blocks}/{total_blocks} bloques)')
+    ax_dens.set_title('Densidad Cartesiana del Oscilador Armónico 1D')
+    ax_dens.set_xlabel('Posición (z)')
+    ax_dens.set_ylabel('Densidad n(z)')
+    ax_dens.legend()
+    ax_dens.grid(True)
+    fig_dens.savefig(output_dir / 'densidad_armonico_1D.png', dpi=300, bbox_inches='tight')
+
+    fig_res, ax_res = plt.subplots()
+    ax_res.axhline(0.0, color='black', linewidth=1)
+    ax_res.errorbar(x_sim, residuo, yerr=n_error, fmt='g.', markersize=5,
+                    capsize=2, label='Residuo +/- error estándar')
+    ax_res.set_title('Residuo de la densidad PIMC respecto a la teoría')
+    ax_res.set_xlabel('Posición (z)')
+    ax_res.set_ylabel(r'$n_{PIMC}(z) - n_{teoria}(z)$')
+    ax_res.legend()
+    ax_res.grid(True)
+    fig_res.savefig(output_dir / 'residuo_armonico_1D.png', dpi=300, bbox_inches='tight')
+
+    save_single_point_convergence(
+        output_dir,
+        n_beads=n_beads_actual,
+        r2_sim=r2_sim,
+        r2_teo=r2_teo,
+        e_pimc=e_pimc,
+        e_teo=e_teo,
+        save_plot=args.plot_convergencia,
+    )
+
+    if args.no_show:
+        plt.close('all')
+    else:
+        plt.show()
+
+
+if __name__ == '__main__':
+    main()
