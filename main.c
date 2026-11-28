@@ -304,10 +304,9 @@ DOUBLE numeric_derivative_dr = 0.001;
 
 int main(int argn, char **argv) {
   DOUBLE sigma, error;
-  DOUBLE Eblck = 0;
   int w,i;
-  int block, iter;
-  unsigned long int measured_blck = 0;
+  int block;
+  unsigned long int iter;
   clock_t time_begin;
 #ifdef WORM_ALGORITHM
   DOUBLE worm_block_energy_sum[3] = {0., 0., 0.};
@@ -337,6 +336,8 @@ int main(int argn, char **argv) {
   RandInit();
 #endif
 #endif
+  (void)argn;
+  (void)argv;
 
 #ifdef SECURE
   Warning("Secure/Debug option enabled\n");
@@ -1281,8 +1282,6 @@ int main(int argn, char **argv) {
     rejected = rejected_one = rejected_all = 0;
     overlaped = 0;
     tried = 0;
-    Eblck = 0.;
-    measured_blck = 0;
 #ifdef WORM_ALGORITHM
     worm_block_energy_sum[0] = 0.;
     worm_block_energy_sum[1] = 0.;
@@ -1433,7 +1432,7 @@ int main(int argn, char **argv) {
         if(worm_open == 0) {
 #endif
           time_simulating += clock() - time_begin;
-          Measure(block, iter);
+          Measure(block, (int)iter);
 #ifdef WORM_ALGORITHM
           if(MC == PIMC && measure_energy) {
             worm_block_energy_sum[0] += E;

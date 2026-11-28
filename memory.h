@@ -81,7 +81,7 @@ extern void* CallocContiguous3D(const char* name, unsigned dim1, unsigned dim2, 
 #endif
 
 //#ifdef MEMORY_CONTIGUOUS
-//#define ArrayEmpty2D(pointer_array, i, dim1, j, dim2, type_static) \
+//#define ArrayEmpty2D(pointer_array, i, dim1, j, dim2, type_static)
 //  memset(pointer_array[0], 0, dim1*dim2*sizeof(type_static)); // does not work!
 //#else
 #define ArrayEmpty2D(pointer_array, i, dim1, j, dim2, type_static) \

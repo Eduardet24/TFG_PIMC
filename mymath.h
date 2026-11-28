@@ -29,9 +29,6 @@ double erfc_my(double x);
 double E1(double x);
 double      Exponential_Integral_Ei(double x);
 long double xExponential_Integral_Ei(long double x);
-static long double Continued_Fraction_Ei(long double x);
-static long double Power_Series_Ei(long double x);
-static long double Argument_Addition_Series_Ei(long double x);
 
 DOUBLE Erfcx(DOUBLE x);
 

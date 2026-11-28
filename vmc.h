@@ -48,6 +48,9 @@ void AdjustCenterOfMassWalker(struct Walker *Walker);
 
 /********************** Reduce To The Box XYZ *****************************/
 INLINE void ReduceToTheBoxXYZ(DOUBLE *x, DOUBLE *y, DOUBLE *z) {
+  (void)x;
+  (void)y;
+  (void)z;
 
 //x=x-L*int(x/L)
 //x=x-L*int(2*x/L)
@@ -196,6 +199,9 @@ INLINE DOUBLE FindNearestImageCenterOfMass(DOUBLE *x, DOUBLE *y, DOUBLE *z) {
 /*************************** Find Image **************************************/
 /* find for the particle i the image of the pair particle j within L/2 */
 INLINE DOUBLE FindNearestImage(DOUBLE *x, DOUBLE *y, DOUBLE *z) {
+  (void)x;
+  (void)y;
+  (void)z;
 
 #ifdef BC_3DPBC_CUBE // homogeneous 3D system
 #ifdef IMAGES_FLOOR

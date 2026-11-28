@@ -425,6 +425,9 @@ static void PIMCMoveSingleBeadParticle(int w, int i, int w1, int w2,
   DOUBLE xp = 0., yp = 0., zp = 0.;
   DOUBLE dr[3];
   DOUBLE xm, ym, zm;
+  (void)xm;
+  (void)ym;
+  (void)zm;
 
   CaseX(x = W[w].x[i]);
   CaseY(y = W[w].y[i]);
@@ -684,12 +687,6 @@ void PIMCPseudopotentialMoveOneByOne(int w) {
   DOUBLE dS, dSkin, dSdelta, dSwf;
   DOUBLE dx,dy,dz;
   DOUBLE tau;
-  int chain_edge = OFF;
-  int up;
-  DOUBLE x, y, z;
-  DOUBLE xm, ym, zm; // position of the middle point
-  //DOUBLE mA; // i.e. 2 mu
-  //DOUBLE aA;
 #ifdef EXTERNAL_POTENTIAL
   DOUBLE dEpot;
 #endif
@@ -698,9 +695,6 @@ void PIMCPseudopotentialMoveOneByOne(int w) {
   DOUBLE dSkin_check_old, dSpot_check_old, dSwf_check_old;
   DOUBLE dSkin_check_new, dSpot_check_new, dSwf_check_new;
 #endif
-
-  x = y = z = 0.;
-  xm = ym = zm = 0.;
 
   //tau = dt; // imaginary time step
   tau = beta;
@@ -1848,6 +1842,7 @@ void SaveWormOBDM(const char *filename) {
 
 DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], const DOUBLE A2_sum[3], const DOUBLE Icl_sum[3], DOUBLE W2_sum) {
   (void)A_sum;
+  (void)W2_sum;
   if(samples <= 0 || T <= 0.0 || N <= 0) return 0.0;
   DOUBLE n_samples = (DOUBLE)samples;
 
@@ -1870,7 +1865,7 @@ DOUBLE ComputeWormSuperfluidFraction(long long samples, const DOUBLE A_sum[3], c
   }
   return (valid_axes > 0) ? (rhos_sum / (DOUBLE)valid_axes) : 0.0;
 #else
-  (void)A2_sum; (void)Icl_sum; (void)W2_sum;
+  (void)A2_sum; (void)Icl_sum; (void)W2_sum; (void)n_samples;
   return 0.0;
 #endif
 #else
@@ -2029,6 +2024,11 @@ void SaveWormSuperfluid(const char *filename) {
           rhos, block_mean, block_err,
           worm_sf_A2_sum[0] / n_samples, worm_sf_A2_sum[1] / n_samples, worm_sf_A2_sum[2] / n_samples,
           worm_sf_Icl_sum[0] / n_samples, worm_sf_Icl_sum[1] / n_samples, worm_sf_Icl_sum[2] / n_samples);
+#else
+  (void)rhos;
+  (void)block_mean;
+  (void)block_err;
+  (void)n_samples;
 #endif
 #else
   fprintf(f, "# WORM_SUPERFLUID_WINDING_NUMBER\n");

@@ -30,18 +30,22 @@ DOUBLE Ekin_prim = 0.; // Primitive kinetic energy estimator
 #  define PIMC_PURE_HARMONIC_TRAP
 #endif
 
+#ifdef WORM_ALGORITHM
 static int *pimc_visited = NULL;
 static int pimc_visited_cap = 0;
+#endif
 static DOUBLE *pimc_virial_buf = NULL;
 static int pimc_virial_cap = 0;
 static int pimc_scratch_atexit_registered = 0;
 
 static void FreePIMCScratch(void) {
+#ifdef WORM_ALGORITHM
   if(pimc_visited != NULL) {
     free(pimc_visited);
     pimc_visited = NULL;
   }
   pimc_visited_cap = 0;
+#endif
   if(pimc_virial_buf != NULL) {
     free(pimc_virial_buf);
     pimc_virial_buf = NULL;
@@ -49,6 +53,7 @@ static void FreePIMCScratch(void) {
   pimc_virial_cap = 0;
 }
 
+#ifdef WORM_ALGORITHM
 static int EnsurePIMCVisited(int n_particles) {
   if(!pimc_scratch_atexit_registered) {
     atexit(FreePIMCScratch);
@@ -62,6 +67,7 @@ static int EnsurePIMCVisited(int n_particles) {
   }
   return (pimc_visited != NULL);
 }
+#endif
 
 static int EnsurePIMCVirialBuf(int n_particles) {
   if(!pimc_scratch_atexit_registered) {
@@ -619,6 +625,7 @@ DOUBLE WalkerEnergy0(struct Walker *W) {
 }
 
 DOUBLE WalkerEnerg_sum_of_two_wavefunctions(struct Walker *walker, DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *EFF, DOUBLE *Edamping, DOUBLE *Eint, DOUBLE *Eext) {
+  (void)Edamping;
   DOUBLE U1, U2, r;
   DOUBLE E1,Epot1,Ekin1,EFF1,Edamping1,Eint1,Eext1;
   DOUBLE E2,Epot2,Ekin2,EFF2,Edamping2,Eint2,Eext2;
@@ -653,7 +660,7 @@ DOUBLE WalkerEnergy(struct Walker *walker, DOUBLE *Epot, DOUBLE *Ekin, DOUBLE *E
   int i,j,k;
   DOUBLE dr[3] = {0,0,0};
   DOUBLE r, r2;
-  DOUBLE Force, dF;
+  DOUBLE Force;
 #ifdef CRYSTAL
 #ifdef CRYSTAL_SYMMETRIC
   DOUBLE M1, e;
@@ -999,6 +1006,9 @@ DOUBLE WalkerPotentialEnergyTilde(struct Walker *W) {
 /************************ External Energy ************************************/
 DOUBLE Vext(DOUBLE x, DOUBLE y, DOUBLE z) {
   DOUBLE E = 0.;
+  (void)x;
+  (void)y;
+  (void)z;
 
 #ifdef SPECKLES
   E += SpecklesEpot(x, y);
@@ -1059,6 +1069,9 @@ DOUBLE Vext(DOUBLE x, DOUBLE y, DOUBLE z) {
 /************************ External Energy Tilde ******************************/
 // [V, [T, V]]
 DOUBLE VextTilde(DOUBLE x, DOUBLE y, DOUBLE z) {
+  (void)x;
+  (void)y;
+  (void)z;
 
 #ifdef TRAP_POTENTIAL // i.e. the anisotropic oscillator
 #ifdef TRIAL_1D
@@ -1077,6 +1090,8 @@ DOUBLE VextTilde(DOUBLE x, DOUBLE y, DOUBLE z) {
 /************************ Interaction Energy *********************************/
 // spinfull interaction energy
 DOUBLE InteractionEnergy_ij(DOUBLE r, int spin1, int spin2) {
+  (void)spin1;
+  (void)spin2;
 
 #ifdef INTERACTION_SPINFULL_DIPOLE_BILAYER
   if(spin1 == spin2)
@@ -1130,6 +1145,7 @@ DOUBLE InteractionEnergy_ij(DOUBLE r, int spin1, int spin2) {
 
 // spinless interaction energy
 DOUBLE InteractionEnergy(DOUBLE r) {
+  (void)r;
 #ifdef INTERACTION_ABSENT
   return 0.;
 #endif
@@ -1478,6 +1494,9 @@ DOUBLE InteractionDamping(DOUBLE r) {
 /************************ Interaction Energy *********************************/
 // spinfull interaction energy
 DOUBLE InteractionEnergyWithImages_ij(DOUBLE x, DOUBLE y, DOUBLE z) {
+  (void)x;
+  (void)y;
+  (void)z;
 #ifdef INTERACTION_SUM_OVER_IMAGES 
   return InteractionEnergySumOverImages(x, y, z);
 #endif
@@ -1493,6 +1512,7 @@ DOUBLE InteractionEnergyWithImages_ij(DOUBLE x, DOUBLE y, DOUBLE z) {
 /************************ Interaction Energy Tilde ***************************/
 // [V, [T, V]]
 DOUBLE InteractionEnergyTilde(DOUBLE r) {
+  (void)r;
 
 #ifdef INTERACTION_ABSENT
   return 0.;
@@ -1532,7 +1552,7 @@ DOUBLE InteractionEnergyTilde(DOUBLE r) {
 void MeasurePairDistribution(void) {
   int w,i,j,k,n;
   DOUBLE r, r2, dr[3] = {0,0,0};
-  DOUBLE R2;
+  DOUBLE R2 = 0.;
   int PD_position;
   static int wait = 1;
 #ifdef SPINFULL
@@ -1672,12 +1692,12 @@ void MeasurePairDistribution(void) {
 
 /****************************** pair distribution *****************************/
 void MeasureHyperradiusDistribution(void) {
-  int w,i,j,k,n;
+  /*int w,i,j,k,n;
   DOUBLE HR, r2, dr[3] = {0,0,0};
   DOUBLE CM12[3] = {0,0,0};
   DOUBLE rho2;
   int HD_position;
-  static int wait = 1;
+  static int wait = 1;*/
 
   //HD.times_measured += Nwalkers;
 
@@ -1740,13 +1760,11 @@ void MeasureHyperradiusDistribution(void) {
 /**************************** radial distribution *****************************/
 void MeasureRadialDistribution(void) {
   int w;
-  static int i=0;
   static int first_time = ON;
 
   //if(++i != Nmeasure) return;
 
   if(first_time == OFF && MC == DIFFUSION) SaveMeanR2DMC();
-  i=0;
 
   RD.r2recent = RD.r4 = 0.;
   RDz.r2recent = RDz.r4 = 0.;
@@ -2010,11 +2028,14 @@ int MeasureOBDM(int w) {
   int McMillan_spin = 0; // type of the particle to move
   DOUBLE *u_ij, *u_mi; // define locally for parallelization
   DOUBLE u_m;
-  int sign_u_m;
   DOUBLE xm = 0.;
   DOUBLE ym = 0.;
   DOUBLE zm = 0.;
   DOUBLE u, r, r2, dr[3] = {0,0,0};
+  (void)McMillan_spin;
+  (void)xm;
+  (void)ym;
+  (void)zm;
 #ifdef ONE_BODY_TRIAL_TERMS
   DOUBLE U_one_body_old = 0;
   DOUBLE U_one_body_new = 0;
@@ -2123,7 +2144,6 @@ int MeasureOBDM(int w) {
     CaseZ(zm = Random()*L);
 #endif
     u_m = 0;
-    sign_u_m = 1;
 
     //#ifdef ONE_BODY_TRIAL_TERMS // effect of the external field, in general can depend on index
     //      u_m += OneBodyU(xm, ym, zm);
@@ -2377,8 +2397,11 @@ int MeasureOBDMfromU(void) {
 }
 
 int MeasureOBDMfromUWalker(int w) {
-  int i,j,m,n,sign_displacement;
-  DOUBLE u_old, u_new, u;
+  int i,m,n,sign_displacement;
+#if defined(OBDM_FERMIONS) || defined(TRIAL_1D)
+  int j;
+#endif
+  DOUBLE u_old, u;
   DOUBLE r;
 #ifdef HARD_SPHERE_HYPERRADIUS
   int overlap;
@@ -2632,6 +2655,7 @@ int MeasureOBDMpure(void) {
 int MeasureOBDMorbital(void) {
   int r_3D = OFF; // distance r in (x,y,z), otherwize in (x,y)
   int zm_same_as_z = ON; // keep z'=z, otherwise integrate over z and z'
+  (void)zm_same_as_z;
 #ifdef BC_Q2D
   DOUBLE Lintz = 3.; // integration [-Lintz, Lintz]
   //DOUBLE dummy, sigma = 0.5;
@@ -2907,7 +2931,6 @@ int PermutationParity(DOUBLE *r) {
 void MeasureOBDMMatrix(void) {
   int w,i,j,m,n1,n2;
   DOUBLE u_m;
-  int sign_u_m;
   DOUBLE xm, ym, zm;
   DOUBLE u, r2, dr[3] = {0,0,0};
 #ifdef OBDM_FERMIONS
@@ -2960,7 +2983,6 @@ void MeasureOBDMMatrix(void) {
       else
         zm = OBDM_MATRIX.min + (DOUBLE)m *OBDM_MATRIX.step;
 
-      sign_u_m = 1;
       u_m = OneBodyU(xm, ym, zm, 0, w);
 
       // fill u_m and u_im
@@ -3298,8 +3320,8 @@ int MeasureTBDMfromU(void) {
 int MeasureTBDMfromUWalker(int w) {
   int i,j,m,n;
   int sign_displacement;
-  DOUBLE u_old, u_new, u;
-  DOUBLE dr[3],r2,r;
+  DOUBLE u_old, u;
+  DOUBLE r;
 #ifdef HARD_SPHERE_HYPERRADIUS
   int overlap;
 #endif
@@ -3557,9 +3579,9 @@ void EmptyDistributionArrays(void) {
 void MeasureStaticStructureFactor(int w) {
   int i,n;
   DOUBLE cosF, sinF;
-//#ifdef SPINFULL
+#ifdef SPINFULL
   DOUBLE sinF1, cosF1, sinF2, cosF2;
-//#endif
+#endif
   DOUBLE Sk_contr;
   int Sk_position;
 #ifdef TRIAL_1D
@@ -3622,7 +3644,9 @@ void MeasureStaticStructureFactor(int w) {
 #else // 2D and 3D cases
   for(nk=0; nk<Sk.size; nk++) {
     sinF = cosF = 0.;
+#ifdef SPINFULL
     cosF1 = cosF2 = sinF1 = sinF2 = 0.; //????
+#endif
 
     k1 = Sk.kx[nk];
     k2 = Sk.ky[nk];
@@ -3779,14 +3803,11 @@ void MeasureOrderParameter(void) {
 /****************************** Initialize Form Factor ************************/
 void InitializeFormFactor(void) {
 #ifdef TRIAL_1D
-  DOUBLE dk_min;
-
 #ifdef BC_ABSENT // trap
-  dk_min = 0.;
-
   Message("  Form factor spacing: SKT_dk = %lf\n", SKT_dk);
   Message("  range covered %lf<k<%lf\n", SKT_dk, SKT_dk*(DOUBLE)(gridSKT_k));
 #else // hom. system
+  DOUBLE dk_min;
   if(SKT_dk == 0) { // in units of pi*n
     SKT_dk = 2./(DOUBLE)gridSKT_k; // 0<k<2pi
   }
@@ -3820,12 +3841,16 @@ void MeasureFormFactor(int w) {
   //static int index_of_current_position = -1;
   int index_displaced;
 #ifndef TRIAL_1D //2D,3D
+#ifndef MEASURE_FORM_FACTOR_FOR_SUM_RULES
   DOUBLE k1,k2,k3;
+#endif
 #else //1D
-  DOUBLE sign,kF,dk_min,k1;
-  int j;
-
-  kF = PI*n;
+#ifndef MEASURE_FORM_FACTOR_FOR_SUM_RULES
+  DOUBLE k1;
+#ifndef BC_ABSENT
+  DOUBLE kF = PI*n;
+#endif
+#endif
 #endif
 
   if(MC != DIFFUSION) return;
@@ -3835,7 +3860,7 @@ void MeasureFormFactor(int w) {
 
   for(k=0; k<gridSKT_k; k++) {
     rhoIm = rhoRe = 0.;
-#ifdef BC_ABSENT
+#if !defined(MEASURE_FORM_FACTOR_FOR_SUM_RULES) && defined(BC_ABSENT)
     DOUBLE r2accum = 0.;
 #endif
     for(i=0; i<N; i++) {
@@ -3935,7 +3960,7 @@ void MeasureFormFactor(int w) {
 #endif*/
 
   if(W[w].times_measured>=gridSKT_t) {
-    int index_oldest = (W[w].Sk_tau_position + 1) % gridSKT_t;
+    //int index_oldest = (W[w].Sk_tau_position + 1) % gridSKT_t;
     for(i=0; i<gridSKT_t; i++) {
       for(k=0; k<gridSKT_k; k++) {
         index_displaced = W[w].Sk_tau_position - i; // mixed
@@ -4070,7 +4095,6 @@ void MeasureLindemannRatio(void) {
 /****************** Measure Wave Function Projection ***************************/
 void MeasureWaveFunctionProjection(void) {
   static int first_time = ON;
-  static double k;
   double dr[3] = {0,0,0};
   double r2,r;
   double psi1, psi2;
@@ -4079,7 +4103,6 @@ void MeasureWaveFunctionProjection(void) {
 
   if(first_time == ON) {
     Warning("  Measuring reweighting, instead of energy projection <psi_1|psi_2> is saved\n");
-    k = PI / L;
   }
 
   ratio = norm = 0.;
@@ -4284,9 +4307,10 @@ void MeasureEffectivePotential(void) {
 
 /************************** Measure Pure Potential Energy *********************/
 void MeasurePurePotentialEnergy(void) {
-  int w,i;
+  int w;
+  unsigned long int i;
   static int pure_position = 0;
-  static int wait = 1;
+  static unsigned long int wait = 1;
   int inew, iold;
 
   for(w=0; w<Nwalkers; w++) {
@@ -4295,8 +4319,8 @@ void MeasurePurePotentialEnergy(void) {
     if(!wait) {
       inew = pure_position;
       for(i=0; i<Epot_pure.size; i++) { // loop over time
-        iold = inew - i; // position of a previous measurement
-        if(iold<0) iold += Epot_pure.size; // check bounds
+        iold = inew - (int)i; // position of a previous measurement
+        if(iold<0) iold += (int)Epot_pure.size; // check bounds
 
         Epot_pure.f[i] += W[w].Epot_pure[iold];
       }
@@ -4342,7 +4366,6 @@ void MeasureHessianMatrix(void) {
   DOUBLE V_plus_dxi_minus_dxj;
   DOUBLE V_minus_dxi_plus_dxj;
   DOUBLE V_minus_dxi_minus_dxj;
-  DOUBLE xi,yi,zi,xj,yj,zj;
   DOUBLE dx;
   DOUBLE *r, **FirstDerivative, **Hessian;
 
@@ -4397,7 +4420,7 @@ void MeasureHessianMatrix(void) {
 // F = (\nabla \Psi) / \Psi
 // f"/f = u" + (u')^2
 DOUBLE MeasureKineticEnergyNumerically(struct Walker *walker) {
-  int i, j;
+  int i;
 
   DOUBLE epsilon, epsilon2; // accuracy
   DOUBLE coord_store; // store coordinates

@@ -21,7 +21,9 @@
 #   make MC_3D                         # builds ./MC_3D (3D with Worm)
 #   make MC_asan                       # builds ./MC_asan with AddressSanitizer
 
-CC ?= gcc
+ifeq ($(origin CC),default)
+  CC := gcc
+endif
 DIM ?= 2D
 WORM ?= 1
 NORMAL_MODES ?= 1
@@ -112,7 +114,26 @@ ifneq ($(PREV_TARGET_CFG),$(CFG_TAG))
   .PHONY: $(TARGET)
 endif
 
-.PHONY: all clean distclean help MC_1D MC_2D_worm MC_noworm MC_3D MC_asan
+ifneq ($(FROM_SUBMAKE),1)
+.PHONY: MC_1D MC_2D_worm MC_noworm MC_3D MC_asan
+
+MC_1D:
+	@$(MAKE) --no-print-directory FROM_SUBMAKE=1 TARGET=MC_1D DIM=1D WORM=0 NORMAL_MODES=1 all
+
+MC_2D_worm:
+	@$(MAKE) --no-print-directory FROM_SUBMAKE=1 TARGET=MC_2D_worm DIM=2D WORM=1 NORMAL_MODES=1 all
+
+MC_noworm:
+	@$(MAKE) --no-print-directory FROM_SUBMAKE=1 TARGET=MC_noworm DIM=2D WORM=0 NORMAL_MODES=1 all
+
+MC_3D:
+	@$(MAKE) --no-print-directory FROM_SUBMAKE=1 TARGET=MC_3D DIM=3D WORM=1 NORMAL_MODES=1 all
+
+MC_asan:
+	@$(MAKE) --no-print-directory FROM_SUBMAKE=1 TARGET=MC_asan ASAN=1 all
+endif
+
+.PHONY: all clean distclean help
 
 all: $(TARGET)
 
@@ -129,21 +150,6 @@ $(INTERNAL_BIN): $(OBJS)
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS_EFF) $(CFLAGS_EFF) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
-
-MC_1D:
-	@$(MAKE) --no-print-directory TARGET=MC_1D DIM=1D WORM=0 NORMAL_MODES=1
-
-MC_2D_worm:
-	@$(MAKE) --no-print-directory TARGET=MC_2D_worm DIM=2D WORM=1 NORMAL_MODES=1
-
-MC_noworm:
-	@$(MAKE) --no-print-directory TARGET=MC_noworm DIM=2D WORM=0 NORMAL_MODES=1
-
-MC_3D:
-	@$(MAKE) --no-print-directory TARGET=MC_3D DIM=3D WORM=1 NORMAL_MODES=1
-
-MC_asan:
-	@$(MAKE) --no-print-directory TARGET=MC_asan ASAN=1
 
 clean:
 	rm -rf $(BUILD_ROOT)

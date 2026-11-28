@@ -1486,6 +1486,10 @@ double Exponential_Integral_Ei( double x )
 //     y = xExponential_Integral_Ei( x );                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
+static long double Continued_Fraction_Ei(long double x);
+static long double Power_Series_Ei(long double x);
+static long double Argument_Addition_Series_Ei(long double x);
+
 long double xExponential_Integral_Ei( long double x )
 {
    if ( x < -5.0L ) return Continued_Fraction_Ei(x);
