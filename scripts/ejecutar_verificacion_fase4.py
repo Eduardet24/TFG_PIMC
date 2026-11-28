@@ -29,6 +29,7 @@ from pimc_common import (
     blocked_ratio_stats,
     canonical_bose_partition,
     compile_mc_binary,
+    trapezoid,
 )
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -305,7 +306,7 @@ if os.path.exists(outrd_file):
             profiles = []
             for b in selected_rd_blocks:
                 p = b[:, 1]
-                norm = np.trapz(2.0 * np.pi * r_sim * p, r_sim)
+                norm = trapezoid(2.0 * np.pi * r_sim * p, r_sim)
                 if norm > 0:
                     profiles.append(p / norm)
             if len(profiles) > 0:

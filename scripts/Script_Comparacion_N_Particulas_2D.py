@@ -33,6 +33,7 @@ from pimc_common import (
     canonical_bose_partition,
     compile_mc_binary,
     replace_cfg_line,
+    trapezoid,
 )
 
 
@@ -199,7 +200,7 @@ def read_density_results(run_dir):
     profiles = []
     for b in selected_blocks:
         p = b[:, 1]
-        norm = np.trapz(2.0 * np.pi * r * p, r)
+        norm = trapezoid(2.0 * np.pi * r * p, r)
         if norm > 0:
             profiles.append(p / norm)
     profiles = np.array(profiles)

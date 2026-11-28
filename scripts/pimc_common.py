@@ -110,6 +110,16 @@ def blocked_ratio_stats(values, counts):
     return mean, error
 
 
+_NUMPY_TRAPEZOID = getattr(np, "trapezoid", getattr(np, "trapz", None))
+
+
+def trapezoid(y, x=None, dx=1.0, axis=-1):
+    """Integración trapezoidal compatible con NumPy 1.x (`trapz`) y NumPy 2.x (`trapezoid`)."""
+    if _NUMPY_TRAPEZOID is None:
+        raise RuntimeError("NumPy no proporciona ni trapezoid ni trapz")
+    return _NUMPY_TRAPEZOID(y, x=x, dx=dx, axis=axis)
+
+
 def compile_mc_binary(
     project_dir,
     output_path,

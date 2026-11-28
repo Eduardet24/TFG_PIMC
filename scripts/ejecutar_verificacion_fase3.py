@@ -27,10 +27,9 @@ from pimc_common import (
     analytical_bose_energy,
     compile_mc_binary,
     replace_cfg_value,
+    trapezoid,
 )
 from worm_config import get_n_particles
-
-_trapezoid = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
 SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 OUTPUT_DIR = os.environ.get(
@@ -253,7 +252,7 @@ if os.path.exists(outrd_file):
             profiles = []
             for b in bloques_utiles:
                 p = b[:, 1]
-                norm = _trapezoid(2.0 * np.pi * r_grid * p, r_grid)
+                norm = trapezoid(2.0 * np.pi * r_grid * p, r_grid)
                 if norm > 0:
                     profiles.append(p / norm)
             if len(profiles) > 0:

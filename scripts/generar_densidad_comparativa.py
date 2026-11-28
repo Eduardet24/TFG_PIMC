@@ -26,6 +26,7 @@ if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 
+from pimc_common import trapezoid
 from Script_Comparacion_N_Particulas_2D import (
     analytical_distinguishable_density,
     analytical_bose_density,
@@ -106,10 +107,7 @@ def load_pimc_results(run_dir, tag="PIMC"):
     profiles = []
     for b in sel_blocks:
         p = b[:, 1]
-        try:
-            norm = np.trapezoid(2.0 * np.pi * r_grid * p, r_grid)
-        except AttributeError:
-            norm = np.trapz(2.0 * np.pi * r_grid * p, r_grid)
+        norm = trapezoid(2.0 * np.pi * r_grid * p, r_grid)
         if norm > 0:
             profiles.append(p / norm)
 
