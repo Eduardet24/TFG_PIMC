@@ -1765,9 +1765,16 @@ void SaveWormOBDM(const char *filename) {
   if(f == NULL) return;
 
   fprintf(f, "# WORM_OBDM_MATRIX_GAP1\n");
-    fprintf(f, "# grid: %d min: %.6f max: %.6f step: %.6f samples: %lld norm_trace: %.15e N: %d tau: %.15e\n",
+  {
+#ifdef MOVE_IN_X
+    DOUBLE obdm_omega = omega_x;
+#else
+    DOUBLE obdm_omega = omega_z;
+#endif
+    fprintf(f, "# grid: %d min: %.6f max: %.6f step: %.6f samples: %lld norm_trace: %.15e N: %d T: %.15g omega: %.15g tau: %.15e\n",
       worm_obdm_grid, -worm_obdm_max, worm_obdm_max, step_x, worm_obdm_samples_gap1,
-      norm_trace, N, 1.0 / (T * (DOUBLE)Nwalkers));
+      norm_trace, N, (double)T, (double)obdm_omega, 1.0 / (T * (DOUBLE)Nwalkers));
+  }
   fprintf(f, "# x x_prime count rho1_normalized\n");
 
   for(i = 0; i < worm_obdm_grid; i++) {
@@ -1825,9 +1832,15 @@ void SaveWormOBDM(const char *filename) {
 
   f = fopen("outworm_obdm_all.dat", "w");
   if(f != NULL) {
+#ifdef MOVE_IN_X
+    DOUBLE obdm_omega = omega_x;
+#else
+    DOUBLE obdm_omega = omega_z;
+#endif
     fprintf(f, "# WORM_OBDM_MATRIX_ALL_GAPS\n");
-    fprintf(f, "# grid: %d min: %.6f max: %.6f step: %.6f samples: %lld\n",
-            worm_obdm_grid, -worm_obdm_max, worm_obdm_max, step_x, worm_obdm_samples_all);
+    fprintf(f, "# grid: %d min: %.6f max: %.6f step: %.6f samples: %lld N: %d T: %.15g omega: %.15g\n",
+            worm_obdm_grid, -worm_obdm_max, worm_obdm_max, step_x, worm_obdm_samples_all,
+            N, (double)T, (double)obdm_omega);
     for(i = 0; i < worm_obdm_grid; i++) {
       x_val = -worm_obdm_max + ((DOUBLE)i + 0.5) * step_x;
       for(j = 0; j < worm_obdm_grid; j++) {

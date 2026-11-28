@@ -15,13 +15,12 @@ Incluye:
   6. Exportación de figuras de alta resolución a Overleaf.
 """
 
+import argparse
 import os
+import shutil
 import sys
-import re
-import glob
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _THIS_DIR not in sys.path:
@@ -29,42 +28,33 @@ if _THIS_DIR not in sys.path:
 SCRIPT_DIR = os.path.dirname(_THIS_DIR)
 
 from worm_config import get_n_particles
-from pimc_common import canonical_bose_partition as _full_bose_partition
+from pimc_common import canonical_bose_partition as _full_bose_partition, read_cfg_value
 
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "Resultados", "Verificacion_OBDM")
 OVERLEAF_IMG_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "overleaf", "imágenes")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-try:
-    os.makedirs(OVERLEAF_IMG_DIR, exist_ok=True)
-except OSError:
-    pass
 
-def _get_temp_from_cfg(cfg_path, default=0.5):
+
+def _get_cfg_number(cfg_path, key, default=None):
     if os.path.isfile(cfg_path):
         with open(cfg_path, "r", encoding="utf-8", errors="ignore") as f:
-            match = re.search(r"(?<![A-Za-z0-9_])T\s*=\s*([0-9.eE+-]+)", f.read())
-            if match:
-                return float(match.group(1))
+            try:
+                return read_cfg_value(f.read(), key)
+            except ValueError:
+                return default
     return default
 
 
-# Parámetros físicos por defecto
+# Parámetros físicos por defecto (usados si el caller no los pasa ni están en metadatos)
 N_PARTICLES = get_n_particles(os.path.join(SCRIPT_DIR, "MC.cfg"), "WORM_FASE4_PARTICLES")
 if N_PARTICLES < 2 and "WORM_PARTICLES" not in os.environ and "WORM_FASE4_PARTICLES" not in os.environ:
     N_PARTICLES = 2
-TEMP = _get_temp_from_cfg(os.path.join(SCRIPT_DIR, "MC.cfg"), 0.5)
-BETA = 1.0 / TEMP
-OMEGA = 1.0
+TEMP = _get_cfg_number(os.path.join(SCRIPT_DIR, "MC.cfg"), "T", 0.5)
+OMEGA = _get_cfg_number(os.path.join(SCRIPT_DIR, "MC.cfg"), "omega_x", 1.0)
 
 
 # ==============================================================================
 # 1. Modelos Analíticos Exactos
 # ==============================================================================
-
-def canonical_bose_partition(n_particles, temp, omega=OMEGA):
-    """Calcula la función de partición canónica Z_N."""
-    return _full_bose_partition(n_particles, temp, omega)[0]
-
 
 def normalized_mehler_1d(x, xp, tau, omega=OMEGA):
     """
@@ -85,16 +75,13 @@ def analytical_bose_obdm_1d(x, xp, n_particles, temp, omega=OMEGA, per_particle=
     Matriz de densidad marginal 1D rho_1(x, x') = \int dy rho_1(x, y; x', y)
     para N bosones no interactuantes en una trampa armónica isótropa 2D.
     """
-    z_can = canonical_bose_partition(n_particles, temp, omega)
+    z_can = _full_bose_partition(n_particles, temp, omega)[0]
     beta = 1.0 / temp
-    
-    # Manejar tanto arrays 2D para matrices como 1D para cortes
-    if isinstance(x, np.ndarray) and isinstance(xp, np.ndarray) and x.ndim == 2 and xp.ndim == 2:
-        val = np.zeros_like(x, dtype=float)
-    elif isinstance(x, np.ndarray) and isinstance(xp, np.ndarray) and x.ndim == 1 and xp.ndim == 1 and x.shape == xp.shape:
-        val = np.zeros_like(x, dtype=float)
-    else:
-        val = np.zeros_like(x, dtype=float)
+
+    x_arr, xp_arr = np.broadcast_arrays(
+        np.asarray(x, dtype=float), np.asarray(xp, dtype=float)
+    )
+    val = np.zeros_like(x_arr, dtype=float)
 
     for k in range(1, n_particles + 1):
         q = np.exp(-k * beta * omega)
@@ -103,8 +90,10 @@ def analytical_bose_obdm_1d(x, xp, n_particles, temp, omega=OMEGA, per_particle=
         weight = z2d * z_can[n_particles - k] / z_can[n_particles]
         if per_particle:
             weight /= n_particles
-        val += weight * normalized_mehler_1d(x, xp, k * beta, omega)
-        
+        val += weight * normalized_mehler_1d(x_arr, xp_arr, k * beta, omega)
+
+    if np.ndim(x) == 0 and np.ndim(xp) == 0:
+        return float(val)
     return val
 
 
@@ -120,7 +109,7 @@ def analytical_bose_endpoint_dist(s_vals, n_particles, temp, omega=OMEGA, tau=0.
     Distribución analítica exacta de la separación espacial 2D s = |r_ira - r_masha|
     en el sector G (gap=1, tiempo efectivo k*beta - tau) para N bosones en trampa armónica 2D.
     """
-    z_can = canonical_bose_partition(n_particles, temp, omega)
+    z_can = _full_bose_partition(n_particles, temp, omega)[0]
     beta = 1.0 / temp
     p_s = np.zeros_like(s_vals, dtype=float)
     w_sum = 0.0
@@ -147,25 +136,34 @@ def analytical_distinguishable_endpoint_dist(s_vals, temp, omega=OMEGA, tau=0.0)
 # 2. Carga y Normalización de Datos PIMC
 # ==============================================================================
 
+def _symmetrize_if_needed(matrix):
+    if not np.array_equal(matrix, matrix.T):
+        return 0.5 * (matrix + matrix.T)
+    return matrix
+
+
 def load_worm_obdm_data(data_path):
     """
     Lee el archivo outworm_obdm.dat generado por el motor en C.
-    Devuelve x_grid, matrix_2d, metadata_dict.
+    Devuelve x_grid, matrix_norm, matrix_counts, metadata_dict.
     """
     if not os.path.isfile(data_path):
         raise FileNotFoundError(f"No se encontró el fichero de datos: {data_path}")
 
     metadata = {}
-    with open(data_path, "r") as f:
+    with open(data_path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             if line.startswith("# grid:"):
-                # Formato: # grid: 100 min: -3.5 max: 3.5 step: 0.07 samples: 1234 norm_trace: ... N: 2
+                # Formato: # grid: 100 min: -3.5 max: 3.5 step: 0.07 samples: 1234 norm_trace: ... N: 2 T: 0.5 omega: 1 tau: ...
                 parts = line.strip("# \n").split()
-                for idx in range(0, len(parts)-1, 2):
+                for idx in range(0, len(parts) - 1, 2):
                     key = parts[idx].rstrip(":")
-                    val = parts[idx+1]
+                    val = parts[idx + 1]
                     try:
-                        metadata[key] = int(val) if val.isdigit() or val.startswith("-") and val[1:].isdigit() else float(val)
+                        if val.isdigit() or (val.startswith("-") and val[1:].isdigit()):
+                            metadata[key] = int(val)
+                        else:
+                            metadata[key] = float(val)
                     except ValueError:
                         metadata[key] = val
                 break
@@ -176,30 +174,50 @@ def load_worm_obdm_data(data_path):
     step = float(metadata.get("step", (max_x - min_x) / grid_size))
 
     # Cargar datos tabulares: col 0: x, col 1: x_prime, col 2: count, col 3: rho1_norm
-    raw_data = np.atleast_2d(np.loadtxt(data_path, comments="#"))
+    raw_data = np.loadtxt(data_path, comments="#", dtype=float, ndmin=2)
+    if raw_data.size == 0:
+        raise ValueError(f"El fichero {data_path} no contiene datos numéricos")
+
     x_vals = np.linspace(min_x + 0.5 * step, max_x - 0.5 * step, grid_size)
-    
-    # Reconstruir matriz cuadrada
-    matrix_counts = np.zeros((grid_size, grid_size), dtype=float)
-    matrix_norm = np.zeros((grid_size, grid_size), dtype=float)
-    if raw_data.shape[1] >= 3:
-        for row in raw_data:
-            ix = int(np.floor((row[0] - min_x) / step))
-            ixp = int(np.floor((row[1] - min_x) / step))
-            if 0 <= ix < grid_size and 0 <= ixp < grid_size:
-                matrix_counts[ix, ixp] = row[2]
-                matrix_counts[ixp, ix] = row[2]  # Simetrización Hermítica
-                if raw_data.shape[1] >= 4:
-                    matrix_norm[ix, ixp] = row[3]
-                    matrix_norm[ixp, ix] = row[3]
+
+    if raw_data.shape[1] < 3:
+        matrix_counts = np.zeros((grid_size, grid_size), dtype=float)
+        matrix_norm = np.zeros((grid_size, grid_size), dtype=float)
+    elif (
+        raw_data.shape[0] == grid_size * grid_size
+        and np.allclose(raw_data[:, 0], np.repeat(x_vals, grid_size), atol=1e-4 * max(step, 1e-6), rtol=0.0)
+        and np.allclose(raw_data[:, 1], np.tile(x_vals, grid_size), atol=1e-4 * max(step, 1e-6), rtol=0.0)
+    ):
+        matrix_counts = _symmetrize_if_needed(raw_data[:, 2].reshape(grid_size, grid_size).copy())
+        if raw_data.shape[1] >= 4:
+            matrix_norm = _symmetrize_if_needed(raw_data[:, 3].reshape(grid_size, grid_size).copy())
+        else:
+            matrix_norm = np.zeros((grid_size, grid_size), dtype=float)
+    else:
+        matrix_counts = np.zeros((grid_size, grid_size), dtype=float)
+        matrix_norm = np.zeros((grid_size, grid_size), dtype=float)
+        ix = np.floor((raw_data[:, 0] - min_x) / step).astype(int)
+        ixp = np.floor((raw_data[:, 1] - min_x) / step).astype(int)
+        valid = (ix >= 0) & (ix < grid_size) & (ixp >= 0) & (ixp < grid_size)
+        ix_v = ix[valid]
+        ixp_v = ixp[valid]
+        counts_v = raw_data[valid, 2]
+        matrix_counts[ix_v, ixp_v] = counts_v
+        matrix_counts[ixp_v, ix_v] = counts_v
+        matrix_counts = _symmetrize_if_needed(matrix_counts)
+        if raw_data.shape[1] >= 4:
+            norm_v = raw_data[valid, 3]
+            matrix_norm[ix_v, ixp_v] = norm_v
+            matrix_norm[ixp_v, ix_v] = norm_v
+            matrix_norm = _symmetrize_if_needed(matrix_norm)
 
     n_part = int(metadata.get("N", N_PARTICLES))
-    raw_trace_integral = np.sum(np.diag(matrix_counts)) * step
+    raw_trace_integral = float(np.sum(np.diag(matrix_counts)) * step)
     if raw_data.shape[1] < 4 and raw_trace_integral > 0:
         matrix_norm = matrix_counts * (float(n_part) / raw_trace_integral)
 
     metadata["raw_trace_integral"] = raw_trace_integral
-    metadata["trace_integral"] = np.sum(np.diag(matrix_norm)) * step
+    metadata["trace_integral"] = float(np.sum(np.diag(matrix_norm)) * step)
     return x_vals, matrix_norm, matrix_counts, metadata
 
 
@@ -207,19 +225,114 @@ def load_worm_dist_data(dist_path):
     """Lee el archivo outworm_obdm_dist.dat."""
     if not os.path.isfile(dist_path):
         return None, None
-    raw = np.loadtxt(dist_path, comments="#")
-    if len(raw) == 0:
+    raw = np.loadtxt(dist_path, comments="#", dtype=float, ndmin=2)
+    if raw.size == 0:
         return None, None
     s_vals = raw[:, 0]
     p_s = raw[:, 2] if raw.shape[1] >= 3 else raw[:, 1]
     return s_vals, p_s
 
 
+def _find_local_param(data_dir, keys):
+    """Busca un parámetro numérico en MC.cfg / MC.log / outworm_superfluid.dat del directorio."""
+    candidates = [
+        ("MC.cfg local", os.path.join(data_dir, "MC.cfg")),
+        ("MC.log local", os.path.join(data_dir, "MC.log")),
+        ("outworm_superfluid.dat", os.path.join(data_dir, "outworm_superfluid.dat")),
+    ]
+    if os.path.abspath(data_dir) != os.path.abspath(SCRIPT_DIR):
+        candidates.extend([
+            ("sim_run/MC.cfg", os.path.join(data_dir, "sim_run", "MC.cfg")),
+            ("sim_run/MC.log", os.path.join(data_dir, "sim_run", "MC.log")),
+        ])
+    for label, path in candidates:
+        for key in keys:
+            val = _get_cfg_number(path, key)
+            if val is not None:
+                return val, f"{label} ({path})"
+    return None, None
+
+
+def resolve_obdm_parameters(data_dir, metadata, temp=None, n_particles=None, omega=None):
+    """Resuelve (N, T, omega) priorizando: CLI -> cabecera outworm_obdm.dat -> MC.cfg/MC.log local -> MC.cfg raíz."""
+    sources = {}
+
+    if n_particles is not None:
+        resolved_n = int(n_particles)
+        sources["N"] = "CLI"
+    elif "N" in metadata:
+        resolved_n = int(metadata["N"])
+        sources["N"] = "cabecera outworm_obdm.dat"
+    else:
+        local_n, src_n = _find_local_param(data_dir, ("N",))
+        if local_n is not None:
+            resolved_n = int(local_n)
+            sources["N"] = src_n
+        else:
+            resolved_n = N_PARTICLES
+            sources["N"] = "MC.cfg raíz (fallback)"
+
+    if temp is not None:
+        resolved_t = float(temp)
+        sources["T"] = "CLI"
+    elif "T" in metadata:
+        resolved_t = float(metadata["T"])
+        sources["T"] = "cabecera outworm_obdm.dat"
+    else:
+        local_t, src_t = _find_local_param(data_dir, ("T",))
+        if local_t is not None:
+            resolved_t = float(local_t)
+            sources["T"] = src_t
+        else:
+            resolved_t = float(TEMP)
+            sources["T"] = "MC.cfg raíz (fallback)"
+
+    if omega is not None:
+        resolved_omega = float(omega)
+        sources["omega"] = "CLI"
+    elif "omega" in metadata:
+        resolved_omega = float(metadata["omega"])
+        sources["omega"] = "cabecera outworm_obdm.dat"
+    else:
+        local_omega, src_omega = _find_local_param(data_dir, ("omega_x", "omega_z"))
+        if local_omega is not None:
+            resolved_omega = float(local_omega)
+            sources["omega"] = src_omega
+        else:
+            resolved_omega = float(OMEGA)
+            sources["omega"] = "MC.cfg raíz (fallback)"
+
+    if resolved_n < 1 or resolved_t <= 0.0 or resolved_omega <= 0.0:
+        raise ValueError(f"Parámetros inválidos: N={resolved_n}, T={resolved_t}, omega={resolved_omega}")
+
+    return resolved_n, resolved_t, resolved_omega, sources
+
+
 # ==============================================================================
 # 3. Generación de Gráficos de Publicación
 # ==============================================================================
 
-def generar_mapa_calor_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR):
+def _save_and_sync_figure(fig, save_dir, filename, copy_overleaf=True):
+    os.makedirs(save_dir, exist_ok=True)
+    out_file = os.path.join(save_dir, filename)
+    fig.savefig(out_file, dpi=300)
+    plt.close(fig)
+    print(f"  -> Guardado: {out_file}")
+
+    if copy_overleaf and os.path.exists(OVERLEAF_IMG_DIR):
+        shutil.copy2(out_file, os.path.join(OVERLEAF_IMG_DIR, filename))
+    return out_file
+
+
+def generar_mapa_calor_obdm(
+    x_vals,
+    pimc_matrix,
+    n_particles=N_PARTICLES,
+    temp=TEMP,
+    save_dir=OUTPUT_DIR,
+    omega=OMEGA,
+    copy_overleaf=True,
+):
     """
     Genera el panel comparativo de Mapas de Calor 2D:
       [1] PIMC Worm (Muestreado con cadenas abiertas)
@@ -227,7 +340,7 @@ def generar_mapa_calor_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=T
       [3] Residuos / Discrepancia absoluta
     """
     X, XP = np.meshgrid(x_vals, x_vals)
-    bose_exact = analytical_bose_obdm_1d(X, XP, n_particles, temp)
+    bose_exact = analytical_bose_obdm_1d(X, XP, n_particles, temp, omega=omega)
     diff_matrix = pimc_matrix - bose_exact
 
     vmax = max(np.max(pimc_matrix), np.max(bose_exact))
@@ -263,18 +376,20 @@ def generar_mapa_calor_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=T
     axes[2].set_ylabel(r"Posición $x'$ [$a_{\mathrm{ho}}$]", fontsize=11)
     fig.colorbar(im2, ax=axes[2], fraction=0.046, pad=0.04)
 
-    out_file = os.path.join(save_dir, "01_obdm_mapa_calor_2d_comparativo.png")
-    fig.savefig(out_file, dpi=300)
-    plt.close(fig)
-    print(f"  -> Guardado: {out_file}")
-
-    overleaf_file = os.path.join(OVERLEAF_IMG_DIR, "01_obdm_mapa_calor_2d_comparativo.png")
-    if os.path.exists(OVERLEAF_IMG_DIR):
-        import shutil
-        shutil.copy2(out_file, overleaf_file)
+    _save_and_sync_figure(
+        fig, save_dir, "01_obdm_mapa_calor_2d_comparativo.png", copy_overleaf=copy_overleaf
+    )
 
 
-def generar_cortes_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR):
+def generar_cortes_obdm(
+    x_vals,
+    pimc_matrix,
+    n_particles=N_PARTICLES,
+    temp=TEMP,
+    save_dir=OUTPUT_DIR,
+    omega=OMEGA,
+    copy_overleaf=True,
+):
     """
     Genera cortes 1D de la matriz de densidad:
       Panel A: Diagonal local rho_1(x, x) (perfil de densidad espacial).
@@ -282,21 +397,28 @@ def generar_cortes_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=TEMP,
       Panel C: Coherencia espacial relativa rho_1(x, 0) respecto al origen.
     """
     diag_pimc = np.diag(pimc_matrix)
-    diag_bose = analytical_bose_obdm_1d(x_vals, x_vals, n_particles, temp)
-    diag_dist = analytical_distinguishable_obdm_1d(x_vals, x_vals, n_particles, temp)
+    diag_bose = analytical_bose_obdm_1d(x_vals, x_vals, n_particles, temp, omega=omega)
+    diag_dist = analytical_distinguishable_obdm_1d(x_vals, x_vals, n_particles, temp, omega=omega)
 
     # Corte anti-diagonal: x' = -x
-    # Dado que x_vals va de -L a +L, el elemento x_vals[i] tiene opuesto x_vals[-(i+1)]
-    antidiag_pimc = np.array([pimc_matrix[i, -(i+1)] for i in range(len(x_vals))])
-    antidiag_bose = analytical_bose_obdm_1d(x_vals, -x_vals, n_particles, temp)
-    antidiag_dist = analytical_distinguishable_obdm_1d(x_vals, -x_vals, n_particles, temp)
+    antidiag_pimc = np.diag(np.fliplr(pimc_matrix))
+    antidiag_bose = analytical_bose_obdm_1d(x_vals, -x_vals, n_particles, temp, omega=omega)
+    antidiag_dist = analytical_distinguishable_obdm_1d(x_vals, -x_vals, n_particles, temp, omega=omega)
 
-    # Corte x' = 0 (coherencia con el centro de la trampa)
-    cut_center_pimc = np.array([
-        np.interp(0.0, x_vals, pimc_matrix[i, :]) for i in range(len(x_vals))
-    ])
-    cut_center_bose = analytical_bose_obdm_1d(x_vals, np.zeros_like(x_vals), n_particles, temp)
-    cut_center_dist = analytical_distinguishable_obdm_1d(x_vals, np.zeros_like(x_vals), n_particles, temp)
+    # Corte x' = 0 (interpolación lineal vectorizada sobre la malla ordenada x_vals)
+    if 0.0 <= x_vals[0]:
+        cut_center_pimc = pimc_matrix[:, 0]
+    elif 0.0 >= x_vals[-1]:
+        cut_center_pimc = pimc_matrix[:, -1]
+    else:
+        hi = int(np.searchsorted(x_vals, 0.0))
+        lo = hi - 1
+        weight = (0.0 - x_vals[lo]) / (x_vals[hi] - x_vals[lo])
+        cut_center_pimc = (1.0 - weight) * pimc_matrix[:, lo] + weight * pimc_matrix[:, hi]
+
+    zeros_x = np.zeros_like(x_vals)
+    cut_center_bose = analytical_bose_obdm_1d(x_vals, zeros_x, n_particles, temp, omega=omega)
+    cut_center_dist = analytical_distinguishable_obdm_1d(x_vals, zeros_x, n_particles, temp, omega=omega)
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.8), constrained_layout=True)
 
@@ -330,18 +452,20 @@ def generar_cortes_obdm(x_vals, pimc_matrix, n_particles=N_PARTICLES, temp=TEMP,
     axes[2].legend(fontsize=9, loc="upper right")
     axes[2].grid(True, linestyle=":", alpha=0.5)
 
-    out_file = os.path.join(save_dir, "02_obdm_cortes_coherencia_cuantica.png")
-    fig.savefig(out_file, dpi=300)
-    plt.close(fig)
-    print(f"  -> Guardado: {out_file}")
-
-    overleaf_file = os.path.join(OVERLEAF_IMG_DIR, "02_obdm_cortes_coherencia_cuantica.png")
-    if os.path.exists(OVERLEAF_IMG_DIR):
-        import shutil
-        shutil.copy2(out_file, overleaf_file)
+    _save_and_sync_figure(
+        fig, save_dir, "02_obdm_cortes_coherencia_cuantica.png", copy_overleaf=copy_overleaf
+    )
 
 
-def generar_grafico_distancia_extremos(dist_path, n_particles=N_PARTICLES, temp=TEMP, save_dir=OUTPUT_DIR, tau=0.0):
+def generar_grafico_distancia_extremos(
+    dist_path,
+    n_particles=N_PARTICLES,
+    temp=TEMP,
+    save_dir=OUTPUT_DIR,
+    tau=0.0,
+    omega=OMEGA,
+    copy_overleaf=True,
+):
     """Grafica la distribución de distancia espacial entre los extremos Ira y Masha."""
     s_vals, p_s = load_worm_dist_data(dist_path)
     if s_vals is None:
@@ -351,8 +475,8 @@ def generar_grafico_distancia_extremos(dist_path, n_particles=N_PARTICLES, temp=
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
     mask = s_vals <= 5.0
     s_plot = s_vals[mask]
-    p_bose = analytical_bose_endpoint_dist(s_plot, n_particles, temp, tau=tau)
-    p_dist = analytical_distinguishable_endpoint_dist(s_plot, temp, tau=tau)
+    p_bose = analytical_bose_endpoint_dist(s_plot, n_particles, temp, omega=omega, tau=tau)
+    p_dist = analytical_distinguishable_endpoint_dist(s_plot, temp, omega=omega, tau=tau)
 
     ax.plot(s_plot, p_bose, color="crimson", linewidth=2.2, label="Analítico Bose Canónico", zorder=2)
     ax.plot(s_plot, p_dist, color="black", linestyle="--", linewidth=1.8, label="Distinguibles", zorder=1)
@@ -365,23 +489,31 @@ def generar_grafico_distancia_extremos(dist_path, n_particles=N_PARTICLES, temp=
     ax.legend(fontsize=9, loc="upper right")
     ax.grid(True, linestyle=":", alpha=0.5)
 
-    out_file = os.path.join(save_dir, "03_obdm_distribucion_distancia_extremos.png")
-    fig.savefig(out_file, dpi=300)
-    plt.close(fig)
-    print(f"  -> Guardado: {out_file}")
-
-    overleaf_file = os.path.join(OVERLEAF_IMG_DIR, "03_obdm_distribucion_distancia_extremos.png")
-    if os.path.exists(OVERLEAF_IMG_DIR):
-        import shutil
-        shutil.copy2(out_file, overleaf_file)
+    _save_and_sync_figure(
+        fig, save_dir, "03_obdm_distribucion_distancia_extremos.png", copy_overleaf=copy_overleaf
+    )
 
 
 # ==============================================================================
 # 4. Función Principal de Análisis
 # ==============================================================================
 
-def main():
-    data_dir = sys.argv[1] if len(sys.argv) > 1 else SCRIPT_DIR
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "data_dir",
+        nargs="?",
+        default=SCRIPT_DIR,
+        help="Directorio que contiene outworm_obdm.dat (por defecto: raíz del proyecto)",
+    )
+    parser.add_argument("-T", "--temp", type=float, default=None, help="Temperatura T para la referencia analítica")
+    parser.add_argument("-N", "--particles", type=int, default=None, help="Número de partículas N")
+    parser.add_argument("--omega", type=float, default=None, help="Frecuencia armónica omega")
+    parser.add_argument("-o", "--output-dir", default=OUTPUT_DIR, help="Directorio donde guardar las figuras")
+    parser.add_argument("--no-overleaf", action="store_true", help="No copiar figuras a overleaf/imágenes")
+    args = parser.parse_args(argv)
+
+    data_dir = os.path.abspath(args.data_dir)
     obdm_file = os.path.join(data_dir, "outworm_obdm.dat")
     dist_file = os.path.join(data_dir, "outworm_obdm_dist.dat")
 
@@ -394,25 +526,38 @@ def main():
     print(f"==================================================================")
     print(f"  Leyendo archivo: {obdm_file}")
 
-    x_vals, pimc_norm, pimc_counts, meta = load_worm_obdm_data(obdm_file)
-    n_part = meta.get("N", N_PARTICLES)
+    x_vals, pimc_norm, _, meta = load_worm_obdm_data(obdm_file)
+    n_part, temp, omega, sources = resolve_obdm_parameters(
+        data_dir, meta, temp=args.temp, n_particles=args.particles, omega=args.omega
+    )
     samples = meta.get("samples", 0)
     step = meta.get("step", 0.0)
 
+    print(f"  -> Parámetros        : N={n_part} ({sources['N']}), T={temp:g} ({sources['T']}), omega={omega:g} ({sources['omega']})")
     print(f"  -> Puntos de cuadrícula: {len(x_vals)}")
     print(f"  -> Muestras gap == 1  : {samples}")
     print(f"  -> Rango espacial     : [{x_vals[0]:.2f}, {x_vals[-1]:.2f}] (paso dx = {step:.4f})")
     print(f"  -> Integral traza raw : {meta.get('trace_integral', 0.0):.2f}")
 
+    copy_overleaf = not args.no_overleaf
     # 1. Mapa de Calor 2D
-    generar_mapa_calor_obdm(x_vals, pimc_norm, n_particles=n_part, temp=TEMP, save_dir=OUTPUT_DIR)
+    generar_mapa_calor_obdm(
+        x_vals, pimc_norm, n_particles=n_part, temp=temp,
+        save_dir=args.output_dir, omega=omega, copy_overleaf=copy_overleaf,
+    )
 
     # 2. Cortes Unidimensionales
-    generar_cortes_obdm(x_vals, pimc_norm, n_particles=n_part, temp=TEMP, save_dir=OUTPUT_DIR)
+    generar_cortes_obdm(
+        x_vals, pimc_norm, n_particles=n_part, temp=temp,
+        save_dir=args.output_dir, omega=omega, copy_overleaf=copy_overleaf,
+    )
 
     # 3. Distribución de Distancia de Extremos
     tau_gap1 = float(meta.get("tau", 0.0))
-    generar_grafico_distancia_extremos(dist_file, n_particles=n_part, temp=TEMP, save_dir=OUTPUT_DIR, tau=tau_gap1)
+    generar_grafico_distancia_extremos(
+        dist_file, n_particles=n_part, temp=temp,
+        save_dir=args.output_dir, tau=tau_gap1, omega=omega, copy_overleaf=copy_overleaf,
+    )
 
     print(f"==================================================================\n")
     return 0
